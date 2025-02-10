@@ -9,17 +9,22 @@ jobs:
   pr-checks-and-build:
     name: Lint & Formatting Checks then Build Application and Run Tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
-      - name: Setup Node.js environment
+
+      - name: Setup Node.js environment with version ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: 'pnpm'
 
       - name: Install turbo
