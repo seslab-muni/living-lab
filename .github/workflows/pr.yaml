@@ -31,10 +31,10 @@ jobs:
         run: pnpm ci
 
       - name: Run Prettier Check
-        run: pnpm run prettier:check
+        run: prettier . --check
 
       - name: Run ESLint Check
-        run: pnpm run eslint:check
+        run: pnpm run lint
 
   build:
     name: Build and Test
