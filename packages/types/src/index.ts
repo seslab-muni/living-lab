@@ -1,2 +1,2 @@
-export * from "./users/dto/create-user.request";
-export * from "./users/types/user";
+export * from "./users/dto/create-user.request.js";
+export * from "./users/types/user.js";
