@@ -12,16 +12,18 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          verison: 10
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: 'pnpm-lock.yaml'
+          cache: 'pnpm'
 
-      - name: Install pnpm and turbo
-        run: npm install -g pnpm turbo
+      - name: Install turbo
+        run: npm install -g turbo
 
       - name: Install dependencies
         run: pnpm install
