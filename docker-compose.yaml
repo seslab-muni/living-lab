@@ -2,40 +2,27 @@ version: '3.8'
 services:
   postgres:
     image: postgres:13-alpine
-    restart: always
+    container_name: postgres-dev
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: bvv-test
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: bvv-dev
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
 
-  backend:
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin-dev
     environment:
-      # Environment variables for the NestJS backend to connect to Postgres
-      DATABASE_HOST: postgres
-      DATABASE_PORT: "5432"
-      DATABASE_USER: myuser
-      DATABASE_PASSWORD: mypassword
-      DATABASE_NAME: bvv-test
+      # Set your preferred admin credentials here
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"  # You can access pgAdmin at http://localhost:5050
     depends_on:
       - postgres
-    ports:
-      - "3001:3000"  # Adjust port mapping as needed
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    depends_on:
-      - backend  # Optional: if your web app requires the backend during startup
-    ports:
-      - "3000:3000"  # Adjust port mapping as needed
 
 volumes:
-  postgres_data:
+  pg_data:
