@@ -1,12 +1,17 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-export default {
-  type: 'postgres',
-  host: '127.0.0.1',
-  port: 5432,
-  username: 'admin',
-  password: 'adminpassword',
-  database: 'bvv-dev',
-  autoLoadEntities: true,
-  synchronize: true,
-} as TypeOrmModuleOptions;
+export function getTypeOrmConfig(): TypeOrmModuleOptions {
+  return {
+    type: process.env.DATABASE_TYPE as any,
+    host: process.env.DATABASE_HOST,
+    port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+    username: process.env.DATABASE_USERNAME,
+    password: process.env.DATABASE_PASSWORD,
+    database: process.env.DATABASE_NAME,
+    autoLoadEntities: true,
+    synchronize: process.env.NODE_ENV !== 'production',
+  };
+}
+
+// Default export for backward compatibility
+export default getTypeOrmConfig();
