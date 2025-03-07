@@ -1,3 +1,9 @@
+/**
+ * Function check if the required environment variables are set in place.
+ * List of required environment variables is set within the function.
+ *
+ * @throws Error if any environemnt variable is missing.
+ */
 export function validateDatabaseEnvironment(): void {
   const requiredEnvVars = [
     'DATABASE_TYPE',
