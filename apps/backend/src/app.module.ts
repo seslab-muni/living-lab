@@ -3,9 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import databaseDevConfig from './configuration/database-dev.config';
 
 @Module({
-  imports: [
-    TypeOrmModule.forRoot(databaseDevConfig),
-  ],
+  imports: [TypeOrmModule.forRoot(databaseDevConfig)],
   controllers: [],
   providers: [],
 })
