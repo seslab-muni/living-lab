@@ -2,7 +2,6 @@
   "name": "living-lab-backend",
   "version": "0.0.1",
   "description": "Repository for BVV Living Lab and its server functionality.",
-  "author": "Patrik Prochazka",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -26,18 +25,21 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.0",
-    "typeorm": "0.3.20",
+    "pg": "^8.13.1",
+    "postgres": "3.4.5",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "typeorm": "0.3.20"
   },
   "devDependencies": {
-    "@repo/types": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
+    "@nestjs/config": "^4.0.1",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@repo/types": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.7",
     "@types/express": "^5.0.0",
