@@ -9,6 +9,30 @@ const roboto = Roboto({
 });
 
 const theme = createTheme({
+  palette: {
+    primary: {
+      main: "#1976d2", // Change the primary color
+    },
+    secondary: {
+      main: "#dc004e",
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          margin: "10px",
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          margin: "8px",
+        },
+      },
+    },
+  },
   colorSchemes: { light: true, dark: true },
   cssVariables: {
     colorSchemeSelector: "class",
