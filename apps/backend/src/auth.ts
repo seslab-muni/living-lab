@@ -1,10 +1,10 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { NewUser } from './register';
+import { RegisterForm } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
   @Post('register')
-  register(@Body() body: NewUser) {
+  register(@Body() body: RegisterForm) {
     console.log('Received body:', body);
     return {
       message: 'User received successfully',
