@@ -42,6 +42,7 @@ export default function RegisterForm() {
       if (response.ok) {
         // Here you can further handle the response, e.g. redirect or set a success message.
         console.log('Registration successful:', data.message);
+        
       } else {
         setError(data.message || 'Registration failed.');
       }
@@ -89,6 +90,7 @@ export default function RegisterForm() {
       )}
       <div style={{margin: 20}}>
         <Button
+          color="secondary"
           type="submit"
           variant="contained">
           login

@@ -1,16 +1,21 @@
+'use client'
+
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterForm() {
+  const router = useRouter();    
   const [formData, setFormData] = React.useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
-    password_repeat: '',
+    passwordConfirm: '',
     agree: false,
   });
 
@@ -27,7 +32,7 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       setError('Please fill all the slots.');
       return;
     }
@@ -39,7 +44,7 @@ export default function RegisterForm() {
       setError('The password needs to have at least 8 characters and 1 uppercase letter.');
       return;
     }
-    if (formData.password !== formData.password_repeat) {
+    if (formData.password !== formData.passwordConfirm) {
       setError('Passwords do not match.');
       return;
     }
@@ -64,6 +69,9 @@ export default function RegisterForm() {
       if (response.ok) {
         // Here you can further handle the response, e.g. redirect or set a success message.
         console.log('Registration successful:', data.message);
+        
+        router.push(`/email-confirmation`);
+        return;
       } else {
         setError(data.message || 'Registration failed.');
       }
@@ -85,11 +93,22 @@ export default function RegisterForm() {
         <TextField
           required
           fullWidth
-          name="name"
-          value={formData.name}
+          name="firstName"
+          value={formData.firstName}
           onChange={handleChange}
-          label="Full name"
-          placeholder="Jan Novák"
+          label="First name"
+          placeholder="Jan"
+        />
+      </div>
+      <div>
+        <TextField
+          required
+          fullWidth
+          name="lastName"
+          value={formData.lastName}
+          onChange={handleChange}
+          label="Last name"
+          placeholder="Novák"
         />
       </div>
       <div>
@@ -119,8 +138,8 @@ export default function RegisterForm() {
         <TextField
           required
           fullWidth
-          name="password_repeat"
-          value={formData.password_repeat}
+          name="passwordConfirm"
+          value={formData.passwordConfirm}
           onChange={handleChange}
           label="Password again"
           type="password"
@@ -135,7 +154,7 @@ export default function RegisterForm() {
               onChange={handleChange}
             />
           }
-          label="I agree with the bla bla."
+          label="I agree with the Terms of Use."
         />
       </div>
       {error && (
@@ -145,6 +164,7 @@ export default function RegisterForm() {
       )}
       <div style={{margin: 20}}>
         <Button
+          color="secondary"
           type="submit"
           variant="contained">
           Register

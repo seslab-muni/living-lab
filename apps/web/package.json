@@ -8,19 +8,20 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
-    "format:check": "prettier --check \"app/**/*.ts\"",    
+    "format:check": "prettier --check \"app/**/*.ts\"",
     "format": "prettier --write \"app/**/*.ts\"",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/types": "workspace:*",
-    "@emotion/cache": "latest",
+    "@emotion/cache": "^11.14.0",
     "@emotion/react": "latest",
+    "@emotion/server": "^11.11.0",
     "@emotion/styled": "latest",
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
-    "@mui/material-nextjs": "latest",
-    "next": "^15.1.6",
+    "@mui/material-nextjs": "^7.0.2",
+    "@repo/types": "workspace:*",
+    "next": "15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -31,7 +32,7 @@
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
     "eslint": "^9.19.0",
-    "typescript": "5.7.3",
-    "prettier": "3.5.0"
+    "prettier": "3.5.0",
+    "typescript": "5.7.3"
   }
 }

@@ -10,15 +10,16 @@ const roboto = Roboto({
 
 const theme = createTheme({
   palette: {
+    mode: "dark",
     primary: {
-      main: "#1976d2", // Change the primary color
+      main: "#E2DF29",
     },
     secondary: {
-      main: "#dc004e",
+      main: "#292ce2",
     },
   },
   components: {
-    MuiButton: {
+    MuiContainer: {
       styleOverrides: {
         root: {
           margin: "10px",
@@ -28,15 +29,18 @@ const theme = createTheme({
     MuiTextField: {
       styleOverrides: {
         root: {
-          margin: "8px",
+          margin: "4px",
         },
       },
     },
   },
-  colorSchemes: { light: true, dark: true },
-  cssVariables: {
-    colorSchemeSelector: "class",
-  },
+
+  // only dark theme available at the moment
+  // colorSchemes: { light: true, dark: true },
+  // cssVariables: {
+  //   colorSchemeSelector: "class",
+  // },
+
   typography: {
     fontFamily: roboto.style.fontFamily,
   },
