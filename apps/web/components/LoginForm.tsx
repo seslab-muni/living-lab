@@ -1,7 +1,9 @@
 import * as React from 'react';
+import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
+import { Typography } from '@mui/material';
 
 export default function RegisterForm() {
   const [formData, setFormData] = React.useState({
@@ -94,6 +96,11 @@ export default function RegisterForm() {
           login
         </Button>
       </div>
+      <Box>
+        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "secondary.main" }}>
+          I have forgotten my password.
+        </Typography>
+      </Box>
     </Box>
   );
 }
