@@ -1,24 +1,26 @@
 import * as React from "react";
-import { Box, CssBaseline } from "@mui/material";
+import { Box } from "@mui/material";
 
 export default function CenterCardLayout(props: { children: React.ReactNode }) {
   return (
     <Box
-      height="100vh"
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      bgcolor="primary.main"
+      sx={{
+        width: "100%",
+        minHeight: '100vh',
+        bgcolor: "primary.main",
+        py: 6,
+      }}
     >
-      <CssBaseline />
-      <Box
-        width={560}
-        p={4}
-        bgcolor="background.paper"
-        borderRadius="16px"
-        boxShadow={3}
-        textAlign="center"
-      >
+      <Box sx={{
+        width: "100%",        
+        maxWidth: 560,        
+        mx: "auto",           
+        bgcolor: "background.paper",
+        borderRadius: 2,
+        boxShadow: 3,
+        textAlign: "center",
+        color: "#FFFFFF",
+        p: 4, }}>
         {props.children}
       </Box>
     </Box>

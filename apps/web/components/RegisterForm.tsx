@@ -164,9 +164,7 @@ export default function RegisterForm() {
       )}
       <div style={{margin: 20}}>
         <Button
-          color="secondary"
-          type="submit"
-          variant="contained">
+          type="submit">
           Register
         </Button>
       </div>

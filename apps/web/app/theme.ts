@@ -15,7 +15,7 @@ const theme = createTheme({
       main: "#E2DF29",
     },
     secondary: {
-      main: "#292ce2",
+      main: "#86207B",
     },
   },
   components: {
@@ -24,6 +24,12 @@ const theme = createTheme({
         root: {
           margin: "10px",
         },
+      },
+    },
+    MuiButton: {
+      defaultProps: {
+        color: "secondary",
+        variant: "contained",
       },
     },
     MuiTextField: {
