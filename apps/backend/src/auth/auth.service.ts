@@ -7,8 +7,9 @@ export class AuthService {
   constructor(private readonly userService: UserService) {}
   async registerUser(registerForm: RegisterFormDto) {
     const user = await this.userService.findByEmail(registerForm.email);
-    if (user) {
+    if (user !== null) {
       // TODO: send fejk email...
+      return;
     }
     await this.userService.create(registerForm);
     // TODO: send real email

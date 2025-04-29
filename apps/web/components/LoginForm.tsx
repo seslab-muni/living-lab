@@ -4,8 +4,11 @@ import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { Typography } from '@mui/material';
+import { useRouter } from 'next/navigation';
+import { BACKEND_URL, FRONTEND_URL } from '../app/lib/constants';
 
 export default function RegisterForm() {
+    const router = useRouter();  
   const [formData, setFormData] = React.useState({
     email: '',
     password: '',
@@ -31,7 +34,7 @@ export default function RegisterForm() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/auth/login', {
+      const response = await fetch(BACKEND_URL + '/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,9 +45,7 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
-        // Here you can further handle the response, e.g. redirect or set a success message.
-        console.log('Registration successful:', data.message);
-        
+        router.push(FRONTEND_URL + 'auth/home')
       } else {
         setError(data.message || 'Registration failed.');
       }
@@ -97,7 +98,7 @@ export default function RegisterForm() {
         </Button>
       </div>
       <Box>
-        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "secondary.main" }}>
+        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "primary.main" }}>
           I have forgotten my password.
         </Typography>
       </Box>

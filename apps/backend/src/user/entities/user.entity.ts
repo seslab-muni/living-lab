@@ -5,7 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-// import * as bcrypt from 'bcrypt';
 
 @Entity({ name: 'users' })
 export class User {

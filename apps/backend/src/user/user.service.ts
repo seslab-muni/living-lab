@@ -3,14 +3,13 @@ import { RegisterFormDto } from 'src/auth/dto/register.dto';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly saltRounds: number = 10,
   ) {}
 
   async create(registerForm: RegisterFormDto): Promise<User> {
@@ -20,7 +19,8 @@ export class UserService {
      * @returns a promise of a User
      */
     const { password, ...form } = registerForm;
-    const salt = await bcrypt.genSalt(this.saltRounds);
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = this.userRepository.create({

@@ -7,6 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
+import { BACKEND_URL } from '../app/lib/constants';
 
 export default function RegisterForm() {
   const router = useRouter();    
@@ -56,7 +57,7 @@ export default function RegisterForm() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/auth/register', {
+      const response = await fetch((BACKEND_URL + '/auth/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,10 +67,7 @@ export default function RegisterForm() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Here you can further handle the response, e.g. redirect or set a success message.
-        console.log('Registration successful:', data.message);
-        
+      if (response.ok) {        
         router.push(`/email-confirmation`);
         return;
       } else {
