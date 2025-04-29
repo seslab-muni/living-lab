@@ -1,6 +1,13 @@
-import { IsEmail, IsNotEmpty, IsString, IsBoolean, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsBoolean,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
-export class RegisterForm {
+export class RegisterFormDto {
   @IsNotEmpty({ message: 'First name is required' })
   @MaxLength(20)
   @IsString()
@@ -17,12 +24,12 @@ export class RegisterForm {
 
   @IsNotEmpty({ message: 'Password is required' })
   @MinLength(8)
-  // @IsStrongPassword?
-  password: string
+  // Todo: @IsStrongPassword?
+  password: string;
 
   @IsNotEmpty({ message: 'Password confirmation is required' })
-  passwordConfirm: string
-  
+  passwordConfirm: string;
+
   @IsBoolean()
-  agree: boolean
+  agree: boolean;
 }

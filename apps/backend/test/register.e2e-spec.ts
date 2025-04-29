@@ -23,15 +23,13 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .post('/auth/register')
       .send({ firstName: 'John' })
-      .expect(400)
+      .expect(400);
   });
-  
-//   it('/users (POST) should return 201 for valid data', () => {
-//     return request(app.getHttpServer())
-//       .post('/users')
-//       .send({ name: 'John Doe', email: 'john@example.com' })
-//       .expect(201);
-//   });
-  
-});
 
+  //   it('/users (POST) should return 201 for valid data', () => {
+  //     return request(app.getHttpServer())
+  //       .post('/users')
+  //       .send({ name: 'John Doe', email: 'john@example.com' })
+  //       .expect(201);
+  //   });
+});

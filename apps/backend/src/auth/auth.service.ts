@@ -1,0 +1,16 @@
+import { Injectable } from '@nestjs/common';
+import { RegisterFormDto } from './dto/register.dto';
+import { UserService } from 'src/user/user.service';
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly userService: UserService) {}
+  async registerUser(registerForm: RegisterFormDto) {
+    const user = await this.userService.findByEmail(registerForm.email);
+    if (user) {
+      // TODO: send fejk email...
+    }
+    await this.userService.create(registerForm);
+    // TODO: send real email
+  }
+}
