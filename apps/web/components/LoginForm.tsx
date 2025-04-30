@@ -45,7 +45,8 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
-        const result = await response.json();
+        // const result = 
+        await response.json();
         // TODO: create a session
         router.push(FRONTEND_URL + '/auth')
       } else {

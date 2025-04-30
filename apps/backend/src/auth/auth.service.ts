@@ -18,10 +18,10 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
-    if (!user || !await bcrypt.compare(password, user.password)) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('No useer or password are incorrect!');
     }
 
-    return {id: user.id, name: user.firstName}
+    return { id: user.id, name: user.firstName };
   }
 }
