@@ -45,9 +45,11 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
-        router.push(FRONTEND_URL + 'auth/home')
+        const result = await response.json();
+        // TODO: create a session
+        router.push(FRONTEND_URL + '/auth')
       } else {
-        setError(data.message || 'Registration failed.');
+        setError(data.message || 'Login failed.');
       }
     } catch (err) {
       console.error('Error:', err);
@@ -86,6 +88,11 @@ export default function RegisterForm() {
           type="password"
         />
       </div>
+      <Box>
+        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "secondary.main" }}>
+          Forgot your password?
+        </Typography>
+      </Box>
       {error && (
         <div style={{ color: 'red', margin: 1.8 }}>
           {error}
@@ -97,9 +104,12 @@ export default function RegisterForm() {
           login
         </Button>
       </div>
-      <Box>
-        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "primary.main" }}>
-          I have forgotten my password.
+      <Box display="flex" flexDirection="row">
+        <Typography sx={{ mr: 2, color: "primary.main" }}>
+          Don&apos;t have an account?
+        </Typography>
+        <Typography component={NextLink} href={`/register`} sx={{ mr: 2, color: "primary.main" }}>
+          Sign up.
         </Typography>
       </Box>
     </Box>
