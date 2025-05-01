@@ -5,6 +5,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import { AppBar, Avatar, Button, Toolbar } from '@mui/material';
+import GreyButton from './GreyButton';
 
 const pages = ['Organizations', 'Projects', 'Requirements', 'My tasks'];
 function TopMenu() {
@@ -20,7 +21,6 @@ function TopMenu() {
               sx={{
                 mr: 4,
                 display: { xs: 'none', md: 'flex' },
-                fontFamily: 'monospace',
                 fontWeight: 700,
                 letterSpacing: '.3rem',
                 color: 'primary.main',
@@ -51,9 +51,12 @@ function TopMenu() {
             </Box>
             <Box>
               <IconButton  sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
+                <Avatar alt="firstName" src="/static/images/avatar/2.jpg" />
               </IconButton>
             </Box>
+            <GreyButton component={NextLink} href="/api/signout">
+              Sign out
+            </GreyButton>
           </Box>
         </Toolbar>
     </AppBar>

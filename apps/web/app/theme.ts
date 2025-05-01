@@ -1,6 +1,7 @@
 "use client";
 import { createTheme } from "@mui/material/styles";
 import { Roboto } from "next/font/google";
+import { grey } from "@mui/material/colors";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -17,6 +18,7 @@ const theme = createTheme({
     secondary: {
       main: "#86207B",
     },
+    grey,
   },
   components: {
     MuiContainer: {

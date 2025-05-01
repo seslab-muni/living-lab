@@ -6,9 +6,10 @@ import Button from '@mui/material/Button';
 import { Typography } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { BACKEND_URL, FRONTEND_URL } from '../app/lib/constants';
+import { createSession } from '../app/lib/session';
 
 export default function RegisterForm() {
-    const router = useRouter();  
+  const router = useRouter();  
   const [formData, setFormData] = React.useState({
     email: '',
     password: '',
@@ -45,9 +46,12 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
-        // const result = 
-        await response.json();
-        // TODO: create a session
+        await createSession({
+          user:{
+            id: data.id,
+            name: data.name,
+          }
+        })
         router.push(FRONTEND_URL + '/auth')
       } else {
         setError(data.message || 'Login failed.');

@@ -16,7 +16,7 @@ export class AuthService {
     // TODO: send real email
   }
 
-  async login(email: string, password: string) {
+  async validateLocalUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('No useer or password are incorrect!');
