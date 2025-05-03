@@ -1,8 +1,11 @@
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
+import { getSession } from "../lib/session";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getSession();
+  console.log("session", session);
   return (
     <Container maxWidth="lg">
       <Box

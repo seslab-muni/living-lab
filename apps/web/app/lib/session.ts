@@ -8,8 +8,7 @@ export type Session = {
     id: string;
     name: string;
   };
-  // accessToken: string;
-  // refreshToken: string;
+  accessToken: string;
 };
 const privateKey = process.env.SESSION_PRIVATE_KEY;
 const encodedKey = new TextEncoder().encode(privateKey);

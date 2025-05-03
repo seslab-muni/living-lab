@@ -50,7 +50,8 @@ export default function RegisterForm() {
           user:{
             id: data.id,
             name: data.name,
-          }
+          },
+          accessToken: data.accessToken,
         })
         router.push(FRONTEND_URL + '/auth')
       } else {
