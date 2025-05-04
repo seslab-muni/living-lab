@@ -8,8 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint --max-warnings 0",
-    "format:check": "prettier --check \"app/**/*.ts\"",
-    "format": "prettier --write \"app/**/*.ts\"",
+    "format:check": "prettier --check \"app/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"app/**/*.{ts,tsx}\"",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

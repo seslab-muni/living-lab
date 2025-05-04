@@ -1,8 +1,8 @@
-"use server";
-import { UUID } from "crypto";
-import { jwtVerify, SignJWT } from "jose";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+'use server';
+import { UUID } from 'crypto';
+import { jwtVerify, SignJWT } from 'jose';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export type Session = {
   user: {
@@ -19,36 +19,36 @@ export async function createSession(data: Session) {
   const expiredAt = new Date(Date.now() + 7 * 24 * 60 * 60_000);
 
   const session = await new SignJWT(data)
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime('7d')
     .sign(encodedKey);
 
-  (await cookies()).set("session", session, {
+  (await cookies()).set('session', session, {
     httpOnly: true,
     secure: true,
     expires: expiredAt,
-    sameSite: "strict",
-    path: "/",
+    sameSite: 'strict',
+    path: '/',
   });
 }
 
 export async function getSession() {
-  const cookie = (await cookies()).get("session")?.value;
+  const cookie = (await cookies()).get('session')?.value;
   if (!cookie) return null;
 
   try {
     const { payload } = await jwtVerify(cookie, encodedKey, {
-      algorithms: ["HS256"],
+      algorithms: ['HS256'],
     });
 
     return payload as Session;
   } catch (err) {
-    console.error("Failed to verify session", err);
-    redirect("/login");
+    console.error('Failed to verify session', err);
+    redirect('/login');
   }
 }
 
 export async function deleteSession() {
-  (await cookies()).delete("session");
+  (await cookies()).delete('session');
 }

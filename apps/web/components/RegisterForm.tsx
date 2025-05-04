@@ -68,7 +68,7 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {        
-        router.push(`/email-confirmation`);
+        router.push(`/verify-email/${data.id}`);
         return;
       } else {
         setError(data.message || 'Registration failed.');

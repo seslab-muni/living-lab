@@ -1,5 +1,5 @@
-import Typography from "@mui/material/Typography";
-import CenterCardLayout from "../components/CenterCardLayout";
+import Typography from '@mui/material/Typography';
+import CenterCardLayout from '../components/CenterCardLayout';
 
 export default function Home() {
   return (

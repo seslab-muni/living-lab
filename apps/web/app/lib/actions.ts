@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import { getSession } from "./session";
-import { FRONTEND_URL } from "./constants";
+import { redirect } from 'next/navigation';
+import { getSession } from './session';
+import { FRONTEND_URL } from './constants';
 
 export const authFetch = async (
   url: string | URL,
@@ -17,8 +17,8 @@ export const authFetch = async (
 
   if (response.status === 401) {
     // Todo: Refresh token
-    console.error("Unauthorized access. Redirecting to login.");
-    redirect(FRONTEND_URL + "/auth/login");
+    console.error('Unauthorized access. Redirecting to login.');
+    redirect(FRONTEND_URL + '/auth/login');
   }
   return response;
 };
