@@ -21,6 +21,18 @@ const theme = createTheme({
     grey,
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        // this applies your autofill override globally
+        "input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill":
+          {
+            WebkitBoxShadow: "inset 0 0 0 1000px #111 !important",
+            WebkitTextFillColor: "#fff !important",
+            transition:
+              "background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s",
+          },
+      },
+    },
     MuiContainer: {
       styleOverrides: {
         root: {

@@ -1,11 +1,12 @@
 "use server";
+import { UUID } from "crypto";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export type Session = {
   user: {
-    id: string;
+    id: UUID;
     name: string;
   };
   accessToken: string;

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
+import { UUID } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -34,6 +35,15 @@ export class UserService {
     return this.userRepository.findOne({
       where: {
         email,
+        active: true,
+      },
+    });
+  }
+
+  async findById(id: UUID): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: {
+        id: id,
         active: true,
       },
     });

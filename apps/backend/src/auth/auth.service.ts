@@ -4,6 +4,7 @@ import { UserService } from 'src/user/user.service';
 import bcrypt from 'node_modules/bcryptjs';
 import { AuthPayload } from './types/auth-jwtPayload';
 import { JwtService } from '@nestjs/jwt';
+import { UUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -30,15 +31,30 @@ export class AuthService {
     return { id: user.id, name: user.firstName };
   }
 
-  async login(user: { id: string; name: string }) {
+  async login(user: { id: UUID; name: string }) {
     console.log('login', user);
     const accessToken = await this.generateTokens(user.id);
     return { id: user.id, name: user.name, accessToken };
   }
 
-  async generateTokens(id: string) {
+  async generateTokens(id: UUID) {
     const payload: AuthPayload = { sub: id };
     const accessToken = await this.jwtService.signAsync(payload);
     return accessToken;
+  }
+
+  async validateJwtUser(id: UUID) {
+    const user = await this.userService.findById(id);
+    if (!user) {
+      throw new UnauthorizedException('No user found!');
+    }
+    return { id: user.id };
+  }
+
+  async invalidateToken(id: UUID) {
+    const user = await this.userService.findById(id);
+    if (!user) {
+      throw new UnauthorizedException('No user found!');
+    }
   }
 }
