@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
-import { UUID } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -28,7 +27,7 @@ export class UserService {
       ...form,
       password: hashedPassword,
     });
-    return this.userRepository.save(user);
+    return await this.userRepository.save(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -40,12 +39,16 @@ export class UserService {
     });
   }
 
-  async findById(id: UUID): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({
       where: {
         id: id,
         active: true,
       },
     });
+  }
+
+  async updateUser(id: string, arg1: { active: boolean }) {
+    await this.userRepository.update(id, arg1);
   }
 }

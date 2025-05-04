@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import {
   Column,
   Entity,
@@ -9,7 +8,7 @@ import {
 @Entity({ name: 'users' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: crypto.UUID;
+  id: string;
 
   @Column()
   firstName: string;
@@ -28,4 +27,7 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   active: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  refreshToken: string | null;
 }
