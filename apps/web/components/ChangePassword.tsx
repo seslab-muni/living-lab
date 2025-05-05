@@ -1,44 +1,34 @@
 'use client'
 
-import * as React from 'react';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
-import Button from '@mui/material/Button';
-import { useRouter } from 'next/navigation';
-import { BACKEND_URL } from '../app/lib/constants';
+import { useRouter } from "next/navigation";
+import React from "react";
+import { BACKEND_URL } from "../app/lib/constants";
+import { Box, Button, TextField } from "@mui/material";
+import CenterCardLayout from "./CenterCardLayout";
 
-export default function RegisterForm() {
+export default function ChangePasswordClient({ id }: { id: string}) {
   const router = useRouter();    
   const [formData, setFormData] = React.useState({
-    firstName: '',
-    lastName: '',
-    email: '',
+    code: '',
     password: '',
     passwordConfirm: '',
-    agree: false,
   });
 
   const [error, setError] = React.useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+    if (!formData.code || !formData.passwordConfirm || !formData.password) {
       setError('Please fill all the slots.');
-      return;
-    }
-    if (!formData.email.includes('@')) {
-      setError('Email must contain @.');
       return;
     }
     if (formData.password.length < 8) {
@@ -49,15 +39,10 @@ export default function RegisterForm() {
       setError('Passwords do not match.');
       return;
     }
-    if (!formData.agree) {
-      setError('You must agree to continue.');
-      return;
-    }
-
     setError('');
 
     try {
-      const response = await fetch((BACKEND_URL + '/auth/register'), {
+      const response = await fetch((BACKEND_URL + '/auth/change-password/' + id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,10 +53,10 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
-        router.push(`/verify-email/${data.id}`);
+        router.push(`/login`);
         return;
       } else {
-        setError(data.message || 'Registration failed.');
+        setError(data.message || 'Password could\'nt be changed failed.');
       }
     } catch (err) {
       console.error('Error:', err);
@@ -80,6 +65,7 @@ export default function RegisterForm() {
   };
 
   return (
+    <CenterCardLayout>
     <Box
       component="form"
       onSubmit={handleSubmit}
@@ -91,34 +77,10 @@ export default function RegisterForm() {
         <TextField
           required
           fullWidth
-          name="firstName"
-          value={formData.firstName}
+          name="code"
+          value={formData.code}
           onChange={handleChange}
-          label="First name"
-          placeholder="Jan"
-        />
-      </div>
-      <div>
-        <TextField
-          required
-          fullWidth
-          name="lastName"
-          value={formData.lastName}
-          onChange={handleChange}
-          label="Last name"
-          placeholder="Novák"
-        />
-      </div>
-      <div>
-        <TextField
-          required
-          fullWidth
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          label="Email"
-          type="email"
-          placeholder="jan.novak@bvv.cz"
+          label="Code"
         />
       </div>
       <div>
@@ -128,7 +90,7 @@ export default function RegisterForm() {
           name="password"
           value={formData.password}
           onChange={handleChange}
-          label="Password"
+          label="New password"
           type="password"
         />
       </div>
@@ -139,20 +101,8 @@ export default function RegisterForm() {
           name="passwordConfirm"
           value={formData.passwordConfirm}
           onChange={handleChange}
-          label="Password again"
+          label="New password again"
           type="password"
-        />
-      </div>
-      <div>
-        <FormControlLabel
-          control={
-            <Checkbox
-              name="agree"
-              checked={formData.agree}
-              onChange={handleChange}
-            />
-          }
-          label="I agree with the Terms of Use."
         />
       </div>
       {error && (
@@ -163,9 +113,10 @@ export default function RegisterForm() {
       <div style={{margin: 20}}>
         <Button
           type="submit">
-          Register
+          Change password
         </Button>
       </div>
     </Box>
+    </CenterCardLayout>
   );
 }

@@ -48,7 +48,14 @@ export class UserService {
     });
   }
 
-  async updateUser(id: string, arg1: { active: boolean }) {
+  async activateUser(id: string, arg1: { active: boolean }) {
     await this.userRepository.update(id, arg1);
+  }
+
+  async changePassword(id: string, password: string) {
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await this.userRepository.update(id, { password: hashedPassword });
   }
 }

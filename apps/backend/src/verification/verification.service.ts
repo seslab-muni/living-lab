@@ -8,7 +8,6 @@ import bcrypt from 'node_modules/bcryptjs';
 @Injectable()
 export class VerificationService {
   private readonly tokenExpirationMinutes = 7;
-  private readonly tokenMinRequestInterval = 5;
   constructor(
     @InjectRepository(VerificationToken)
     private readonly tokenRepository: Repository<VerificationToken>,
@@ -18,9 +17,7 @@ export class VerificationService {
     const recentToken = await this.tokenRepository.findOne({
       where: {
         userId,
-        createdAt: MoreThan(
-          new Date(Date.now() - this.tokenMinRequestInterval * 60 * 1000),
-        ),
+        expiresAt: MoreThan(new Date(Date.now() + 10 * 1000)),
       },
     });
     if (recentToken) {
@@ -43,21 +40,23 @@ export class VerificationService {
   }
 
   async verifyCode(userId: string, code: string) {
-    console.log(code);
     const token = await this.tokenRepository.findOne({
-      where: { userId },
+      where: {
+        userId,
+        expiresAt: MoreThan(
+          new Date(Date.now() - this.tokenExpirationMinutes * 60 * 1000),
+        ),
+      },
     });
+    console.log(token);
     if (!token) {
       throw new UnprocessableEntityException(
         'No verification token found for this user.',
       );
     }
-    if (
-      token.expiresAt < new Date() ||
-      !(await bcrypt.compare(code, token.code))
-    ) {
+    if (!(await bcrypt.compare(code, token.code))) {
       throw new UnprocessableEntityException(
-        'This token is invalid, register again.',
+        'Invalid token. Please restart the verification process.',
       );
     }
     await this.tokenRepository.delete(token.id);

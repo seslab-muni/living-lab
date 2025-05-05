@@ -95,7 +95,7 @@ export default function RegisterForm() {
         />
       </div>
       <Box>
-        <Typography component={NextLink} href={`/password`} sx={{ mr: 2, color: "secondary.main" }}>
+        <Typography component={NextLink} href={`/password/input-email`} sx={{ mr: 2, color: "secondary.main" }}>
           Forgot your password?
         </Typography>
       </Box>

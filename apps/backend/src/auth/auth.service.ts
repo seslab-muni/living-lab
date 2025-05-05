@@ -11,6 +11,8 @@ import { JwtService } from '@nestjs/jwt';
 import { VerificationService } from 'src/verification/verification.service';
 import { EmailService } from 'src/email/email.service';
 import { SendEmailDto } from 'src/email/dto/email.dto';
+import { randomUUID } from 'crypto';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Injectable()
 export class AuthService {
@@ -52,7 +54,7 @@ export class AuthService {
       throw new NotFoundException('No user found!');
     }
     await this.verificationService.verifyCode(id, code);
-    await this.userService.updateUser(id, { active: true });
+    await this.userService.activateUser(id, { active: true });
   }
 
   async validateLocalUser(email: string, password: string) {
@@ -88,5 +90,31 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('No user found!');
     }
+  }
+
+  async checkEmail(recipient: string) {
+    const user = await this.userService.findByEmail(recipient);
+    if (!user) {
+      return { id: randomUUID() };
+    }
+    const verificationCode =
+      await this.verificationService.generateVerificationCode(user.id);
+    const email: SendEmailDto = {
+      recipient: recipient,
+      subject: 'BVV LL Platfrom: Change password',
+      html: `<p>Here is your verification code: <strong>${verificationCode}</strong> you can use it to change your password.</p>`,
+      text: `Here is your verification code: ${verificationCode} you can use it to change your password.`,
+    };
+    await this.emailService.sendEmail(email);
+    return user.id;
+  }
+  async changePassword(id: string, body: ChangePasswordDto) {
+    console.log('changePassword', id, body);
+    const user = await this.userService.findById(id, true);
+    if (!user) {
+      throw new NotFoundException('No user found!');
+    }
+    await this.verificationService.verifyCode(id, body.code);
+    await this.userService.changePassword(id, body.password);
   }
 }

@@ -12,6 +12,7 @@ import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import express from 'express';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +29,21 @@ export class AuthController {
     @Body() body: { code: string },
   ) {
     await this.authService.verifyEmail(params.id, body.code);
+    return { message: 'The request was successfully processed' };
+  }
+
+  @Post('email-exists')
+  async checkEmail(@Body() body: { email: string }) {
+    const id = await this.authService.checkEmail(body.email);
+    return { message: 'The request was successfully processed', id: id };
+  }
+
+  @Post('change-password/:id')
+  async changePassword(
+    @Param() params: { id: string },
+    @Body() body: ChangePasswordDto,
+  ) {
+    await this.authService.changePassword(params.id, body);
     return { message: 'The request was successfully processed' };
   }
 
