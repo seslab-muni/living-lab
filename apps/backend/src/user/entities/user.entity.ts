@@ -25,7 +25,7 @@ export class User {
   @UpdateDateColumn({ type: 'timestamp' })
   lastEdit: Date;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', default: false })
   active: boolean;
 
   @Column({ type: 'varchar', nullable: true })

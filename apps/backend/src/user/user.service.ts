@@ -39,11 +39,11 @@ export class UserService {
     });
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string, active: boolean): Promise<User | null> {
     return this.userRepository.findOne({
       where: {
         id: id,
-        active: true,
+        active: active,
       },
     });
   }

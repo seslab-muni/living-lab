@@ -66,8 +66,10 @@ export default function RegisterForm() {
       });
 
       const data = await response.json();
+      console.log('Response:', data);
 
-      if (response.ok) {        
+      if (response.ok) {
+        console.log('Registration successful:', data);
         router.push(`/verify-email/${data.id}`);
         return;
       } else {

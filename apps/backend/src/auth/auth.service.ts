@@ -31,10 +31,9 @@ export class AuthService {
         text: 'This email is already registered. Please use another email, if you want to register.',
       };
       await this.emailService.sendEmail(email);
-      return;
+      return user.id;
     }
     const createdUser = await this.userService.create(registerForm);
-    console.log('createdUser', createdUser);
     const verificationCode =
       await this.verificationService.generateVerificationCode(createdUser.id);
     const email: SendEmailDto = {
@@ -44,10 +43,11 @@ export class AuthService {
       text: `Here is your verification code: ${verificationCode} you can use it to verify your email.`,
     };
     await this.emailService.sendEmail(email);
+    return createdUser.id;
   }
 
   async verifyEmail(id: string, code: string) {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(id, false);
     if (!user) {
       throw new NotFoundException('No user found!');
     }
@@ -76,7 +76,7 @@ export class AuthService {
   }
 
   async validateJwtUser(id: string) {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(id, true);
     if (!user) {
       throw new UnauthorizedException('No user found!');
     }
@@ -84,7 +84,7 @@ export class AuthService {
   }
 
   async invalidaterefreshToken(id: string) {
-    const user = await this.userService.findById(id);
+    const user = await this.userService.findById(id, true);
     if (!user) {
       throw new UnauthorizedException('No user found!');
     }

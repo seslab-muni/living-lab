@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { RegisterFormDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -10,12 +18,16 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
   @Post('register')
   async register(@Body() registerForm: RegisterFormDto) {
-    await this.authService.registerUser(registerForm);
-    return { message: 'The request was successfully processed' };
+    const userId = await this.authService.registerUser(registerForm);
+    return { message: 'The request was successfully processed', id: userId };
   }
-  @Post('verify')
-  async verify(@Body() id: string, @Body() code: string) {
-    await this.authService.verifyEmail(id, code);
+
+  @Post('verify/:id')
+  async verify(
+    @Param() params: { id: string },
+    @Body() body: { code: string },
+  ) {
+    await this.authService.verifyEmail(params.id, body.code);
     return { message: 'The request was successfully processed' };
   }
 

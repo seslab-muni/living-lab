@@ -43,6 +43,7 @@ export class VerificationService {
   }
 
   async verifyCode(userId: string, code: string) {
+    console.log(code);
     const token = await this.tokenRepository.findOne({
       where: { userId },
     });
@@ -55,7 +56,9 @@ export class VerificationService {
       token.expiresAt < new Date() ||
       !(await bcrypt.compare(code, token.code))
     ) {
-      throw new UnprocessableEntityException('This token is invalid');
+      throw new UnprocessableEntityException(
+        'This token is invalid, register again.',
+      );
     }
     await this.tokenRepository.delete(token.id);
   }
