@@ -11,7 +11,7 @@ export type Session = {
   };
   accessToken: string;
 };
-const privateKey = process.env.SESSION_PRIVATE_KEY;
+const privateKey = process.env.SESSION_SECRET;
 const encodedKey = new TextEncoder().encode(privateKey);
 
 export async function createSession(data: Session) {

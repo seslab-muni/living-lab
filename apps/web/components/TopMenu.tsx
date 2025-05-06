@@ -10,7 +10,7 @@ import GreyButton from './GreyButton';
 const pages = ['Organizations', 'Projects', 'Requirements', 'My tasks'];
 function TopMenu() {
   return (
-    <AppBar position="static">
+    <AppBar position="fixed">
       <Toolbar disableGutters sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 }, }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography

@@ -60,7 +60,7 @@ export class AuthService {
   async validateLocalUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new UnauthorizedException('No user or password are incorrect!');
+      throw new UnauthorizedException('Email or password are incorrect!');
     }
 
     return { id: user.id, name: user.firstName };
