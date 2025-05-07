@@ -8,12 +8,11 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "env": ["SESSION_SECRET"],
+      "env": ["SESSION_SECRET", "NODE_ENV", "NEXTAUTH_SECRET"],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"],
-      "env": ["SESSION_SECRET"]
+      "dependsOn": ["^lint"]
     },
     "check-types": {
       "dependsOn": ["^check-types"]

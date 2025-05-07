@@ -1,11 +1,18 @@
-import * as React from 'react';
-import TopMenu from '../../components/TopMenu';
 import { Box } from '@mui/material';
+import TopMenu from '../components/TopMenu';
+import authOptions from '../lib/authOptions';
+import { getServerSession, Session } from 'next-auth';
+import AuthLayoutClient from '../components/AuthLayoutClient';
 
-export default function AuthLayout(props: { children: React.ReactNode }) {
+export default async function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = (await getServerSession(authOptions)) as Session;
   return (
-    <>
-      <TopMenu></TopMenu>
+    <AuthLayoutClient session={session}>
+      <TopMenu />
       <Box
         sx={{
           width: '100%',
@@ -15,8 +22,8 @@ export default function AuthLayout(props: { children: React.ReactNode }) {
           py: 6,
         }}
       >
-        {props.children}
+        {children}
       </Box>
-    </>
+    </AuthLayoutClient>
   );
 }

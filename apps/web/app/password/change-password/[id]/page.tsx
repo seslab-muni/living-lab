@@ -1,5 +1,5 @@
 import * as React from 'react';
-import ChangePasswordClient from '../../../../components/ChangePassword';
+import ChangePasswordClient from '../../../components/ChangePassword';
 
 export default async function ChangePassword({
   params,

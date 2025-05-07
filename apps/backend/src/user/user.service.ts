@@ -58,4 +58,14 @@ export class UserService {
     const hashedPassword = await bcrypt.hash(password, salt);
     await this.userRepository.update(id, { password: hashedPassword });
   }
+
+  async updateRefreshToken(id: string, refreshToken: string | null) {
+    if (refreshToken === null) {
+      return this.userRepository.update(id, { refreshToken: null });
+    }
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, salt);
+    return this.userRepository.update(id, { refreshToken: hashedRefreshToken });
+  }
 }

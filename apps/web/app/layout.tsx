@@ -1,15 +1,14 @@
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { ThemeProvider } from '@mui/material/styles';
-import type { Metadata } from 'next';
-import * as React from 'react';
-import theme from './theme';
 import { CssBaseline } from '@mui/material';
+import theme from './theme';
+import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'BVV Living Lab platform',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;

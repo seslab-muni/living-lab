@@ -1,6 +1,8 @@
+import { Organization } from 'src/organization/entity/organization.entity';
 import {
   Column,
   Entity,
+  ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -21,6 +23,9 @@ export class User {
 
   @Column()
   password: string;
+
+  @ManyToMany(() => Organization, (org) => org.id)
+  organizations: Organization[];
 
   @UpdateDateColumn({ type: 'timestamp' })
   lastEdit: Date;

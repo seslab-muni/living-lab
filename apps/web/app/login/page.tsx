@@ -1,8 +1,8 @@
 'use client';
 
 import Typography from '@mui/material/Typography';
-import { LoginForm } from '../../components';
-import CenterCardLayout from '../../components/CenterCardLayout';
+import { LoginForm } from '../components';
+import CenterCardLayout from '../components/CenterCardLayout';
 
 export default function Home() {
   return (

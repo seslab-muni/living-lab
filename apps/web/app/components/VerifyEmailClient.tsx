@@ -1,45 +1,42 @@
 'use client';
-import { Button, Typography } from '@mui/material';
+import Typography from '@mui/material/Typography';
+import * as React from 'react';
+import CenterCardLayout from './CenterCardLayout';
+import { BACKEND_URL } from '../lib/constants';
 import { useRouter } from 'next/navigation';
-import React from 'react';
-import { BACKEND_URL } from '../../lib/constants';
-import { CenterCardLayout, DarkTextField } from '../../components';
+import { Button } from '@mui/material';
+import DarkTextField from './DarkTextField';
 
-export default function EmailEnter() {
+export default function VerifyEmail({ id }: { id: string }) {
   const router = useRouter();
-  const [emailData, setEmailData] = React.useState({
-    email: '',
+  const [codeData, setCodeData] = React.useState({
+    code: '',
   });
 
   const [error, setError] = React.useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setEmailData({
-      email: value,
+    setCodeData({
+      code: value,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailData.email.includes('@')) {
-      setError('Email must contain @.');
-      return;
-    }
     try {
-      const response = await fetch(BACKEND_URL + '/auth/email-exists', {
+      const response = await fetch(BACKEND_URL + '/auth/verify/' + id, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(emailData),
+        body: JSON.stringify(codeData),
       });
 
       const data = await response.json();
-      console.log('Response:', data);
 
       if (response.ok) {
-        router.push('/password/change-password/' + data.id);
+        router.push('/login');
         return;
       } else {
         setError(data.message || 'Registration failed.');
@@ -53,18 +50,18 @@ export default function EmailEnter() {
   return (
     <CenterCardLayout>
       <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-        Give me an email to send the code for changing the password.
+        Please check your inbox for a code, to confirm your email ♡.
       </Typography>
       <Typography variant="body1" component="p" sx={{ mb: 2 }}>
-        An email that is already registered in the platform.
+        If you don&apos;t see it, please check your spam folder.
       </Typography>
       <DarkTextField
         required
         fullWidth
-        name="email"
-        value={emailData.email}
+        name="code"
+        value={codeData.code}
         onChange={handleChange}
-        label="Email"
+        label="code"
       />
       <Typography variant="body1" component="p" sx={{ mb: 2 }} color="error">
         {error}

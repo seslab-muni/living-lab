@@ -1,22 +1,13 @@
 'use client';
 import { Box, Button, Typography } from '@mui/material';
-import { WhiteTextField } from '../../../../components';
 import React from 'react';
 
-export default function Home() {
-  const [formData, setFormData] = React.useState({
+export default function Picture() {
+  const [formData] = React.useState({
     oldPassword: '',
     password: '',
     passwordConfirm: '',
   });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
 
   const [error, setError] = React.useState('');
   const [ok, setOk] = React.useState('');
@@ -88,44 +79,7 @@ export default function Home() {
         justifyContent="space-between"
         alignContent="end"
       >
-        <Box width="40%" display="flex" flexDirection="column" gap={3}>
-          <div>
-            <WhiteTextField
-              required
-              fullWidth
-              name="oldPassword"
-              value={formData.oldPassword}
-              onChange={handleChange}
-              label="Current password"
-              type="password"
-              color="secondary"
-            />
-          </div>
-          <div>
-            <WhiteTextField
-              required
-              fullWidth
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              label="Password"
-              type="password"
-              color="secondary"
-            />
-          </div>
-          <div>
-            <WhiteTextField
-              required
-              fullWidth
-              name="passwordConfirm"
-              value={formData.passwordConfirm}
-              onChange={handleChange}
-              label="Password again"
-              type="password"
-              color="secondary"
-            />
-          </div>
-        </Box>
+        <Box width="40%" display="flex" flexDirection="column" gap={3}></Box>
         <Box display="flex" alignItems="flex-end">
           {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
           {ok && <div style={{ color: 'gray', margin: 1.8 }}>{ok}</div>}

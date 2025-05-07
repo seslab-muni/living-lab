@@ -11,7 +11,7 @@ const roboto = Roboto({
 
 const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
       main: '#E2DF29',
     },
@@ -26,8 +26,8 @@ const theme = createTheme({
         // this applies your autofill override globally
         'input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill':
           {
-            WebkitBoxShadow: 'inset 0 0 0 1000px #111 !important',
-            WebkitTextFillColor: '#fff !important',
+            WebkitBoxShadow: 'inset 0 0 0 1000px #FAF9F6 !important',
+            WebkitTextFillColor: '#000 !important',
             transition:
               'background-color 5000s ease-in-out 0s, color 5000s ease-in-out 0s',
           },
@@ -50,16 +50,26 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           margin: '4px',
+          color: 'secondary',
         },
       },
     },
-  },
 
-  // only dark theme available at the moment
-  // colorSchemes: { light: true, dark: true },
-  // cssVariables: {
-  //   colorSchemeSelector: "class",
-  // },
+    MuiOutlinedInput: {
+      defaultProps: {
+        color: 'secondary',
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          '&.Mui-focused': {
+            color: theme.palette.secondary.main, // focused label
+          },
+        }),
+      },
+    },
+  },
 
   typography: {
     fontFamily: roboto.style.fontFamily,

@@ -11,18 +11,22 @@ import { RegisterFormDto } from './dto/register.dto';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import express from 'express';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ChangePasswordDto } from './dto/changePassword.dto';
+import { RefreshAuthGuard } from './guards/refresh-auth.guard';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
   @Post('register')
   async register(@Body() registerForm: RegisterFormDto) {
     const userId = await this.authService.registerUser(registerForm);
     return { message: 'The request was successfully processed', id: userId };
   }
 
+  @Public()
   @Post('verify/:id')
   async verify(
     @Param() params: { id: string },
@@ -32,12 +36,14 @@ export class AuthController {
     return { message: 'The request was successfully processed' };
   }
 
+  @Public()
   @Post('email-exists')
   async checkEmail(@Body() body: { email: string }) {
     const id = await this.authService.checkEmail(body.email);
     return { message: 'The request was successfully processed', id: id };
   }
 
+  @Public()
   @Post('change-password/:id')
   async changePassword(
     @Param() params: { id: string },
@@ -47,15 +53,24 @@ export class AuthController {
     return { message: 'The request was successfully processed' };
   }
 
+  @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
   login(@Req() req: express.Request) {
     return this.authService.login(req.user as { id: string; name: string });
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile() {
-    return { message: 'This is a protected route' };
+  @Public()
+  @UseGuards(RefreshAuthGuard)
+  @Get('refresh')
+  refreshTokens(@Req() req: express.Request) {
+    return req.user;
+  }
+
+  @Get('logout')
+  logout(@Req() req: express.Request) {
+    return this.authService.invalidateRefreshToken(
+      (req.user as { id: string; name: string }).id,
+    );
   }
 }

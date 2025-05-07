@@ -1,7 +1,7 @@
 'use client';
-import { Box, Button, Typography } from '@mui/material';
-import { WhiteTextField } from '../../../../components';
+import { Box, Button, TextField, Typography } from '@mui/material';
 import React from 'react';
+import { BACKEND_URL } from '../../../lib/constants';
 
 export default function Home() {
   const [formData, setFormData] = React.useState({
@@ -25,7 +25,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/auth/user/name', {
+      const response = await fetch(BACKEND_URL + '/user/name', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ export default function Home() {
       >
         <Box width="40%" display="flex" flexDirection="column" gap={3}>
           <div>
-            <WhiteTextField
+            <TextField
               fullWidth
               name="firstName"
               value={formData.firstName}
@@ -79,7 +79,7 @@ export default function Home() {
             />
           </div>
           <div>
-            <WhiteTextField
+            <TextField
               fullWidth
               name="lastName"
               value={formData.lastName}

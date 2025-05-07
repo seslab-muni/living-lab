@@ -1,16 +1,16 @@
-'use client'
+'use client';
 
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
-import { BACKEND_URL } from '../app/lib/constants';
+import { BACKEND_URL } from '../lib/constants';
+import DarkTextField from './DarkTextField';
 
 export default function RegisterForm() {
-  const router = useRouter();    
+  const router = useRouter();
   const [formData, setFormData] = React.useState({
     firstName: '',
     lastName: '',
@@ -24,7 +24,7 @@ export default function RegisterForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
@@ -33,7 +33,12 @@ export default function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.email ||
+      !formData.password
+    ) {
       setError('Please fill all the slots.');
       return;
     }
@@ -42,7 +47,9 @@ export default function RegisterForm() {
       return;
     }
     if (formData.password.length < 8) {
-      setError('The password needs to have at least 8 characters and 1 uppercase letter.');
+      setError(
+        'The password needs to have at least 8 characters and 1 uppercase letter.',
+      );
       return;
     }
     if (formData.password !== formData.passwordConfirm) {
@@ -57,7 +64,7 @@ export default function RegisterForm() {
     setError('');
 
     try {
-      const response = await fetch((BACKEND_URL + '/auth/register'), {
+      const response = await fetch(BACKEND_URL + '/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,10 +92,10 @@ export default function RegisterForm() {
       onSubmit={handleSubmit}
       sx={{ '& .MuiTextField-root': { m: 1.8, width: '40ch' } }}
       autoComplete="off"
-      justifyItems={"center"}
+      justifyItems={'center'}
     >
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="firstName"
@@ -99,7 +106,7 @@ export default function RegisterForm() {
         />
       </div>
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="lastName"
@@ -110,7 +117,7 @@ export default function RegisterForm() {
         />
       </div>
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="email"
@@ -122,7 +129,7 @@ export default function RegisterForm() {
         />
       </div>
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="password"
@@ -133,7 +140,7 @@ export default function RegisterForm() {
         />
       </div>
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="passwordConfirm"
@@ -150,21 +157,15 @@ export default function RegisterForm() {
               name="agree"
               checked={formData.agree}
               onChange={handleChange}
+              sx={{ color: 'primary.main' }}
             />
           }
           label="I agree with the Terms of Use."
         />
       </div>
-      {error && (
-        <div style={{ color: 'red', margin: 1.8 }}>
-          {error}
-        </div>
-      )}
-      <div style={{margin: 20}}>
-        <Button
-          type="submit">
-          Register
-        </Button>
+      {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
+      <div style={{ margin: 20 }}>
+        <Button type="submit">Register</Button>
       </div>
     </Box>
   );

@@ -5,6 +5,9 @@ import { WelcomeController } from './welcome';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { OrganizationModule } from './organization/organization.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -12,8 +15,14 @@ import { ConfigModule } from '@nestjs/config';
     TypeOrmModule.forRoot(databaseDevConfig),
     UserModule,
     AuthModule,
+    OrganizationModule,
   ],
   controllers: [WelcomeController],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard, // ← this makes JwtAuthGuard run on every route
+    },
+  ],
 })
 export class AppModule {}

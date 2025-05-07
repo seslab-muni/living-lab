@@ -1,8 +1,10 @@
 'use client';
 import { Box, Button, Divider, Typography } from '@mui/material';
-import { Profile } from '../../../components';
+import { GreyButton, Profile } from '../../components';
+import NextLink from 'next/link';
+import theme from '../../theme';
 
-export default function Home() {
+export default function UserProfile() {
   return (
     <Box
       display="flex"
@@ -51,10 +53,30 @@ export default function Home() {
         justifyContent="left"
         gap={2}
       >
-        <Button>change picture</Button>
-        <Button>change name</Button>
-        <Button>change password</Button>
-        <Button>Admin menu</Button>
+        <Button
+          component={NextLink}
+          href={`/auth/user/edit-picture`}
+          sx={{ margin: theme.spacing(2) }}
+        >
+          edit picture
+        </Button>
+        <Button
+          component={NextLink}
+          href={`/auth/user/edit-name`}
+          sx={{ margin: theme.spacing(2) }}
+        >
+          edit name
+        </Button>
+        <Button
+          component={NextLink}
+          href={`/auth/user/change-password`}
+          sx={{ margin: theme.spacing(2) }}
+        >
+          change password
+        </Button>
+        <GreyButton component={NextLink} href={`/auth/user/admin`}>
+          admin site
+        </GreyButton>
       </Box>
     </Box>
   );

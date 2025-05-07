@@ -12,11 +12,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { VerificationService } from 'src/verification/verification.service';
 import { VerificationToken } from 'src/verification/entity/verification.entity';
 import { EmailService } from 'src/email/email.service';
+import refreshConfig from 'src/configuration/refresh.config';
+import { RefreshJwtStrategy } from './strategies/refreshJwt.strategy';
 
 @Module({
   imports: [
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
+    ConfigModule.forFeature(refreshConfig),
     TypeOrmModule.forFeature([User]),
     TypeOrmModule.forFeature([VerificationToken]),
   ],
@@ -28,6 +31,7 @@ import { EmailService } from 'src/email/email.service';
     EmailService,
     LocalStrategy,
     JwtStrategy,
+    RefreshJwtStrategy,
   ],
 })
 export class AuthModule {}

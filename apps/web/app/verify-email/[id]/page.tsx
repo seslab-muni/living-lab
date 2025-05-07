@@ -1,5 +1,5 @@
 import * as React from 'react';
-import VerifyEmailClient from '../../../components/VerifyEmailClient';
+import VerifyEmailClient from '../../components/VerifyEmailClient';
 
 export default async function VerifyEmailPage({
   params,

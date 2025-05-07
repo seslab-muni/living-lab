@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -13,6 +14,8 @@ import { EmailService } from 'src/email/email.service';
 import { SendEmailDto } from 'src/email/dto/email.dto';
 import { randomUUID } from 'crypto';
 import { ChangePasswordDto } from './dto/changePassword.dto';
+import refreshConfig from 'src/configuration/refresh.config';
+import * as config from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +24,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly verificationService: VerificationService,
     private readonly emailService: EmailService,
+    @Inject(refreshConfig.KEY)
+    private readonly refreshTokenConfig: config.ConfigType<
+      typeof refreshConfig
+    >,
   ) {}
 
   async registerUser(registerForm: RegisterFormDto) {
@@ -62,19 +69,34 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Email or password are incorrect!');
     }
-
     return { id: user.id, name: user.firstName };
   }
 
   async login(user: { id: string; name: string }) {
-    const accessToken = await this.generateTokens(user.id);
-    return { id: user.id, name: user.name, accessToken };
+    const { accessToken, refreshToken } = await this.generateTokens(user.id);
+    const userData = await this.userService.findById(user.id, true);
+    if (!userData) {
+      throw new NotFoundException('No user found!');
+    }
+    await this.userService.updateRefreshToken(user.id, refreshToken);
+    return {
+      user: { id: user.id, name: user.name },
+      accessToken,
+      refreshToken,
+    };
   }
 
   async generateTokens(id: string) {
     const payload: AuthPayload = { sub: id };
-    const accessToken = await this.jwtService.signAsync(payload);
-    return accessToken;
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload),
+      this.jwtService.signAsync(payload, {
+        secret: this.refreshTokenConfig.secret,
+        algorithm: 'HS256',
+        expiresIn: this.refreshTokenConfig.expiresIn,
+      }),
+    ]);
+    return { accessToken, refreshToken };
   }
 
   async validateJwtUser(id: string) {
@@ -85,11 +107,13 @@ export class AuthService {
     return { id: user.id };
   }
 
-  async invalidaterefreshToken(id: string) {
+  async invalidateRefreshToken(id: string) {
     const user = await this.userService.findById(id, true);
     if (!user) {
       throw new UnauthorizedException('No user found!');
     }
+
+    await this.userService.updateRefreshToken(id, null);
   }
 
   async checkEmail(recipient: string) {
@@ -116,5 +140,18 @@ export class AuthService {
     }
     await this.verificationService.verifyCode(id, body.code);
     await this.userService.changePassword(id, body.password);
+  }
+
+  async validateRefreshTokenValid(userId: string, token: string) {
+    const user = await this.userService.findById(userId, true);
+    if (!user) {
+      throw new NotFoundException('No user found!');
+    }
+    if (!(await bcrypt.compare(token, user.password))) {
+      throw new UnauthorizedException('Refresh token is invalid!');
+    }
+    const { accessToken, refreshToken } = await this.generateTokens(user.id);
+    await this.userService.updateRefreshToken(user.id, refreshToken);
+    return { id: user.id, name: user.firstName, accessToken, refreshToken };
   }
 }

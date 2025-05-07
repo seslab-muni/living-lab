@@ -1,15 +1,15 @@
 import * as React from 'react';
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { Typography } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import { BACKEND_URL, FRONTEND_URL } from '../app/lib/constants';
-import { createSession } from '../app/lib/session';
+import { FRONTEND_URL } from '../lib/constants';
+import DarkTextField from './DarkTextField';
+import { signIn } from 'next-auth/react';
 
 export default function RegisterForm() {
-  const router = useRouter();  
+  const router = useRouter();
   const [formData, setFormData] = React.useState({
     email: '',
     password: '',
@@ -19,7 +19,7 @@ export default function RegisterForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
@@ -34,32 +34,18 @@ export default function RegisterForm() {
     }
     setError('');
 
-    try {
-      const response = await fetch(BACKEND_URL + '/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+    const res = await signIn('credentials', {
+      redirect: false,
+      email: formData.email,
+      password: formData.password,
+    });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        await createSession({
-          user:{
-            id: data.id,
-            name: data.name,
-          },
-          accessToken: data.accessToken,
-        })
-        router.push(FRONTEND_URL + '/auth')
-      } else {
-        setError(data.message || 'Login failed.');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Server error. Try again later.');
+    if (res?.error) {
+      console.error('Error:', res.error);
+      setError(res.error);
+    } else {
+      console.log('Success:', res);
+      router.push(FRONTEND_URL + '/auth');
     }
   };
 
@@ -69,10 +55,10 @@ export default function RegisterForm() {
       onSubmit={handleSubmit}
       sx={{ '& .MuiTextField-root': { m: 1.8, width: '40ch' } }}
       autoComplete="off"
-      justifyItems={"center"}
+      justifyItems={'center'}
     >
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="email"
@@ -84,7 +70,7 @@ export default function RegisterForm() {
         />
       </div>
       <div>
-        <TextField
+        <DarkTextField
           required
           fullWidth
           name="password"
@@ -95,26 +81,27 @@ export default function RegisterForm() {
         />
       </div>
       <Box>
-        <Typography component={NextLink} href={`/password/input-email`} sx={{ mr: 2, color: "secondary.main" }}>
+        <Typography
+          component={NextLink}
+          href={`/password/input-email`}
+          sx={{ mr: 2, color: 'secondary.main' }}
+        >
           Forgot your password?
         </Typography>
       </Box>
-      {error && (
-        <div style={{ color: 'red', margin: 1.8 }}>
-          {error}
-        </div>
-      )}
-      <div style={{margin: 20}}>
-        <Button
-          type="submit">
-          login
-        </Button>
+      {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
+      <div style={{ margin: 20 }}>
+        <Button type="submit">login</Button>
       </div>
       <Box display="flex" flexDirection="row">
-        <Typography sx={{ mr: 2, color: "primary.main" }}>
+        <Typography sx={{ mr: 2, color: 'primary.main' }}>
           Don&apos;t have an account?
         </Typography>
-        <Typography component={NextLink} href={`/register`} sx={{ mr: 2, color: "primary.main" }}>
+        <Typography
+          component={NextLink}
+          href={`/register`}
+          sx={{ mr: 2, color: 'primary.main' }}
+        >
           Sign up.
         </Typography>
       </Box>
