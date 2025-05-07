@@ -1,7 +1,7 @@
 import Typography from '@mui/material/Typography';
 import CenterCardLayout from './components/CenterCardLayout';
 
-export default function Home() {
+export default function NotFound() {
   return (
     <CenterCardLayout>
       <Typography variant="h4" component="h1" sx={{ mb: 2 }}>

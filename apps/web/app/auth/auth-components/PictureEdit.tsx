@@ -1,30 +1,42 @@
-import { Box, Button, TextField, Typography } from '@mui/material';
+'use client';
+import { Box, Button, Typography } from '@mui/material';
 import React from 'react';
-import { BACKEND_URL } from '../../../lib/constants';
 
-export default function EditNamePage() {
-  const [formData, setFormData] = React.useState({
-    firstName: '',
-    lastName: '',
+export default function PictureEdit() {
+  const [formData] = React.useState({
+    oldPassword: '',
+    password: '',
+    passwordConfirm: '',
   });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
 
   const [error, setError] = React.useState('');
   const [ok, setOk] = React.useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (
+      !formData.password ||
+      !formData.oldPassword ||
+      !formData.passwordConfirm
+    ) {
+      setError('Please fill all the slots.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('The password needs to have at least 8 characters.');
+      return;
+    }
+    if (formData.password !== formData.passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setError('');
 
     try {
-      const response = await fetch(BACKEND_URL + '/user/name', {
+      const response = await fetch('http://localhost:3001/auth/user/picture', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,9 +47,9 @@ export default function EditNamePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setOk('Name changed successfully!');
+        setOk('Password changed successfully!');
       } else {
-        setError(data.message || 'Name change failed.');
+        setError(data.message || 'Password change failed.');
       }
     } catch (err) {
       console.error('Error:', err);
@@ -55,7 +67,7 @@ export default function EditNamePage() {
     >
       <Box width="60%">
         <Typography variant="h3" textAlign="left">
-          Change your name for this platform
+          Change your profile picture
         </Typography>
       </Box>
       <Box
@@ -67,26 +79,7 @@ export default function EditNamePage() {
         justifyContent="space-between"
         alignContent="end"
       >
-        <Box width="40%" display="flex" flexDirection="column" gap={3}>
-          <div>
-            <TextField
-              fullWidth
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              label="First name"
-            />
-          </div>
-          <div>
-            <TextField
-              fullWidth
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              label="Last Name"
-            />
-          </div>
-        </Box>
+        <Box width="40%" display="flex" flexDirection="column" gap={3}></Box>
         <Box display="flex" alignItems="flex-end">
           {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
           {ok && <div style={{ color: 'gray', margin: 1.8 }}>{ok}</div>}

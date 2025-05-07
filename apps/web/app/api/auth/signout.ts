@@ -12,7 +12,6 @@ export default async function handler(
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  // Grab the NextAuth session (which includes our refreshToken)
   const session: Session | null = await getServerSession(req, res, authOptions);
   if (session?.refreshToken) {
     try {
@@ -23,7 +22,6 @@ export default async function handler(
       });
     } catch (err) {
       console.error('Logout error:', err);
-      // Possible to return 200 so the client clears its session
     }
   }
 

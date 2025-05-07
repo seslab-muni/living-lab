@@ -2,7 +2,7 @@ import { Button, Link, Stack } from '@mui/material';
 import Typography from '@mui/material/Typography';
 import CenterCardLayout from './components/CenterCardLayout';
 
-export default function Home() {
+export default function WelcomePage() {
   return (
     <CenterCardLayout>
       <Typography variant="h4" component="h1" sx={{ mb: 2 }}>

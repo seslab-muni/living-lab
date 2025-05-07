@@ -5,12 +5,21 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { AppBar, Button, Toolbar } from '@mui/material';
 import GreyButton from './GreyButton';
-import { signOut, useSession } from 'next-auth/react';
+import { getSession, signOut } from 'next-auth/react';
 
 const pages = ['Organizations', 'Projects', 'Requirements', 'My tasks'];
 function TopMenu() {
-  const session = useSession();
-  console.log('session', session);
+  const [name, setName] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchSession = async () => {
+      const session = await getSession();
+      setName(session?.user?.name ?? null);
+    };
+
+    fetchSession();
+  }, []);
+
   return (
     <AppBar
       position="fixed"
@@ -59,7 +68,7 @@ function TopMenu() {
               href={`/auth/user`}
               sx={{ mr: 2, color: 'primary.main', textDecoration: 'none' }}
             >
-              {session.data?.user?.name}
+              {!name ? 'Loading...' : (name ?? 'Guest')}
             </Typography>
           </Box>
           <GreyButton

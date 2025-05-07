@@ -22,7 +22,7 @@ export class VerificationService {
     });
     if (recentToken) {
       throw new UnprocessableEntityException(
-        'A verification code was already sent to this user in the last 5 minutes.',
+        `A verification code was already sent to this user in the last ${this.tokenExpirationMinutes} minutes.`,
       );
     }
     const code = crypto.randomBytes(16).toString('hex');

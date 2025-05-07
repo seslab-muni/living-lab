@@ -1,8 +1,10 @@
-import { Box, Button, TextField, Typography } from '@mui/material';
-import React from 'react';
-import { BACKEND_URL } from '../../../lib/constants';
+'use client';
 
-export default function EditNamePage() {
+import React from 'react';
+import { BACKEND_URL } from '../../lib/constants';
+import { Box, Button, TextField, Typography } from '@mui/material';
+
+export default function EditName() {
   const [formData, setFormData] = React.useState({
     firstName: '',
     lastName: '',

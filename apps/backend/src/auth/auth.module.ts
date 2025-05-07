@@ -13,7 +13,7 @@ import { VerificationService } from 'src/verification/verification.service';
 import { VerificationToken } from 'src/verification/entity/verification.entity';
 import { EmailService } from 'src/email/email.service';
 import refreshConfig from 'src/configuration/refresh.config';
-import { RefreshJwtStrategy } from './strategies/refreshJwt.strategy';
+import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
 
 @Module({
   imports: [

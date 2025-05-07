@@ -12,12 +12,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(registerForm: RegisterFormDto): Promise<User> {
-    /**
-     * Creates a user from register form
-     * @param registerForm The filled out register form
-     * @returns a promise of a User
-     */
+  async createUser(registerForm: RegisterFormDto): Promise<User> {
     const { password, ...form } = registerForm;
     const saltRounds = 10;
     const salt = await bcrypt.genSalt(saltRounds);

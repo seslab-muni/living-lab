@@ -1,11 +1,13 @@
-import { Box, Button, TextField, Typography } from '@mui/material';
+'use client';
 import React from 'react';
-import { BACKEND_URL } from '../../../lib/constants';
+import { BACKEND_URL } from '../../lib/constants';
+import { Box, Button, TextField, Typography } from '@mui/material';
 
-export default function EditNamePage() {
+export default function PasswordChange() {
   const [formData, setFormData] = React.useState({
-    firstName: '',
-    lastName: '',
+    oldPassword: '',
+    password: '',
+    passwordConfirm: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,10 +23,29 @@ export default function EditNamePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (
+      !formData.password ||
+      !formData.oldPassword ||
+      !formData.passwordConfirm
+    ) {
+      setError('Please fill all the slots.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('The password needs to have at least 8 characters.');
+      return;
+    }
+    if (formData.password !== formData.passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setError('');
 
     try {
-      const response = await fetch(BACKEND_URL + '/user/name', {
+      const response = await fetch(BACKEND_URL + '/user/password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,9 +56,9 @@ export default function EditNamePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setOk('Name changed successfully!');
+        setOk('Password changed successfully!');
       } else {
-        setError(data.message || 'Name change failed.');
+        setError(data.message || 'Password change failed.');
       }
     } catch (err) {
       console.error('Error:', err);
@@ -55,7 +76,7 @@ export default function EditNamePage() {
     >
       <Box width="60%">
         <Typography variant="h3" textAlign="left">
-          Change your name for this platform
+          Change your password
         </Typography>
       </Box>
       <Box
@@ -70,20 +91,35 @@ export default function EditNamePage() {
         <Box width="40%" display="flex" flexDirection="column" gap={3}>
           <div>
             <TextField
+              required
               fullWidth
-              name="firstName"
-              value={formData.firstName}
+              name="oldPassword"
+              value={formData.oldPassword}
               onChange={handleChange}
-              label="First name"
+              label="Current password"
+              type="password"
             />
           </div>
           <div>
             <TextField
+              required
               fullWidth
-              name="lastName"
-              value={formData.lastName}
+              name="password"
+              value={formData.password}
               onChange={handleChange}
-              label="Last Name"
+              label="Password"
+              type="password"
+            />
+          </div>
+          <div>
+            <TextField
+              required
+              fullWidth
+              name="passwordConfirm"
+              value={formData.passwordConfirm}
+              onChange={handleChange}
+              label="Password again"
+              type="password"
             />
           </div>
         </Box>

@@ -1,8 +1,8 @@
 import { Box } from '@mui/material';
-import TopMenu from '../components/TopMenu';
 import authOptions from '../lib/authOptions';
 import { getServerSession, Session } from 'next-auth';
-import AuthLayoutClient from '../components/AuthLayoutClient';
+import AuthLayoutClient from './auth-components/AuthLayoutClient';
+import TopMenu from './auth-components/TopMenu';
 
 export default async function AuthLayout({
   children,

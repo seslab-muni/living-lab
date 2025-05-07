@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import NextLink from 'next/link';
 import Box from '@mui/material/Box';
@@ -8,7 +10,7 @@ import { FRONTEND_URL } from '../lib/constants';
 import DarkTextField from './DarkTextField';
 import { signIn } from 'next-auth/react';
 
-export default function RegisterForm() {
+export default function LoginForm() {
   const router = useRouter();
   const [formData, setFormData] = React.useState({
     email: '',

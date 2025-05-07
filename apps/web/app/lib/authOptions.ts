@@ -57,15 +57,25 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }): Promise<JWT> {
-      if (user) return { ...user } as JWT;
+      if (user) {
+        token.user = user.user;
+        token.sub = user.user.id;
+        token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
+        token.expiresAt = user.expiresAt;
+      }
 
-      const t = token;
-      if (Date.now() < t.expiresAt) return t;
-      return await refreshAccessToken(t);
+      if (Date.now() < (token.expiresAt ?? 0)) return token;
+
+      return await refreshAccessToken(token);
     },
     async session({ session, token }) {
       const t = token;
-      session.user = t.user;
+      session.user = {
+        ...t.user,
+        id: t.user?.id,
+        name: t.user?.name,
+      };
       session.accessToken = t.accessToken;
       session.refreshToken = t.refreshToken;
       session.expires = new Date(t.expiresAt).toISOString();

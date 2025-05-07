@@ -21,7 +21,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard, // ← this makes JwtAuthGuard run on every route
+      useClass: JwtAuthGuard, // ← this makes JwtAuthGuard run on every route unless @Public() is used
     },
   ],
 })

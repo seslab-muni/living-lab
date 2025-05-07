@@ -7,13 +7,13 @@ import {
 import { RegisterFormDto } from './dto/register.dto';
 import { UserService } from 'src/user/user.service';
 import bcrypt from 'node_modules/bcryptjs';
-import { AuthPayload } from './types/auth-jwtPayload';
+import { AuthPayload } from './types/auth-jwt-payload';
 import { JwtService } from '@nestjs/jwt';
 import { VerificationService } from 'src/verification/verification.service';
 import { EmailService } from 'src/email/email.service';
 import { SendEmailDto } from 'src/email/dto/email.dto';
 import { randomUUID } from 'crypto';
-import { ChangePasswordDto } from './dto/changePassword.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import refreshConfig from 'src/configuration/refresh.config';
 import * as config from '@nestjs/config';
 
@@ -42,7 +42,7 @@ export class AuthService {
       await this.emailService.sendEmail(email);
       return user.id;
     }
-    const createdUser = await this.userService.create(registerForm);
+    const createdUser = await this.userService.createUser(registerForm);
     const verificationCode =
       await this.verificationService.generateVerificationCode(createdUser.id);
     const email: SendEmailDto = {
@@ -116,7 +116,7 @@ export class AuthService {
     await this.userService.updateRefreshToken(id, null);
   }
 
-  async checkEmail(recipient: string) {
+  async checkInactiveEmail(recipient: string) {
     const user = await this.userService.findByEmail(recipient);
     if (!user) {
       return { id: randomUUID() };
@@ -130,10 +130,9 @@ export class AuthService {
       text: `Here is your verification code: ${verificationCode} you can use it to change your password.`,
     };
     await this.emailService.sendEmail(email);
-    return user.id;
+    return { id: user.id };
   }
   async changePassword(id: string, body: ChangePasswordDto) {
-    console.log('changePassword', id, body);
     const user = await this.userService.findById(id, true);
     if (!user) {
       throw new NotFoundException('No user found!');
@@ -152,6 +151,10 @@ export class AuthService {
     }
     const { accessToken, refreshToken } = await this.generateTokens(user.id);
     await this.userService.updateRefreshToken(user.id, refreshToken);
-    return { id: user.id, name: user.firstName, accessToken, refreshToken };
+    return {
+      user: { id: user.id, name: user.firstName },
+      accessToken,
+      refreshToken,
+    };
   }
 }
