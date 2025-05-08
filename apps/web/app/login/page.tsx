@@ -1,3 +1,4 @@
+'use client';
 import Typography from '@mui/material/Typography';
 import { LoginForm } from '../components';
 import CenterCardLayout from '../components/CenterCardLayout';

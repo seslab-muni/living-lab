@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { CenterCardLayout } from '../../components';
 import EmailInput from '../../components/EmailInput';

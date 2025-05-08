@@ -4,7 +4,7 @@ import VerifyEmailClient from '../../components/VerifyEmailClient';
 export default async function VerifyEmailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
   return <VerifyEmailClient id={id} />;

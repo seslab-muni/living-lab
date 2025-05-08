@@ -1,3 +1,4 @@
+'use client';
 import Typography from '@mui/material/Typography';
 import * as React from 'react';
 import { RegisterForm } from '../components';
