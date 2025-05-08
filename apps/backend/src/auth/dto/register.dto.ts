@@ -4,7 +4,7 @@ import {
   IsString,
   IsBoolean,
   MaxLength,
-  MinLength,
+  IsStrongPassword,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -40,8 +40,13 @@ export class RegisterFormDto {
     description: 'Password with at least 8 characters',
   })
   @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(8)
-  // Todo: @IsStrongPassword?
+  @IsStrongPassword({
+    minLength: 8,
+    minLowercase: 1,
+    minUppercase: 1,
+    minNumbers: 1,
+    minSymbols: 0,
+  })
   password: string;
 
   @ApiProperty({

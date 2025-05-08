@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, MinLength } from 'class-validator';
+import { IsNotEmpty, IsStrongPassword } from 'class-validator';
 
 export class ChangePasswordDto {
   @ApiProperty({
@@ -10,15 +10,21 @@ export class ChangePasswordDto {
   code: string;
 
   @ApiProperty({
-    example: 'StrongPass123!',
+    example: 'StrongPass123',
     description: 'Password with at least 8 characters',
   })
   @IsNotEmpty({ message: 'Password is required' })
-  @MinLength(8)
+  @IsStrongPassword({
+    minLength: 8,
+    minLowercase: 1,
+    minUppercase: 1,
+    minNumbers: 1,
+    minSymbols: 0,
+  })
   password: string;
 
   @ApiProperty({
-    example: 'StrongPass123!',
+    example: 'StrongPass123',
     description: 'Password confirmation; must match password',
   })
   @IsNotEmpty({ message: 'Password confirmation is required' })

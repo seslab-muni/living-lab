@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
+import { NameDto } from './dto/change-name.dto';
 
 @Injectable()
 export class UserService {
@@ -45,6 +46,29 @@ export class UserService {
 
   async activateUser(id: string, arg1: { active: boolean }) {
     await this.userRepository.update(id, arg1);
+  }
+
+  async changeAdminRights(id: string, makeAdmin: boolean) {
+    await this.userRepository.update(id, { isAdmin: makeAdmin });
+  }
+
+  async updateUser(id: string, body: NameDto) {
+    const user = await this.findById(id, true);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await this.userRepository.update(id, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+    });
+  }
+
+  async isPasswordValid(id: string, password: string) {
+    const user = await this.findById(id, true);
+    if (!user) {
+      return false;
+    }
+    return await bcrypt.compare(password, user.password);
   }
 
   async changePassword(id: string, password: string) {

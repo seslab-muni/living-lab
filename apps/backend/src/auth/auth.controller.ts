@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -26,9 +29,13 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @HttpCode(201)
   @ApiOperation({ summary: 'Register a new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   async register(@Body() registerForm: RegisterFormDto) {
+    if (registerForm.password !== registerForm.passwordConfirm) {
+      throw new Error('Passwords do not match');
+    }
     const userId = await this.authService.registerUser(registerForm);
     return { message: 'The request was successfully processed', id: userId };
   }
@@ -53,7 +60,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('change-password/:id')
+  @Put('change-password/:id')
   @ApiOperation({ summary: 'Change user password' })
   @ApiParam({ name: 'id', type: String })
   @ApiResponse({ status: 200, description: 'Password changed' })
@@ -61,6 +68,9 @@ export class AuthController {
     @Param() params: { id: string },
     @Body() body: ChangePasswordDto,
   ) {
+    if (body.password !== body.passwordConfirm) {
+      throw new Error('Passwords do not match');
+    }
     await this.authService.changePassword(params.id, body);
     return { message: 'The request was successfully processed' };
   }
@@ -86,7 +96,7 @@ export class AuthController {
     return req.user;
   }
 
-  @Get('logout')
+  @Delete('session')
   @ApiOperation({ summary: 'Logout the current user' })
   @ApiResponse({ status: 200, description: 'User logged out' })
   async logout(@Req() req: express.Request) {

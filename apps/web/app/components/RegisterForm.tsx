@@ -46,9 +46,14 @@ export default function RegisterForm() {
       setError('Email must contain @.');
       return;
     }
-    if (formData.password.length < 8) {
+    if (
+      formData.password.length < 8 ||
+      !/\d/.test(formData.password) ||
+      !/[a-z]/.test(formData.password) ||
+      !/[A-Z]/.test(formData.password)
+    ) {
       setError(
-        'The password needs to have at least 8 characters and 1 uppercase letter.',
+        'The password needs to have at least 8 characters, 1 uppercase and 1 lowercase character and a number.',
       );
       return;
     }

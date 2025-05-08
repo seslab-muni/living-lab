@@ -35,4 +35,7 @@ export class User {
 
   @Column({ type: 'varchar', nullable: true })
   refreshToken: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  isAdmin: boolean;
 }

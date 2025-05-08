@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { BACKEND_URL } from '../../lib/constants';
+import { BACKEND_URL } from '../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
+import { authFetch } from '../../../lib/auth';
 
-export default function EditName() {
+export default function EditUser() {
   const [formData, setFormData] = React.useState({
     firstName: '',
     lastName: '',
@@ -26,8 +27,9 @@ export default function EditName() {
     setError('');
 
     try {
-      const response = await fetch(BACKEND_URL + '/user/name', {
-        method: 'POST',
+      console.log(formData);
+      const response = await authFetch(BACKEND_URL + '/user/update', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -37,13 +39,19 @@ export default function EditName() {
       const data = await response.json();
 
       if (response.ok) {
-        setOk('Name changed successfully!');
+        setOk(
+          'Name changed successfully! \n The appbar will change with next login..',
+        );
       } else {
         setError(data.message || 'Name change failed.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error:', err);
-      setError('Server error. Try again later.');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 

@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
-import { BACKEND_URL } from '../../lib/constants';
+import { BACKEND_URL } from '../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
+import { authFetch } from '../../../lib/auth';
 
 export default function PasswordChange() {
   const [formData, setFormData] = React.useState({
@@ -33,8 +34,15 @@ export default function PasswordChange() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('The password needs to have at least 8 characters.');
+    if (
+      formData.password.length < 8 ||
+      !/\d/.test(formData.password) ||
+      !/[a-z]/.test(formData.password) ||
+      !/[A-Z]/.test(formData.password)
+    ) {
+      setError(
+        'The password needs to have at least 8 characters, 1 uppercase and 1 lowercase character and a number.',
+      );
       return;
     }
     if (formData.password !== formData.passwordConfirm) {
@@ -45,8 +53,8 @@ export default function PasswordChange() {
     setError('');
 
     try {
-      const response = await fetch(BACKEND_URL + '/user/password', {
-        method: 'POST',
+      const response = await authFetch(BACKEND_URL + '/user/password', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },

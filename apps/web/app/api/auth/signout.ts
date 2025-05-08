@@ -15,8 +15,8 @@ export default async function handler(
   const session: Session | null = await getServerSession(req, res, authOptions);
   if (session?.refreshToken) {
     try {
-      await fetch(BACKEND_URL + `/auth/logout`, {
-        method: 'POST',
+      await fetch(BACKEND_URL + `/auth/session`, {
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: session.refreshToken }),
       });

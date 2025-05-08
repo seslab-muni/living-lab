@@ -1,4 +1,4 @@
-import UserProfile from '../auth-components/UserProfile';
+import UserProfile from './user-components/UserProfile';
 
 export default function UserPage() {
   return (
