@@ -1,4 +1,4 @@
-import { Organization } from 'src/organization/entity/organization.entity';
+import { Organization } from 'src/organization/entities/organization.entity';
 import {
   Column,
   Entity,

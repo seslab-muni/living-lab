@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { RegisterFormDto } from './dto/register.dto';
 import { UserService } from 'src/user/user.service';
-import bcrypt from 'node_modules/bcryptjs';
+import * as bcrypt from 'bcryptjs';
 import { AuthPayload } from './types/auth-jwt-payload';
 import { JwtService } from '@nestjs/jwt';
 import { VerificationService } from 'src/verification/verification.service';

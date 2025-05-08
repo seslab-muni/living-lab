@@ -3,7 +3,7 @@ import { VerificationToken } from './entity/verification.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import bcrypt from 'node_modules/bcryptjs';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class VerificationService {
