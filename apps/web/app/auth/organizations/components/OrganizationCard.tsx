@@ -1,7 +1,7 @@
-// apps/web/app/auth/organizations/components/OrganizationCard.tsx
 'use client';
 
 import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Card, CardContent, Typography, Button, CardActions, Box } from '@mui/material';
 import NextLink from 'next/link';
 import { authFetch } from '../../../lib/auth';
@@ -9,8 +9,10 @@ import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 
 export default function OrganizationCard({ org }: { org: OrganizationDto }) {
-//  const [isMember, setIsMember] = useState<boolean>(!!org.isMember); will add when API is done
-  const [isMember, setIsMember] = useState<boolean>(false);
+  const [isMember, setIsMember] = useState<boolean>(!!org.isMember);
+  const { data: session } = useSession();
+  const isOwner = session?.user.id === org.ownerId;
+  const [memberCount, setMemberCount] = useState<number>(org.memberCount);
   const [error, setError] = useState<string | null>(null);
 
   const handleJoin = () => {
@@ -19,6 +21,7 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setIsMember(true);
+        setMemberCount(count => count + 1);
       })
       .catch(err => setError(err.message));
   };
@@ -29,6 +32,7 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setIsMember(false);
+        setMemberCount(count => Math.max(count - 1, 0));
       })
       .catch(err => setError(err.message));
   };
@@ -40,11 +44,9 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
         <Typography variant="body2" color="text.secondary" paragraph>
           {org.description ?? 'No description provided.'}
         </Typography>
-        {typeof org.memberCount === 'number' && (
-          <Typography variant="caption" color="text.secondary">
-            Members: {org.memberCount}
-          </Typography>
-        )}
+        <Typography variant="caption" color="text.secondary">
+          Members: {memberCount}
+        </Typography>
       </CardContent>
 
       {error && (
@@ -56,14 +58,16 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
       )}
 
       <CardActions sx={{ justifyContent: 'space-between' }}>
-        {isMember ? (
-          <Button variant="outlined" color="error" onClick={handleLeave}>
-            Leave
-          </Button>
-        ) : (
-          <Button variant="contained" onClick={handleJoin}>
-            Join
-          </Button>
+        {!isOwner && (
+          isMember ? (
+            <Button variant="outlined" color="error" onClick={handleLeave}>
+              Leave
+            </Button>
+          ) : (
+            <Button variant="contained" onClick={handleJoin}>
+              Join
+            </Button>
+          )
         )}
         <Button component={NextLink} href={`/auth/organizations/${org.id}`} size="small">
           View Details

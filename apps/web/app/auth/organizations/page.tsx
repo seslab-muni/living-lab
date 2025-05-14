@@ -39,7 +39,9 @@ export default function OrganizationsPage() {
                     <CircularProgress />
                 </Box>
             ) : orgs.length === 0 ? (
-                <Typography variant="body1">No organizations found.</Typography>
+                <Box sx={{textAlign: 'center'}}>
+                    <Typography variant="body1">No organizations found.</Typography>
+                </Box>
             ) : (
                 <Box
                     sx={{

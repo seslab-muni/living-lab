@@ -1,4 +1,4 @@
-export interface OrganizationDto {
+export class OrganizationDto {
   id: number;
   name: string;
   description?: string;
@@ -6,7 +6,7 @@ export interface OrganizationDto {
   ownerName: string;
   companyId: number;
   companyName: string;
-  lastEdit: string;
+  lastEdit: Date;
   memberCount: number;
   isMember: boolean;
 }
