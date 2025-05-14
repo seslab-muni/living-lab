@@ -8,22 +8,25 @@ import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 
-export default function OrganizationCard({ org }: { org: OrganizationDto }) {
+export default function OrganizationCard({ org, onMembershipChange }: { org: OrganizationDto, onMembershipChange?:
+  (id: number, isMember: boolean, memberCount: number) => void; }) {
   const [isMember, setIsMember] = useState<boolean>(!!org.isMember);
-  const { data: session } = useSession();
-  const isOwner = session?.user.id === org.ownerId;
+  const { data: session, status } = useSession();
+  const isOwner = status === 'authenticated' && session.user.id === org.ownerId;
   const [memberCount, setMemberCount] = useState<number>(org.memberCount);
   const [error, setError] = useState<string | null>(null);
 
   const handleJoin = () => {
     setError(null);
     authFetch(`${BACKEND_URL}/organizations/${org.id}/join`, { method: 'POST' })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setIsMember(true);
-        setMemberCount(count => count + 1);
-      })
-      .catch(err => setError(err.message));
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          setIsMember(true);
+          setMemberCount(count => count + 1);
+          // notify parent after state setters
+          onMembershipChange?.(org.id, true, org.memberCount + 1);
+        })
+        .catch(err => setError(err.message));
   };
 
   const handleLeave = () => {
@@ -33,6 +36,8 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setIsMember(false);
         setMemberCount(count => Math.max(count - 1, 0));
+        // notify parent after state setters
+        onMembershipChange?.(org.id, false, Math.max(org.memberCount - 1, 0));
       })
       .catch(err => setError(err.message));
   };
@@ -58,7 +63,7 @@ export default function OrganizationCard({ org }: { org: OrganizationDto }) {
       )}
 
       <CardActions sx={{ justifyContent: 'space-between' }}>
-        {!isOwner && (
+        {status === 'authenticated' && !isOwner && (
           isMember ? (
             <Button variant="outlined" color="error" onClick={handleLeave}>
               Leave

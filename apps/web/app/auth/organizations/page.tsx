@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import {Box, Typography, CircularProgress} from '@mui/material';
 import OrganizationCard from './components/OrganizationCard';
+import OrganizationsFilter from './components/OrganizationFilter';
 import { authFetch } from '../../lib/auth';
 import { BACKEND_URL } from '../../lib/constants';
 import type { OrganizationDto } from './types';
@@ -10,6 +11,8 @@ import type { OrganizationDto } from './types';
 export default function OrganizationsPage() {
     const [orgs, setOrgs] = useState<OrganizationDto[] | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showMine, setShowMine] = useState(false);
+    const displayOrgs = orgs?.filter(o => !showMine || o.isMember) ?? null;
 
     useEffect(() => {
         authFetch(`${BACKEND_URL}/organizations`)
@@ -26,7 +29,17 @@ export default function OrganizationsPage() {
             <Typography variant="h4" gutterBottom sx={{textAlign: 'center'}}>
                 Organizations
             </Typography>
-
+            <Box sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: '1fr',
+              mx: { xs: 0, md: '25%' },
+              pb: 4,
+              pt: 2,
+              width: { xs: '100%', md: '50%'},
+            }}>
+              <OrganizationsFilter showMine={showMine} onToggle={() => setShowMine(s => !s)} />
+            </Box>
             {error ? (
                 <Box sx={{textAlign: 'center'}}>
                     <Typography variant="h6" color="error" gutterBottom>
@@ -34,11 +47,11 @@ export default function OrganizationsPage() {
                     </Typography>
                     <Typography variant="body1">{error}</Typography>
                 </Box>
-            ) : orgs === null ? (
+            ) : displayOrgs === null ? (
                 <Box display="flex" justifyContent="center" p={4}>
                     <CircularProgress />
                 </Box>
-            ) : orgs.length === 0 ? (
+            ) : displayOrgs.length === 0 ? (
                 <Box sx={{textAlign: 'center'}}>
                     <Typography variant="body1">No organizations found.</Typography>
                 </Box>
@@ -52,9 +65,21 @@ export default function OrganizationsPage() {
                         width: { xs: '100%', md: '50%'},
                     }}
                 >
-                    {orgs.map((org) => (
-                        <OrganizationCard key={org.id} org={org} />
-                    ))}
+                  {displayOrgs.map((org) => (
+                    <OrganizationCard
+                      key={org.id}
+                      org={org}
+                      onMembershipChange={(id, isMember, memberCount) => {
+                        setOrgs((current) =>
+                          current
+                            ? current.map((o) =>
+                              o.id === id ? { ...o, isMember, memberCount } : o
+                            )
+                            : null
+                        );
+                      }}
+                    />
+                  ))}
                 </Box>
             )}
         </Box>
