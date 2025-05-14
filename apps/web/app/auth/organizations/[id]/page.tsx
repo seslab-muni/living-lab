@@ -22,7 +22,7 @@ export default function OrganizationDetailsPage() {
     const [org, setOrg] = useState<OrganizationDto | null>(null);
     const [isMember, setIsMember] = useState(false);
     const [memberCount, setMemberCount] = useState(0);
-    const [isOwner, setIsOwner] = useState(false);
+    const isOwner = status === 'authenticated' && session.user.id === org?.ownerId;
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -35,7 +35,6 @@ export default function OrganizationDetailsPage() {
                 setOrg(data);
                 setIsMember(data.isMember);
                 setMemberCount(data.memberCount);
-                if (session?.user?.id === data.ownerId) setIsOwner(true);
             })
             .catch(err => setError(err.message));
     }, [id, session]);
@@ -100,14 +99,14 @@ export default function OrganizationDetailsPage() {
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
                       {!isOwner && (
-                      isMember ? (
-                        <Button variant="outlined" color="error" onClick={handleLeave}>
-                          Leave
-                        </Button>
+                        isMember ? (
+                          <Button variant="outlined" color="error" onClick={handleLeave}>
+                            Leave
+                          </Button>
                       ) : (
-                      <Button variant="contained" onClick={handleJoin}>
-                        Join
-                      </Button>
+                        <Button variant="contained" onClick={handleJoin}>
+                          Join
+                        </Button>
                       )
                       )}
                       {isOwner && (
