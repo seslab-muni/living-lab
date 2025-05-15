@@ -1,6 +1,7 @@
 import { JWT } from 'next-auth/jwt';
 import { jwtDecode } from 'jwt-decode';
 import { getSession } from 'next-auth/react';
+import { BACKEND_URL } from './constants';
 
 export const refreshAccessToken = async (jwt: JWT) => {
   try {

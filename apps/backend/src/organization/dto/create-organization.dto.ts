@@ -8,9 +8,6 @@ export class CreateOrganizationDto {
   @IsString()
   description?: string;
 
-  @IsString()
-  ownerId: string;
-
   @IsInt()
   companyId: number;
 
