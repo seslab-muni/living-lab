@@ -10,13 +10,13 @@ import type { OrganizationDto } from '../types';
 
 export default function OrganizationCard({ org, onMembershipChange }: { org: OrganizationDto, onMembershipChange?:
   (id: number, isMember: boolean, memberCount: number) => void; }) {
-  const [isMember, setIsMember] = useState<boolean>(!!org.isMember);
+  //const [isMember, setIsMember] = useState<boolean>(!!org.isMember);
   const { data: session, status } = useSession();
-  const isOwner = status === 'authenticated' && session.user.id === org.ownerId;
+  //const isOwner = status === 'authenticated' && session.user.id === org.ownerId;
   const [memberCount, setMemberCount] = useState<number>(org.memberCount);
   const [error, setError] = useState<string | null>(null);
 
-  const handleJoin = () => {
+  /*const handleJoin = () => {
     setError(null);
     authFetch(`${BACKEND_URL}/organizations/${org.id}/join`, { method: 'POST' })
         .then(res => {
@@ -40,7 +40,7 @@ export default function OrganizationCard({ org, onMembershipChange }: { org: Org
         onMembershipChange?.(org.id, false, Math.max(org.memberCount - 1, 0));
       })
       .catch(err => setError(err.message));
-  };
+  };*/
 
   return (
     <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -62,8 +62,8 @@ export default function OrganizationCard({ org, onMembershipChange }: { org: Org
         </Box>
       )}
 
-      <CardActions sx={{ justifyContent: 'space-between' }}>
-        {status === 'authenticated' && !isOwner && (
+      <CardActions sx={{ justifyContent: 'flex-end' }}>
+        {/*{status === 'authenticated' && !isOwner && (
           isMember ? (
             <Button variant="outlined" color="error" onClick={handleLeave}>
               Leave
@@ -73,8 +73,8 @@ export default function OrganizationCard({ org, onMembershipChange }: { org: Org
               Join
             </Button>
           )
-        )}
-        <Button component={NextLink} href={`/auth/organizations/${org.id}`} size="small">
+        )}*/}
+        <Button component={NextLink} href={`/auth/organizations/${org.slug}`} size="small">
           View Details
         </Button>
       </CardActions>
