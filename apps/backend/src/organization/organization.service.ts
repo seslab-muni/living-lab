@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity';
@@ -15,11 +11,24 @@ export class OrganizationService {
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
   ) {}
-
-  async create(dto: CreateOrganizationDto): Promise<OrganizationDto> {
-    const org = this.orgRepo.create(dto);
+  async create(
+    userId: string,
+    dto: CreateOrganizationDto,
+  ): Promise<OrganizationDto> {
+    let org = this.orgRepo.create({
+      name: dto.name,
+      description: dto.description ?? 'your description goes here',
+      ownerId: userId,
+      companyId: dto.companyId,
+      companyName: dto.companyName,
+      members: [{ id: userId } as any],
+    });
     await this.orgRepo.save(org);
-    return this.mapToDto(org, []);
+    org = await this.orgRepo.findOneOrFail({
+      where: { id: org.id },
+      relations: ['members', 'owner'],
+    });
+    return this.mapToDto(org, org.members, userId);
   }
 
   async findAllForUser(userId: string): Promise<OrganizationDto[]> {
@@ -45,12 +54,6 @@ export class OrganizationService {
       relations: ['members'],
     });
     if (!org) throw new NotFoundException('Organization not found');
-    // Prevent the owner from leaving their own org
-    if (org.ownerId === userId) {
-      throw new ForbiddenException(
-        'Organization owners cannot leave their own organization',
-      );
-    }
     org.members = org.members.filter((u) => u.id !== userId);
     await this.orgRepo.save(org);
   }

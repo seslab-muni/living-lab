@@ -12,9 +12,8 @@ export class OrganizationController {
   constructor(private readonly orgService: OrganizationService) {}
 
   @Post()
-  create(@Body() dto: CreateOrganizationDto, @GetUser() user: JwtPayload) {
-    dto.ownerId = user.id;
-    return this.orgService.create(dto);
+  create(@GetUser() user: JwtPayload, @Body() dto: CreateOrganizationDto) {
+    return this.orgService.create(user.id, dto);
   }
 
   @Get()

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {Box, Typography, CircularProgress} from '@mui/material';
 import OrganizationCard from './components/OrganizationCard';
 import OrganizationsFilter from './components/OrganizationFilter';
+import CreateOrganizationButton from './components/CreateOrganizationButton';
 import { authFetch } from '../../lib/auth';
 import { BACKEND_URL } from '../../lib/constants';
 import type { OrganizationDto } from './types';
@@ -38,6 +39,7 @@ export default function OrganizationsPage() {
               pt: 2,
               width: { xs: '100%', md: '50%'},
             }}>
+              <CreateOrganizationButton />
               <OrganizationsFilter showMine={showMine} onToggle={() => setShowMine(s => !s)} />
             </Box>
             {error ? (
