@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.interface';
@@ -51,6 +59,21 @@ export class OrganizationController {
       orgId = +idOrSlug;
     }
     return this.orgService.leave(user.id, orgId);
+  }
+
+  @Get('duplicates')
+  async findDuplicates(
+    @GetUser() user: JwtPayload,
+    @Query('name') name?: string,
+    @Query('companyId') companyId?: string,
+    @Query('companyName') companyName?: string,
+  ): Promise<OrganizationDto[]> {
+    return this.orgService.findDuplicates(
+      user.id,
+      name,
+      companyId ? +companyId : undefined,
+      companyName,
+    );
   }
 
   @Get(':idOrSlug')

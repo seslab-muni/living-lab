@@ -101,6 +101,34 @@ export class OrganizationService {
     return this.mapToDto(org, org.members, userId);
   }
 
+  async findDuplicates(
+    userId: string,
+    name?: string,
+    companyId?: number,
+    companyName?: string,
+  ): Promise<OrganizationDto[]> {
+    const qb = this.orgRepo
+      .createQueryBuilder('org')
+      .leftJoinAndSelect('org.members', 'members')
+      .leftJoinAndSelect('org.owner', 'owner');
+
+    // only add WHERE clauses for provided fields
+    if (name) {
+      qb.orWhere('org.name ILIKE :name', { name: `%${name.trim()}%` });
+    }
+    if (companyId != null) {
+      qb.orWhere('org.companyId = :companyId', { companyId });
+    }
+    if (companyName) {
+      qb.orWhere('org.companyName ILIKE :companyName', {
+        companyName: `%${companyName.trim()}%`,
+      });
+    }
+
+    const orgs = await qb.getMany();
+    return orgs.map((o) => this.mapToDto(o, o.members, userId));
+  }
+
   private mapToDto(
     org: Organization,
     members: { id: string }[],
