@@ -15,8 +15,22 @@ export class OrganizationService {
     userId: string,
     dto: CreateOrganizationDto,
   ): Promise<OrganizationDto> {
+    // 1) Build a URL‐friendly base slug
+    const base = dto.name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+    let slug = base;
+    let counter = 1;
+    while (await this.orgRepo.findOne({ where: { slug } })) {
+      slug = `${base}-${counter++}`;
+    }
     let org = this.orgRepo.create({
       name: dto.name,
+      slug,
       description: dto.description ?? 'your description goes here',
       ownerId: userId,
       companyId: dto.companyId,
@@ -28,6 +42,7 @@ export class OrganizationService {
       where: { id: org.id },
       relations: ['members', 'owner'],
     });
+
     return this.mapToDto(org, org.members, userId);
   }
 
@@ -58,6 +73,20 @@ export class OrganizationService {
     await this.orgRepo.save(org);
   }
 
+  async findOneBySlugForUser(
+    userId: string,
+    slug: string,
+  ): Promise<OrganizationDto> {
+    const org = await this.orgRepo.findOne({
+      where: { slug },
+      relations: ['members', 'owner'],
+    });
+    if (!org) {
+      throw new NotFoundException(`Organization "${slug}" not found`);
+    }
+    return this.mapToDto(org, org.members, userId);
+  }
+
   async findOneForUser(
     userId: string,
     orgId: number,
@@ -80,6 +109,7 @@ export class OrganizationService {
     return {
       id: org.id,
       name: org.name,
+      slug: org.slug,
       description: org.description,
       ownerId: org.ownerId,
       ownerName: `${org.owner.firstName} ${org.owner.lastName}`,

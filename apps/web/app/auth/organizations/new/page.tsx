@@ -48,7 +48,7 @@ export default function CreateOrganizationPage() {
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const created: OrganizationDto = await res.json();
-            await router.push(`/auth/organizations/${created.id}`);
+            await router.push(`/auth/organizations/${created.slug}`);
         } catch (err: any) {
             setErrors({ form: err.message });
         } finally {

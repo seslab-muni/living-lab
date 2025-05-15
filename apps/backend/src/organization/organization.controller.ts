@@ -21,21 +21,48 @@ export class OrganizationController {
     return this.orgService.findAllForUser(user.id);
   }
 
-  @Post(':id/join')
-  join(@GetUser() user: JwtPayload, @Param('id') id: string) {
-    return this.orgService.join(user.id, +id);
+  @Post(':idOrSlug/join')
+  async join(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<void> {
+    let orgId: number;
+    if (isNaN(Number(idOrSlug))) {
+      // treat as slug
+      const dto = await this.orgService.findOneBySlugForUser(user.id, idOrSlug);
+      orgId = dto.id;
+    } else {
+      // numeric ID
+      orgId = +idOrSlug;
+    }
+    return this.orgService.join(user.id, orgId);
   }
 
-  @Post(':id/leave')
-  leave(@GetUser() user: JwtPayload, @Param('id') id: string) {
-    return this.orgService.leave(user.id, +id);
+  @Post(':idOrSlug/leave')
+  async leave(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<void> {
+    let orgId: number;
+    if (isNaN(Number(idOrSlug))) {
+      const dto = await this.orgService.findOneBySlugForUser(user.id, idOrSlug);
+      orgId = dto.id;
+    } else {
+      orgId = +idOrSlug;
+    }
+    return this.orgService.leave(user.id, orgId);
   }
 
-  @Get(':id')
+  @Get(':idOrSlug')
   async findOne(
     @GetUser() user: JwtPayload,
-    @Param('id') id: string,
+    @Param('idOrSlug') idOrSlug: string,
   ): Promise<OrganizationDto> {
-    return this.orgService.findOneForUser(user.id, +id);
+    // if it’s not a pure number, treat it as a slug
+    if (isNaN(Number(idOrSlug))) {
+      return this.orgService.findOneBySlugForUser(user.id, idOrSlug);
+    }
+    // otherwise parse as numeric ID
+    return this.orgService.findOneForUser(user.id, +idOrSlug);
   }
 }

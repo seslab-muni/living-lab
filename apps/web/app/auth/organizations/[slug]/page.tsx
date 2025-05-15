@@ -15,32 +15,51 @@ import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 
 export default function OrganizationDetailsPage() {
-    const { id } = useParams();
+    const { slug } = useParams();
     const router = useRouter();
     const { data: session, status } = useSession();
 
     const [org, setOrg] = useState<OrganizationDto | null>(null);
     const [isMember, setIsMember] = useState(false);
     const [memberCount, setMemberCount] = useState(0);
-    const isOwner = status === 'authenticated' && session.user.id === org?.ownerId;
+    const [isOwner, setIsOwner] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        authFetch(`${BACKEND_URL}/organizations/${id}`)
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                return res.json();
-            })
-            .then((data: OrganizationDto) => {
-                setOrg(data);
-                setIsMember(data.isMember);
-                setMemberCount(data.memberCount);
-            })
-            .catch(err => setError(err.message));
-    }, [id, session]);
+      if (status !== 'authenticated') return;
+
+      authFetch(`${BACKEND_URL}/organizations/${slug}`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then((data: OrganizationDto) => {
+          setOrg(data);
+          setIsMember(data.isMember);
+          setMemberCount(data.memberCount);
+          setIsOwner(session.user.id === data.ownerId);
+        })
+        .catch(err => setError(err.message));
+    }, [status, session, slug]);
+
+  if (status === 'loading' || org === null || isOwner === null) {
+      return (
+        <Box display="flex" justifyContent="center" mt={4}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box textAlign="center" mt={4}>
+          <Typography color="error">Error: {error}</Typography>
+        </Box>
+      );
+    }
 
     const handleJoin = () => {
-        authFetch(`${BACKEND_URL}/organizations/${id}/join`, { method: 'POST' })
+        authFetch(`${BACKEND_URL}/organizations/${slug}/join`, { method: 'POST' })
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 setIsMember(true);
@@ -50,7 +69,7 @@ export default function OrganizationDetailsPage() {
     };
 
     const handleLeave = () => {
-        authFetch(`${BACKEND_URL}/organizations/${id}/leave`, { method: 'POST' })
+        authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, { method: 'POST' })
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 setIsMember(false);
@@ -58,22 +77,6 @@ export default function OrganizationDetailsPage() {
             })
             .catch(err => setError(err.message));
     };
-
-    if (error) {
-        return (
-            <Box textAlign="center" mt={4}>
-                <Typography color="error">Error: {error}</Typography>
-            </Box>
-        );
-    }
-
-    if (!org) {
-        return (
-            <Box display="flex" justifyContent="center" mt={4}>
-                <CircularProgress />
-            </Box>
-        );
-    }
 
     return (
         <Box display="flex" justifyContent="center" p={{ xs: 4, md: 6 }}>
@@ -110,7 +113,7 @@ export default function OrganizationDetailsPage() {
                       )
                       )}
                       {isOwner && (
-                        <Button variant="outlined" onClick={() => router.push(`/auth/organizations/${id}/edit`)}>
+                        <Button variant="outlined" onClick={() => router.push(`/auth/organizations/${slug}/edit`)}>
                           Edit Organization
                         </Button>
                       )}
