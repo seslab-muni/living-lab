@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Box,
-    TextField,
-    Button,
-    Typography,
-    Stack,
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Stack,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { authFetch } from '../../../lib/auth';
@@ -20,6 +24,37 @@ export default function CreateOrganizationPage() {
     const [companyName, setCompanyName] = useState('');
     const [errors, setErrors] = useState<{[k:string]:string}>({});
     const [submitting, setSubmitting] = useState(false);
+    const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
+    const [loadingDupes, setLoadingDupes] = useState(false);
+
+    useEffect(() => {
+      if (!name && !companyId && !companyName) {
+        setSuggestions([]);
+        return;
+      }
+
+      const t = setTimeout(async () => {
+        setLoadingDupes(true);
+        try {
+          const params = new URLSearchParams();
+          if (name)        params.set('name', name);
+          if (companyId)   params.set('companyId', companyId);
+          if (companyName) params.set('companyName', companyName);
+
+          const res = await authFetch(
+                    `${BACKEND_URL}/organizations/duplicates?${params.toString()}`
+          );
+          const data: OrganizationDto[] = await res.json();
+          setSuggestions(data);
+        } catch {
+          setSuggestions([]);
+        } finally {
+          setLoadingDupes(false);
+        }
+      }, 300);
+
+      return () => clearTimeout(t);
+    }, [name, companyId, companyName]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,6 +131,27 @@ export default function CreateOrganizationPage() {
                         {errors.form && (
                             <Typography color="error">{errors.form}</Typography>
                         )}
+                        {loadingDupes ? (
+                          <Box display="flex" justifyContent="center" py={2}>
+                            <CircularProgress size={24} />
+                          </Box>
+                        ) : suggestions.length > 0 ? (
+                          <Box py={2}>
+                            <Typography variant="subtitle1" color="error" gutterBottom>
+                              Possible duplicates found:
+                            </Typography>
+                            <List dense disablePadding>
+                              {suggestions.map(s => (
+                                <ListItem key={s.id} disableGutters>
+                                  <ListItemText
+                                    primary={s.name}
+                                    secondary={`IČO: ${s.companyId} — ${s.companyName}`}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        ) : null}
 
                         <Button
                             type="submit"
