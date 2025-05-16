@@ -36,7 +36,12 @@ export const authOptions: NextAuthOptions = {
         const data = (await res.json()) as {
           accessToken: string;
           refreshToken: string;
-          user: { id: string; name: string; isAdmin: boolean };
+          user: {
+            id: string;
+            name: string;
+            isAdmin: boolean;
+            roles: { domainId: string; role: string };
+          };
         };
 
         const { exp } = jwtDecode<{ exp: number }>(data.accessToken);
@@ -47,6 +52,7 @@ export const authOptions: NextAuthOptions = {
             id: data.user.id,
             name: data.user.name,
             isAdmin: data.user.isAdmin,
+            roles: data.user.roles,
           },
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
@@ -76,6 +82,8 @@ export const authOptions: NextAuthOptions = {
         ...t.user,
         id: t.user?.id,
         name: t.user?.name,
+        isAdmin: t.user?.isAdmin,
+        roles: t.user?.roles,
       };
       session.accessToken = t.accessToken;
       session.refreshToken = t.refreshToken;

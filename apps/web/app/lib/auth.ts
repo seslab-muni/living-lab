@@ -21,6 +21,7 @@ export const refreshAccessToken = async (jwt: JWT) => {
       id: string;
       name: string;
       isAdmin: boolean;
+      roles: { domainId: string; role: string };
       accessToken: string;
       refreshToken: string;
     };
@@ -28,8 +29,12 @@ export const refreshAccessToken = async (jwt: JWT) => {
     const { exp } = jwtDecode<{ exp: number }>(data.accessToken);
 
     return {
-      user: { id: data.id, name: data.name, isAdmin: data.isAdmin },
-      name: data.name,
+      user: {
+        id: data.id,
+        name: data.name,
+        isAdmin: data.isAdmin,
+        roles: data.roles,
+      },
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
       expiresAt: exp * 1000,
