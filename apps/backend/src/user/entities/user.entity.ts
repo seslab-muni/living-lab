@@ -1,4 +1,3 @@
-
 import { Role } from 'src/domain-role/entities/role.entity';
 import { Organization } from 'src/organization/entities/organization.entity';
 import {
@@ -41,7 +40,7 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
-  
+
   @OneToMany(() => Role, (r) => r.user)
   roles: Role[];
 }

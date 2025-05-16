@@ -58,7 +58,6 @@ export class AuthController {
   async checkEmail(@Body() body: EmailDto) {
     const id = await this.authService.checkInactiveEmail(body.email);
     return { message: 'The request was successfully processed', id };
-
   }
 
   @Public()

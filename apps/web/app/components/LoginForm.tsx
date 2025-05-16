@@ -81,6 +81,7 @@ export default function LoginForm() {
         onChange={handleChange}
         label="Password"
         type="password"
+      />
       <Box>
         <Typography
           component={NextLink}
