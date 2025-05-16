@@ -1,14 +1,14 @@
 'use client';
-
 import React from 'react';
 import { BACKEND_URL } from '../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
 
-export default function EditUser() {
+export default function PasswordChange() {
   const [formData, setFormData] = React.useState({
-    firstName: '',
-    lastName: '',
+    oldPassword: '',
+    password: '',
+    passwordConfirm: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,11 +24,36 @@ export default function EditUser() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (
+      !formData.password ||
+      !formData.oldPassword ||
+      !formData.passwordConfirm
+    ) {
+      setError('Please fill all the slots.');
+      return;
+    }
+
+    if (
+      formData.password.length < 8 ||
+      !/\d/.test(formData.password) ||
+      !/[a-z]/.test(formData.password) ||
+      !/[A-Z]/.test(formData.password)
+    ) {
+      setError(
+        'The password needs to have at least 8 characters, 1 uppercase and 1 lowercase character and a number.',
+      );
+      return;
+    }
+    if (formData.password !== formData.passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setError('');
 
     try {
-      console.log(formData);
-      const response = await authFetch(BACKEND_URL + '/user/update', {
+      const response = await authFetch(BACKEND_URL + '/users/password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -39,19 +64,13 @@ export default function EditUser() {
       const data = await response.json();
 
       if (response.ok) {
-        setOk(
-          'Name changed successfully! \n The appbar will change with next login..',
-        );
+        setOk('Password changed successfully!');
       } else {
-        setError(data.message || 'Name change failed.');
+        setError(data.message || 'Password change failed.');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred.');
-      }
+      setError('Server error. Try again later.');
     }
   };
 
@@ -65,7 +84,7 @@ export default function EditUser() {
     >
       <Box width="60%">
         <Typography variant="h3" textAlign="left">
-          Change your name for this platform
+          Change your password
         </Typography>
       </Box>
       <Box
@@ -78,24 +97,33 @@ export default function EditUser() {
         alignContent="end"
       >
         <Box width="40%" display="flex" flexDirection="column" gap={3}>
-          <div>
-            <TextField
-              fullWidth
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              label="First name"
-            />
-          </div>
-          <div>
-            <TextField
-              fullWidth
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              label="Last Name"
-            />
-          </div>
+          <TextField
+            required
+            fullWidth
+            name="oldPassword"
+            value={formData.oldPassword}
+            onChange={handleChange}
+            label="Current password"
+            type="password"
+          />
+          <TextField
+            required
+            fullWidth
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            label="Password"
+            type="password"
+          />
+          <TextField
+            required
+            fullWidth
+            name="passwordConfirm"
+            value={formData.passwordConfirm}
+            onChange={handleChange}
+            label="Password again"
+            type="password"
+          />
         </Box>
         <Box display="flex" alignItems="flex-end">
           {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}

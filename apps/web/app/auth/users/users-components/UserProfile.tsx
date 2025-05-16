@@ -4,7 +4,6 @@ import { Box, Button, Divider, Typography } from '@mui/material';
 import NextLink from 'next/link';
 import Profile from './ProfilePic';
 import theme from '../../../theme';
-import { GreyButton } from '../../auth-components';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import { useEffect, useState } from 'react';
@@ -24,7 +23,7 @@ export default function UserProfile() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    authFetch(BACKEND_URL + '/user/me')
+    authFetch(BACKEND_URL + '/users/me')
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -101,23 +100,18 @@ export default function UserProfile() {
       >
         <Button
           component={NextLink}
-          href={`/auth/user/update`}
+          href={`/auth/users/update`}
           sx={{ margin: theme.spacing(2) }}
         >
           edit info
         </Button>
         <Button
           component={NextLink}
-          href={`/auth/user/change-password`}
+          href={`/auth/users/change-password`}
           sx={{ margin: theme.spacing(2) }}
         >
           change password
         </Button>
-        {data?.user.isAdmin && (
-          <GreyButton component={NextLink} href={`/auth/user/admin`}>
-            admin site
-          </GreyButton>
-        )}
       </Box>
     </Box>
   );

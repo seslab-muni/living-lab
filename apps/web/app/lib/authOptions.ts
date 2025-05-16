@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
         const data = (await res.json()) as {
           accessToken: string;
           refreshToken: string;
-          user: { id: string; name: string };
+          user: { id: string; name: string; isAdmin: boolean };
         };
 
         const { exp } = jwtDecode<{ exp: number }>(data.accessToken);
@@ -46,6 +46,7 @@ export const authOptions: NextAuthOptions = {
           user: {
             id: data.user.id,
             name: data.user.name,
+            isAdmin: data.user.isAdmin,
           },
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,

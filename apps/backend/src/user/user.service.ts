@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { RegisterFormDto } from 'src/auth/dto/register.dto';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -85,6 +85,25 @@ export class UserService {
     const saltRounds = 10;
     const salt = await bcrypt.genSalt(saltRounds);
     const hashedRefreshToken = await bcrypt.hash(refreshToken, salt);
-    return this.userRepository.update(id, { refreshToken: hashedRefreshToken });
+    return await this.userRepository.update(id, {
+      refreshToken: hashedRefreshToken,
+    });
+  }
+
+  async getAllActive() {
+    return await this.userRepository.findBy({
+      active: true,
+    });
+  }
+
+  async getUserRoles(id: string) {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['roles'],
+    });
+    if (!user) {
+      throw new NotFoundException("User doesn't exist");
+    }
+    return user.roles.map((r) => ({ domainId: r.domainId, role: r.name }));
   }
 }

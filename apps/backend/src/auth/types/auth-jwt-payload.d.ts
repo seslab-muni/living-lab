@@ -1,3 +1,8 @@
 export type AuthPayload = {
-  sub: string;
+  sub: {
+    id: string;
+    name: string;
+    isAdmin: boolean;
+    roles: { domainId: string; role: Roles }[];
+  };
 };

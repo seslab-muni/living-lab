@@ -1,8 +1,10 @@
+import { Role } from 'src/domain-role/entities/role.entity';
 import { Organization } from 'src/organization/entities/organization.entity';
 import {
   Column,
   Entity,
   ManyToMany,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -38,4 +40,7 @@ export class User {
 
   @Column({ type: 'boolean', default: false })
   isAdmin: boolean;
+
+  @OneToMany(() => Role, (r) => r.user)
+  roles: Role[];
 }

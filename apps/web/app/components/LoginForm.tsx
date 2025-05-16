@@ -44,7 +44,11 @@ export default function LoginForm() {
 
     if (res?.error) {
       console.error('Error:', res.error);
-      setError(res.error);
+      if (!res) {
+        setError('Server error');
+      } else {
+        setError('Wrong sign in credentials');
+      }
     } else {
       console.log('Success:', res);
       router.push(FRONTEND_URL + '/auth');
@@ -59,29 +63,25 @@ export default function LoginForm() {
       autoComplete="off"
       justifyItems={'center'}
     >
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          label="Email"
-          type="email"
-          placeholder="jan.novak@bvv.cz"
-        />
-      </div>
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          label="Password"
-          type="password"
-        />
-      </div>
+      <DarkTextField
+        required
+        fullWidth
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        label="Email"
+        type="email"
+        placeholder="jan.novak@bvv.cz"
+      />
+      <DarkTextField
+        required
+        fullWidth
+        name="password"
+        value={formData.password}
+        onChange={handleChange}
+        label="Password"
+        type="password"
+      />
       <Box>
         <Typography
           component={NextLink}
@@ -91,10 +91,12 @@ export default function LoginForm() {
           Forgot your password?
         </Typography>
       </Box>
-      {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
-      <div style={{ margin: 20 }}>
+      {error && (
+        <Typography style={{ color: 'red', margin: 1.8 }}>{error}</Typography>
+      )}
+      <Box style={{ margin: 20 }}>
         <Button type="submit">login</Button>
-      </div>
+      </Box>
       <Box display="flex" flexDirection="row">
         <Typography sx={{ mr: 2, color: 'primary.main' }}>
           Don&apos;t have an account?
