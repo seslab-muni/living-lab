@@ -6,12 +6,15 @@ import {
   Body,
   UseGuards,
   Query,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { JwtPayload } from '../auth/types/jwt-payload.interface';
 import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
+import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
 
 @Controller('organizations')
@@ -87,5 +90,34 @@ export class OrganizationController {
     }
     // otherwise parse as numeric ID
     return this.orgService.findOneForUser(user.id, +idOrSlug);
+  }
+
+  @Patch(':idOrSlug')
+  async update(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() dto: UpdateOrganizationDto,
+  ): Promise<OrganizationDto> {
+    // decide whether idOrSlug is a number or a slug
+    const isNum = !isNaN(Number(idOrSlug));
+    const id = isNum
+      ? Number(idOrSlug)
+      : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+
+    return this.orgService.update(user.id, id, dto);
+  }
+
+  @Delete(':idOrSlug')
+  remove(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<void> {
+    const id = +idOrSlug;
+    if (isNaN(id)) {
+      return this.orgService
+        .findOneBySlugForUser(user.id, idOrSlug)
+        .then((found) => this.orgService.remove(user.id, found.id));
+    }
+    return this.orgService.remove(user.id, id);
   }
 }
