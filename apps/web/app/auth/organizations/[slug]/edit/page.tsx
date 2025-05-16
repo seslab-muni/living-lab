@@ -3,19 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-    Box,
-    TextField,
-    Button,
-    Typography,
-    Stack,
-    CircularProgress,
-    Dialog,
-    DialogTitle,
-    DialogActions,
-    List,
-    ListItem,
-    ListItemText,
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Stack,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  IconButton,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
 import { BACKEND_URL } from '../../../../lib/constants';
 import type { OrganizationDto } from '../../types';
@@ -36,12 +38,15 @@ export default function EditOrganizationPage() {
     const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
     const [loadingDupes, setLoadingDupes] = useState(false);
     const [hasFocused, setHasFocused] = useState(false);
+    const [members, setMembers] = useState(org?.members ?? []);
+    const [removeTarget, setRemoveTarget] = useState<string | null>(null);
 
     useEffect(() => {
         authFetch(`${BACKEND_URL}/organizations/${slug}`)
             .then(r => r.json())
             .then((data: OrganizationDto) => {
                 setOrg(data);
+                setMembers(data.members);
                 setName(data.name);
                 setDescription(data.description ?? '');
                 setCompanyId(String(data.companyId));
@@ -136,6 +141,20 @@ export default function EditOrganizationPage() {
         );
     }
 
+    const handleRemoveMember = async () => {
+      if (!removeTarget) return;
+      await authFetch(
+        `${BACKEND_URL}/organizations/${slug}/members/${removeTarget}`,
+        { method: 'DELETE' }
+      );
+      setMembers(ms => ms.filter(m => m.id !== removeTarget));
+      setRemoveTarget(null);
+    };
+
+    if (loading || !org) {
+      return <CircularProgress />;
+    }
+
     return (
         <Box p={{ xs:4, md:6 }} display="flex" justifyContent="center">
             <Box width={{ xs:'100%', md:'50%' }}>
@@ -205,6 +224,31 @@ export default function EditOrganizationPage() {
                             </Box>
                         ) : null}
 
+                        <Box my={4}>
+                          <Typography variant="h6">Members</Typography>
+                          <Box component="ul" sx={{ m:0, p:0, pl:2, listStyle:'disc' }}>
+                            {members.map((m) => (
+                              <Box
+                                key={m.id}
+                                component="li"
+                                sx={{ display:'flex', alignItems:'center', mb:0.5 }}
+                              >
+                                <Typography variant="body2" sx={{ flexGrow:1, m:0 }}>
+                                  {m.firstName} {m.lastName}
+                                </Typography>
+                                {m.id !== org.ownerId && (
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => setRemoveTarget(m.id)}
+                                  >
+                                    <DeleteIcon fontSize="small" color="error" />
+                                  </IconButton>
+                                )}
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+
                         <Box
                             display="flex"
                             justifyContent="space-between"
@@ -230,6 +274,23 @@ export default function EditOrganizationPage() {
                     </Stack>
                 </Box>
             </Box>
+
+            <Dialog
+              open={Boolean(removeTarget)}
+              onClose={() => setRemoveTarget(null)}
+            >
+              <DialogTitle>
+                Remove this member?
+              </DialogTitle>
+              <DialogActions>
+                <Button onClick={() => setRemoveTarget(null)}>
+                  Cancel
+                </Button>
+                <Button color="error" onClick={handleRemoveMember}>
+                  Yes, remove
+                </Button>
+              </DialogActions>
+            </Dialog>
 
             <Dialog
                 open={confirmOpen}

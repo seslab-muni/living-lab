@@ -9,9 +9,6 @@ import {
     Button,
     CircularProgress,
     Stack,
-    List,
-    ListItem,
-    ListItemText
 } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';

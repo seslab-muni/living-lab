@@ -120,4 +120,17 @@ export class OrganizationController {
     }
     return this.orgService.remove(user.id, id);
   }
+
+  @Delete(':idOrSlug/members/:memberId')
+  async removeMember(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('memberId') memberId: string,
+  ): Promise<void> {
+    const id = isNaN(+idOrSlug)
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+
+    return this.orgService.removeMember(user.id, id, memberId);
+  }
 }

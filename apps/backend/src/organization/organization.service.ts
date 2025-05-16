@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -161,6 +162,28 @@ export class OrganizationService {
       throw new ForbiddenException('Only owner can delete');
     }
     await this.orgRepo.remove(org);
+  }
+
+  async removeMember(
+    ownerId: string,
+    orgId: number,
+    memberId: string,
+  ): Promise<void> {
+    const org = await this.orgRepo.findOneOrFail({
+      where: { id: orgId },
+      relations: ['owner', 'members'],
+    });
+    if (org.ownerId !== ownerId) {
+      throw new ForbiddenException('Only owner can remove members');
+    }
+    if (memberId === ownerId) {
+      throw new BadRequestException('Owner cannot remove themselves');
+    }
+    await this.orgRepo
+      .createQueryBuilder()
+      .relation(Organization, 'members')
+      .of(org)
+      .remove({ id: memberId } as any);
   }
 
   private mapToDto(
