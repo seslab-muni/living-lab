@@ -7,6 +7,7 @@ import {
   Put,
   Req,
 } from '@nestjs/common';
+
 import { UserService } from './user.service';
 import { NameDto } from './dto/change-name.dto';
 import { PasswordDto } from './dto/change-password.dto';
@@ -69,7 +70,6 @@ export class UserController {
     }
     return { user };
   }
-
   @Get()
   @DefineRoles('Admin')
   @ApiOperation({ summary: 'Get all users info' })

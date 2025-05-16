@@ -86,7 +86,6 @@ export class AuthService {
       refreshToken,
     };
   }
-
   async generateTokens(user: RequestUser) {
     const payload: AuthPayload = { sub: { ...user } };
     const [accessToken, refreshToken] = await Promise.all([

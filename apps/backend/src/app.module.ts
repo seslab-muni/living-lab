@@ -16,6 +16,7 @@ import { TenantMiddleware } from './tennant.middleware';
 import { DomainModule } from './domain-role/domain.module';
 import { FacilityModule } from './facility/facility.module';
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -27,6 +28,7 @@ import { FacilityModule } from './facility/facility.module';
     FacilityModule,
   ],
   controllers: [],
+
   providers: [
     {
       provide: APP_GUARD,
