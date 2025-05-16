@@ -10,4 +10,10 @@ export interface OrganizationDto {
   lastEdit: string;
   memberCount: number;
   isMember: boolean;
+
+  members: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+  }>;
 }
