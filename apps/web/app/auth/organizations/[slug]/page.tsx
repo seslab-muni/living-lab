@@ -9,6 +9,9 @@ import {
     Button,
     CircularProgress,
     Stack,
+    List,
+    ListItem,
+    ListItemText
 } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
@@ -99,6 +102,40 @@ export default function OrganizationDetailsPage() {
                     <Typography variant="caption" color="text.secondary">
                         Members: {memberCount}
                     </Typography>
+
+                    {isOwner && org.members.length > 0 && (
+                      <Box mb={4}>
+                        <Typography variant="h6" gutterBottom>
+                          Members
+                        </Typography>
+                        <Box
+                          component="ul"
+                          sx={{
+                            margin: 0,
+                            padding: 0,
+                            listStyleType: 'disc',
+                            pl: 2,
+                          }}
+                        >
+                          {org.members.map((m) => (
+                            <Box
+                              component="li"
+                              key={m.id}
+                              sx={{
+                                marginBlockStart: 0,
+                                marginBlockEnd: 0,
+                                mb: 0.2,
+                                '& > *': { margin: 0 },
+                              }}
+                            >
+                              <Typography variant="body2">
+                                {m.firstName} {m.lastName}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
                       {!isOwner && (

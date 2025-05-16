@@ -9,6 +9,7 @@ import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
 import type { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class OrganizationService {
@@ -164,7 +165,7 @@ export class OrganizationService {
 
   private mapToDto(
     org: Organization,
-    members: { id: string }[],
+    members: User[],
     currentUserId?: string,
   ): OrganizationDto {
     return {
@@ -181,6 +182,11 @@ export class OrganizationService {
       isMember: currentUserId
         ? members.some((u) => u.id === currentUserId)
         : false,
+      members: members.map((u) => ({
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })),
     };
   }
 }

@@ -10,4 +10,11 @@ export class OrganizationDto {
   lastEdit: Date;
   memberCount: number;
   isMember: boolean;
+
+  // ← new: full member list
+  members: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+  }>;
 }
