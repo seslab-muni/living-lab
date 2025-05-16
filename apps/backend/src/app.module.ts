@@ -40,10 +40,14 @@ export class AppModule implements NestModule {
     consumer
       .apply(TenantMiddleware)
       .forRoutes(
-        { path: 'organizations/*path', method: RequestMethod.ALL },
-        { path: 'projects/*path', method: RequestMethod.ALL },
-        { path: 'facilities/*path', method: RequestMethod.ALL },
-        { path: 'domain/*path', method: RequestMethod.ALL },
+        { path: 'domain/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'domain/:domainId', method: RequestMethod.ALL },
+        { path: 'facilities/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'facilities/:domainId', method: RequestMethod.ALL },
+        { path: 'organizations/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'organizations/:domainId', method: RequestMethod.ALL },
+        { path: 'projects/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'projects/:domainId', method: RequestMethod.ALL },
       );
   }
 }

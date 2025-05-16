@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { DomainService } from './domain.service';
 import { RolesDto } from './dto/roles.dto';
+import { RolesGuard } from './guards/access-control.guard';
 
 @ApiTags('Domain')
 @Controller('domain')
@@ -11,6 +12,7 @@ export class DomainController {
 
   @Get('/:domainId/users')
   @DefineRoles('Admin', 'Owner', 'Manager', 'Moderator', 'Viewer')
+  @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'All users with roles in this domain.' })
   @ApiResponse({ status: 200, description: 'All users returned succesfully' })
   async allUsers(@Param() param: { domainId: string }) {
@@ -19,6 +21,7 @@ export class DomainController {
 
   @Get('/:domainId/notmembers')
   @DefineRoles('Admin', 'Owner', 'Manager')
+  @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'All users with no roles in this domain.' })
   @ApiResponse({ status: 200, description: 'All users returned succesfully' })
   async allNotmembers(@Param() param: { domainId: string }) {
@@ -27,6 +30,7 @@ export class DomainController {
 
   @Put('/:domainId/users/:userId/role')
   @DefineRoles('Admin', 'Owner', 'Manager')
+  @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update user role in a domain.' })
   @ApiResponse({ status: 200, description: 'Role updated succesfully.' })
   async changeUserRole(
@@ -42,6 +46,7 @@ export class DomainController {
 
   @Put('/:domainId/users/:userId/delete')
   @DefineRoles('Admin', 'Owner', 'Manager')
+  @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Users role/membership in this domain revoked.' })
   @ApiResponse({
     status: 200,

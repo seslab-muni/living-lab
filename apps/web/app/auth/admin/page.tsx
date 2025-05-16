@@ -17,6 +17,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { authFetch } from '../../lib/auth';
 import { useEffect, useState } from 'react';
 import { BACKEND_URL } from '../../lib/constants';
+import FeedbackMessage from '../../components/FeedbackMessage';
 
 type User = {
   id: number;
@@ -115,7 +116,7 @@ export default function AdminUsersPage() {
   return (
     <Box display="flex" flexDirection="column">
       <Typography variant="h2">Users</Typography>
-      {error && <Typography color="error">{error}</Typography>}
+      <FeedbackMessage error={error} />
       <Divider />
       <Box display="flex" alignItems="center" justifyContent="flex-start">
         <TextField
@@ -131,7 +132,7 @@ export default function AdminUsersPage() {
               </InputAdornment>
             ),
           }}
-          sx={{ m: 2 }}
+          sx={{ mr: 2, my: 2 }}
         />
 
         <FormControlLabel

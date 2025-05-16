@@ -24,8 +24,6 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-
-    console.log('tak jsem pica');
     if (!roles) {
       return true;
     }
@@ -36,7 +34,6 @@ export class RolesGuard implements CanActivate {
       return false;
     }
     if (roles.includes('Admin') && user.isAdmin) {
-      console.log('tak jsem pica');
       return true;
     }
     return this.validateAccess(user.id, domainId, roles);
@@ -48,7 +45,7 @@ export class RolesGuard implements CanActivate {
     roles: Roles[],
   ): Promise<boolean> {
     const user_role = await this.domainService.getRole(user_id, domain_id);
-
+    console.log(user_role);
     if (!user_role) {
       return false;
     }

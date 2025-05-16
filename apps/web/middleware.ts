@@ -8,7 +8,6 @@ export default withAuth({
     authorized({ token, req }) {
       const { pathname } = req.nextUrl;
 
-      console.log(token);
       // for any /auth/admin/* routes, require token.isAdmin === true
       if (pathname.startsWith("/auth/admin")) {
         return token?.user.isAdmin === true;

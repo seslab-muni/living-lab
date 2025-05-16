@@ -2,13 +2,13 @@
 
 import { Box, Button, Divider, Typography } from '@mui/material';
 import NextLink from 'next/link';
-import Profile from './ProfilePic';
+import ProfilePicture from './ProfilePicture';
 import theme from '../../../theme';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import { useEffect, useState } from 'react';
 
-type MyData = {
+type User = {
   user: {
     id: number;
     firstName: string;
@@ -19,7 +19,7 @@ type MyData = {
 };
 
 export default function UserProfile() {
-  const [data, setData] = useState<MyData | null>(null);
+  const [data, setData] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function UserProfile() {
         }
         return res.json();
       })
-      .then((json: MyData) => {
+      .then((json: User) => {
         setData(json);
       })
       .catch((err: Error) => {
@@ -39,9 +39,6 @@ export default function UserProfile() {
       .finally(() => {});
   }, []);
 
-  useEffect(() => {
-    if (data) console.log('state data now:', data);
-  }, [data]);
   return (
     <Box
       display="flex"
@@ -51,7 +48,7 @@ export default function UserProfile() {
       p={{ sx: 4, md: 6 }}
     >
       <Box width="60%">
-        <Typography variant="h3" textAlign="left">
+        <Typography variant="h2" textAlign="left">
           My profile
         </Typography>
       </Box>
@@ -62,7 +59,7 @@ export default function UserProfile() {
         justifyContent="left"
         gap={3}
       >
-        <Profile />
+        <ProfilePicture />
         <Box
           display="flex"
           flexDirection="column"
@@ -82,14 +79,14 @@ export default function UserProfile() {
         </Box>
       </Box>
       <Box width="60%" display="flex" flexDirection="column" gap={2}>
-        <Typography variant="h4">
-          {' '}
-          <Divider color="#E2DF29" /> Organizations <br />
+        <Divider />
+        <Typography variant="h4" sx={{ my: 1 }}>
+          Organizations
         </Typography>
-        <Typography variant="subtitle1">
-          {/* TBD */}
-          BVV <br /> MUNI <br /> Mestsky urad <Divider color="#E2DF29" />
+        <Typography variant="subtitle1" sx={{ my: 1 }}>
+          T<br />B<br />D
         </Typography>
+        <Divider />
       </Box>
       <Box
         width="60%"

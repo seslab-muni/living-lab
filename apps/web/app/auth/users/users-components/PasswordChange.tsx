@@ -3,6 +3,7 @@ import React from 'react';
 import { BACKEND_URL } from '../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
+import FeedbackMessage from '../../../components/FeedbackMessage';
 
 export default function PasswordChange() {
   const [formData, setFormData] = React.useState({
@@ -83,7 +84,7 @@ export default function PasswordChange() {
       p={{ sx: 4, md: 6 }}
     >
       <Box width="60%">
-        <Typography variant="h3" textAlign="left">
+        <Typography variant="h2" textAlign="left">
           Change your password
         </Typography>
       </Box>
@@ -126,9 +127,10 @@ export default function PasswordChange() {
           />
         </Box>
         <Box display="flex" alignItems="flex-end">
-          {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
-          {ok && <div style={{ color: 'gray', margin: 1.8 }}>{ok}</div>}
-          <Button type="submit">change</Button>
+          <FeedbackMessage error={error} ok={ok} />
+          <Button type="submit" sx={{ ml: 2 }}>
+            change
+          </Button>
         </Box>
       </Box>
     </Box>

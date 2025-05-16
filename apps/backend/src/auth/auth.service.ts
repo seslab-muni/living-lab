@@ -70,7 +70,8 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Email or password are incorrect!');
     }
-    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin };
+    const roles = await this.userService.getUserRoles(user.id);
+    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles };
   }
 
   async login(user: RequestUser) {
@@ -80,8 +81,10 @@ export class AuthService {
       throw new NotFoundException('No user found!');
     }
     await this.userService.updateRefreshToken(user.id, refreshToken);
+    const roles = await this.userService.getUserRoles(user.id);
+    console.log(roles);
     return {
-      user: { id: user.id, name: user.name, isAdmin: user.isAdmin },
+      user: { id: user.id, name: user.name, isAdmin: user.isAdmin, roles },
       accessToken,
       refreshToken,
     };

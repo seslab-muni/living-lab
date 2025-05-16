@@ -4,6 +4,7 @@ import React from 'react';
 import { BACKEND_URL } from '../../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { authFetch } from '../../../../lib/auth';
+import { FeedbackMessage } from '../../../../components';
 
 export default function CreateFacility() {
   const [formData, setFormData] = React.useState({
@@ -80,8 +81,7 @@ export default function CreateFacility() {
         />
         <Box display="flex" alignItems="flex-end">
           <Button type="submit">create</Button>
-          {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
-          {ok && <div style={{ color: 'gray', margin: 1.8 }}>{ok}</div>}
+          <FeedbackMessage error={error} ok={ok} />
         </Box>
       </Box>
     </Box>

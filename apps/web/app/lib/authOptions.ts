@@ -4,6 +4,7 @@ import { BACKEND_URL } from './constants';
 import { refreshAccessToken } from './auth';
 import { JWT } from 'next-auth/jwt';
 import { jwtDecode } from 'jwt-decode';
+import { Roles } from '../../types/next-auth';
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
@@ -40,7 +41,7 @@ export const authOptions: NextAuthOptions = {
             id: string;
             name: string;
             isAdmin: boolean;
-            roles: { domainId: string; role: string };
+            roles: { domainId: string; role: Roles }[];
           };
         };
 
@@ -65,7 +66,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }): Promise<JWT> {
       if (user) {
-        token.user = user.user;
+        token.user = {
+          ...user.user,
+          roles: user.user.roles,
+        };
         token.sub = user.user.id;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;

@@ -2,6 +2,7 @@ import { JWT } from 'next-auth/jwt';
 import { jwtDecode } from 'jwt-decode';
 import { getSession } from 'next-auth/react';
 import { FRONTEND_URL } from './constants';
+import { Roles } from '../../types/next-auth';
 
 export const refreshAccessToken = async (jwt: JWT) => {
   try {
@@ -21,7 +22,7 @@ export const refreshAccessToken = async (jwt: JWT) => {
       id: string;
       name: string;
       isAdmin: boolean;
-      roles: { domainId: string; role: string };
+      roles: { domainId: string; role: Roles }[];
       accessToken: string;
       refreshToken: string;
     };

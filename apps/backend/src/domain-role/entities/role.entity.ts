@@ -15,10 +15,10 @@ export class Role {
   name: Roles;
 
   @ManyToOne(() => Domain, (d) => d.roles, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'domain' })
+  @JoinColumn([{ name: 'domainId', referencedColumnName: 'id' }])
   domain: Domain;
 
   @ManyToOne(() => User, (u) => u.roles, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user' })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'id' })
   user: User;
 }

@@ -1,4 +1,4 @@
-import { Box } from '@mui/material';
+import { Container, Toolbar } from '@mui/material';
 import authOptions from '../lib/authOptions';
 import { getServerSession, Session } from 'next-auth';
 import AuthLayoutClient from './auth-components/AuthLayoutClient';
@@ -13,17 +13,10 @@ export default async function AuthLayout({
   return (
     <AuthLayoutClient session={session}>
       <TopMenu />
-      <Box
-        sx={{
-          width: '100%',
-          minHeight: '100vh',
-          bgcolor: '#FAF9F6',
-          color: '#000',
-          py: 6,
-        }}
-      >
+      <Container maxWidth="xl">
+        <Toolbar />
         {children}
-      </Box>
+      </Container>
     </AuthLayoutClient>
   );
 }

@@ -42,4 +42,12 @@ export class FacilityService {
     await this.domainService.deleteDomain(id);
     await this.facilityRepository.delete({ id });
   }
+
+  async getDetails(id: string) {
+    const facility = await this.facilityRepository.findOne({ where: { id } });
+    if (!facility) {
+      throw new NotFoundException("Facility with this id doesn't exist");
+    }
+    return facility;
+  }
 }
