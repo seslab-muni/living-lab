@@ -63,7 +63,7 @@ export default function CreateOrganizationPage() {
         if (!companyId) {
           fieldErrors.companyId = 'Required';
         } else if (!/^\d{8}$/.test(companyId)) {
-          fieldErrors.companyId = 'Company ID must be exactly 8 digits';
+          fieldErrors.companyId = 'IČO must be exactly 8 digits';
         }
         if (!companyName) fieldErrors.companyName = 'Required';
         setErrors(fieldErrors);
@@ -109,7 +109,7 @@ export default function CreateOrganizationPage() {
                             required
                         />
                         <TextField
-                            label="Company ID"
+                            label="IČO"
                             placeholder="123456"
                             value={companyId}
                             onChange={e => setCompanyId(e.target.value)}

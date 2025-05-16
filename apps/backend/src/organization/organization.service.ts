@@ -1,9 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
+import type { UpdateOrganizationDto } from './dto/update-organization.dto';
 
 @Injectable()
 export class OrganizationService {
@@ -15,7 +20,6 @@ export class OrganizationService {
     userId: string,
     dto: CreateOrganizationDto,
   ): Promise<OrganizationDto> {
-    // 1) Build a URL‐friendly base slug
     const base = dto.name
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -81,9 +85,7 @@ export class OrganizationService {
       where: { slug },
       relations: ['members', 'owner'],
     });
-    if (!org) {
-      throw new NotFoundException(`Organization "${slug}" not found`);
-    }
+    if (!org) throw new NotFoundException(`Organization "${slug}" not found`);
     return this.mapToDto(org, org.members, userId);
   }
 
@@ -95,9 +97,7 @@ export class OrganizationService {
       where: { id: orgId },
       relations: ['members', 'owner'],
     });
-    if (!org) {
-      throw new NotFoundException(`Organization ${orgId} not found`);
-    }
+    if (!org) throw new NotFoundException(`Organization ${orgId} not found`);
     return this.mapToDto(org, org.members, userId);
   }
 
@@ -127,6 +127,39 @@ export class OrganizationService {
 
     const orgs = await qb.getMany();
     return orgs.map((o) => this.mapToDto(o, o.members, userId));
+  }
+
+  async update(
+    userId: string,
+    orgId: number,
+    dto: UpdateOrganizationDto,
+  ): Promise<OrganizationDto> {
+    const org = await this.orgRepo.findOneOrFail({
+      where: { id: orgId },
+      relations: ['members', 'owner'],
+    });
+    if (org.ownerId !== userId) {
+      throw new ForbiddenException('Only owner can edit');
+    }
+    if (typeof dto.name === 'string') org.name = dto.name;
+    if (typeof dto.description === 'string') org.description = dto.description;
+    if (typeof dto.companyId === 'number') org.companyId = dto.companyId;
+    if (typeof dto.companyName === 'string') org.companyName = dto.companyName;
+
+    org.lastEdit = new Date();
+    await this.orgRepo.save(org);
+    return this.mapToDto(org, org.members, userId);
+  }
+
+  async remove(userId: string, orgId: number): Promise<void> {
+    const org = await this.orgRepo.findOneOrFail({
+      where: { id: orgId },
+      relations: ['members', 'owner'],
+    });
+    if (org.ownerId !== userId) {
+      throw new ForbiddenException('Only owner can delete');
+    }
+    await this.orgRepo.remove(org);
   }
 
   private mapToDto(
