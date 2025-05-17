@@ -60,7 +60,8 @@ export default function ReviewJoinRequestPage() {
                     gutterBottom
                 >
                     Requested on{' '}
-                    {new Date(req.createdAt).toLocaleString(undefined, {
+                    {new Date(req.createdAt).toLocaleString('cs-CZ', {
+                        timeZone: 'Europe/Bratislava',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',

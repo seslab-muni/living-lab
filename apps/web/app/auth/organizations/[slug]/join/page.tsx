@@ -1,4 +1,3 @@
-// apps/web/app/auth/organizations/[slug]/join/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -24,7 +23,6 @@ export default function JoinRequestPage() {
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // Fetch the organization to get its name
     useEffect(() => {
         authFetch(`${BACKEND_URL}/organizations/${slug}`)
             .then(res => {
@@ -62,7 +60,6 @@ export default function JoinRequestPage() {
     };
 
     if (orgName === null) {
-        // still loading the organization name
         return (
             <Box display="flex" justifyContent="center" p={6}>
                 <CircularProgress />
