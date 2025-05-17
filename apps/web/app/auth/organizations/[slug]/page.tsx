@@ -13,6 +13,7 @@ import {
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
+import NextLink from 'next/link';
 
 export default function OrganizationDetailsPage() {
     const { slug } = useParams();
@@ -22,7 +23,6 @@ export default function OrganizationDetailsPage() {
     const [org, setOrg] = useState<OrganizationDto | null>(null);
     const [isMember, setIsMember] = useState(false);
     const [memberCount, setMemberCount] = useState(0);
-    const [isOwner, setIsOwner] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -37,12 +37,11 @@ export default function OrganizationDetailsPage() {
           setOrg(data);
           setIsMember(data.isMember);
           setMemberCount(data.memberCount);
-          setIsOwner(session.user.id === data.ownerId);
         })
         .catch(err => setError(err.message));
     }, [status, session, slug]);
 
-  if (status === 'loading' || org === null || isOwner === null) {
+  if (status === 'loading' || org === null) {
       return (
         <Box display="flex" justifyContent="center" mt={4}>
           <CircularProgress />
@@ -57,16 +56,6 @@ export default function OrganizationDetailsPage() {
         </Box>
       );
     }
-
-    const handleJoin = () => {
-        authFetch(`${BACKEND_URL}/organizations/${slug}/join`, { method: 'POST' })
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                setIsMember(true);
-                setMemberCount(c => c + 1);
-            })
-            .catch(err => setError(err.message));
-    };
 
     const handleLeave = () => {
         authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, { method: 'POST' })
@@ -100,7 +89,7 @@ export default function OrganizationDetailsPage() {
                         Members: {memberCount}
                     </Typography>
 
-                    {isOwner && org.members.length > 0 && (
+                    {org.isOwner && org.members.length > 0 && (
                       <Box mb={4}>
                         <Typography variant="h6" gutterBottom>
                           Members
@@ -135,18 +124,27 @@ export default function OrganizationDetailsPage() {
                     )}
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
-                      {!isOwner && (
+                      {!org.isOwner && (
                         isMember ? (
                           <Button variant="outlined" color="error" onClick={handleLeave}>
                             Leave
                           </Button>
                       ) : (
-                        <Button variant="contained" onClick={handleJoin}>
-                          Join
-                        </Button>
-                      )
-                      )}
-                      {isOwner && (
+                          org.hasPendingRequest ? (
+                            <Button variant="contained" disabled>
+                              Request Sent
+                            </Button>
+                          ) : (
+                            <Button
+                              component={NextLink}
+                              href={`/auth/organizations/${slug}/join`}
+                            >
+                              Request to Join
+                            </Button>
+                            )
+                          )
+                        )}
+                      {org.isOwner && (
                         <Button variant="outlined" onClick={() => router.push(`/auth/organizations/${slug}/edit`)}>
                           Edit Organization
                         </Button>
