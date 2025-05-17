@@ -140,8 +140,6 @@ export class OrganizationService {
       .createQueryBuilder('org')
       .leftJoinAndSelect('org.members', 'members')
       .leftJoinAndSelect('org.owner', 'owner');
-
-    // only add WHERE clauses for provided fields
     if (name) {
       qb.orWhere('org.name ILIKE :name', { name: `%${name.trim()}%` });
     }

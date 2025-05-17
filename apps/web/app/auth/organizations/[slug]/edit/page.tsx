@@ -87,7 +87,7 @@ export default function EditOrganizationPage() {
         }, 300);
 
         return () => clearTimeout(t);
-    }, [name, companyId, companyName]);
+    }, [name, companyId, companyName, hasFocused]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();

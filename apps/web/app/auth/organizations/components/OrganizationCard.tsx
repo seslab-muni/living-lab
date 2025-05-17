@@ -1,51 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useSession } from 'next-auth/react';
 import { Card, CardContent, Typography, Button, CardActions, Box } from '@mui/material';
 import NextLink from 'next/link';
-import { authFetch } from '../../../lib/auth';
-import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 
-export default function OrganizationCard({ org, onMembershipChange }: { org: OrganizationDto, onMembershipChange?:
-  (id: number, isMember: boolean, memberCount: number) => void; }) {
-  //const [isMember, setIsMember] = useState<boolean>(!!org.isMember);
-  const { data: session, status } = useSession();
-  //const isOwner = status === 'authenticated' && session.user.id === org.ownerId;
-  const [memberCount, setMemberCount] = useState<number>(org.memberCount);
-  const [error, setError] = useState<string | null>(null);
-
-  /*const handleJoin = () => {
-    setError(null);
-    authFetch(`${BACKEND_URL}/organizations/${org.id}/join`, { method: 'POST' })
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          setIsMember(true);
-          setMemberCount(count => count + 1);
-          // notify parent after state setters
-          onMembershipChange?.(org.id, true, org.memberCount + 1);
-        })
-        .catch(err => setError(err.message));
-  };
-
-  const handleLeave = () => {
-    setError(null);
-    authFetch(`${BACKEND_URL}/organizations/${org.id}/leave`, { method: 'POST' })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setIsMember(false);
-        setMemberCount(count => Math.max(count - 1, 0));
-        // notify parent after state setters
-        onMembershipChange?.(org.id, false, Math.max(org.memberCount - 1, 0));
-      })
-      .catch(err => setError(err.message));
-  };*/
+export default function OrganizationCard({
+  org,
+}: {
+  org: OrganizationDto;
+  onMembershipChange?: (
+    id: number,
+    isMember: boolean,
+    memberCount: number,
+  ) => void;
+}) {
+  const [memberCount] = useState<number>(org.memberCount);
+  const [error] = useState<string | null>(null);
 
   return (
-    <Card elevation={3} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Card
+      elevation={3}
+      sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    >
       <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h6" gutterBottom>{org.name}</Typography>
+        <Typography variant="h6" gutterBottom>
+          {org.name}
+        </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
           {org.description ?? 'No description provided.'}
         </Typography>
@@ -63,18 +44,11 @@ export default function OrganizationCard({ org, onMembershipChange }: { org: Org
       )}
 
       <CardActions sx={{ justifyContent: 'flex-end' }}>
-        {/*{status === 'authenticated' && !isOwner && (
-          isMember ? (
-            <Button variant="outlined" color="error" onClick={handleLeave}>
-              Leave
-            </Button>
-          ) : (
-            <Button variant="contained" onClick={handleJoin}>
-              Join
-            </Button>
-          )
-        )}*/}
-        <Button component={NextLink} href={`/auth/organizations/${org.slug}`} size="small">
+        <Button
+          component={NextLink}
+          href={`/auth/organizations/${org.slug}`}
+          size="small"
+        >
           View Details
         </Button>
       </CardActions>
