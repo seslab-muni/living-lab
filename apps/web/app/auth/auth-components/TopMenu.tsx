@@ -7,14 +7,16 @@ import { AppBar, Button, Toolbar } from '@mui/material';
 import GreyButton from './GreyButton';
 import { getSession, signOut } from 'next-auth/react';
 
-const pages = ['Organizations', 'Projects', 'Requirements', 'My tasks'];
+const pages = ['Organizations', 'Projects', 'Facilities', 'My tasks'];
 function TopMenu() {
   const [name, setName] = React.useState<string | null>(null);
+  const [isAdmin, setAdmin] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     const fetchSession = async () => {
       const session = await getSession();
       setName(session?.user?.name ?? null);
+      setAdmin(session?.user?.isAdmin ?? false);
     };
 
     fetchSession();
@@ -65,12 +67,17 @@ function TopMenu() {
           <Box>
             <Typography
               component={NextLink}
-              href={`/auth/user`}
+              href={`/auth/users`}
               sx={{ mr: 2, color: 'primary.main', textDecoration: 'none' }}
             >
               {!name ? 'Loading...' : (name ?? 'Guest')}
             </Typography>
           </Box>
+          {isAdmin && (
+            <GreyButton component={NextLink} href={`/auth/admin`}>
+              admin site
+            </GreyButton>
+          )}
           <GreyButton
             onClick={() =>
               signOut({

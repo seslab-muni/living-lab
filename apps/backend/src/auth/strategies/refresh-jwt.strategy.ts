@@ -32,7 +32,7 @@ export class RefreshJwtStrategy extends PassportStrategy(
       );
     }
     const newTokens = await this.authService.validateRefreshTokenValid(
-      payload.sub,
+      payload.sub.id,
       refreshToken,
     );
     if (!newTokens) {

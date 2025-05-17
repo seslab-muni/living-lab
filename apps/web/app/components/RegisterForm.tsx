@@ -8,6 +8,7 @@ import Button from '@mui/material/Button';
 import { useRouter } from 'next/navigation';
 import { BACKEND_URL } from '../lib/constants';
 import DarkTextField from './DarkTextField';
+import { Typography } from '@mui/material';
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -99,79 +100,69 @@ export default function RegisterForm() {
       autoComplete="off"
       justifyItems={'center'}
     >
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="firstName"
-          value={formData.firstName}
-          onChange={handleChange}
-          label="First name"
-          placeholder="Jan"
-        />
-      </div>
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="lastName"
-          value={formData.lastName}
-          onChange={handleChange}
-          label="Last name"
-          placeholder="Novák"
-        />
-      </div>
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          label="Email"
-          type="email"
-          placeholder="jan.novak@bvv.cz"
-        />
-      </div>
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          label="Password"
-          type="password"
-        />
-      </div>
-      <div>
-        <DarkTextField
-          required
-          fullWidth
-          name="passwordConfirm"
-          value={formData.passwordConfirm}
-          onChange={handleChange}
-          label="Password again"
-          type="password"
-        />
-      </div>
-      <div>
-        <FormControlLabel
-          control={
-            <Checkbox
-              name="agree"
-              checked={formData.agree}
-              onChange={handleChange}
-              sx={{ color: 'primary.main' }}
-            />
-          }
-          label="I agree with the Terms of Use."
-        />
-      </div>
-      {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
-      <div style={{ margin: 20 }}>
+      <DarkTextField
+        required
+        fullWidth
+        name="firstName"
+        value={formData.firstName}
+        onChange={handleChange}
+        label="First name"
+        placeholder="Jan"
+      />
+      <DarkTextField
+        required
+        fullWidth
+        name="lastName"
+        value={formData.lastName}
+        onChange={handleChange}
+        label="Last name"
+        placeholder="Novák"
+      />
+      <DarkTextField
+        required
+        fullWidth
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        label="Email"
+        type="email"
+        placeholder="jan.novak@bvv.cz"
+      />
+      <DarkTextField
+        required
+        fullWidth
+        name="password"
+        value={formData.password}
+        onChange={handleChange}
+        label="Password"
+        type="password"
+      />
+      <DarkTextField
+        required
+        fullWidth
+        name="passwordConfirm"
+        value={formData.passwordConfirm}
+        onChange={handleChange}
+        label="Password again"
+        type="password"
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            name="agree"
+            checked={formData.agree}
+            onChange={handleChange}
+            sx={{ color: 'primary.main' }}
+          />
+        }
+        label="I agree with the Terms of Use."
+      />
+      {error && (
+        <Typography style={{ color: 'red', margin: 1.8 }}>{error}</Typography>
+      )}
+      <Box style={{ margin: 20 }}>
         <Button type="submit">Register</Button>
-      </div>
+      </Box>
     </Box>
   );
 }

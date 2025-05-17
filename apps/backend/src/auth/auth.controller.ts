@@ -21,6 +21,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { EmailDto } from './dto/email.dto';
 import { TokenDto } from './dto/verification-token.dto';
+import { RequestUser } from 'src/common/types/request-user';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -56,7 +57,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Email existence checked' })
   async checkEmail(@Body() body: EmailDto) {
     const id = await this.authService.checkInactiveEmail(body.email);
-    return { message: 'The request was successfully processed', id: id };
+    return { message: 'The request was successfully processed', id };
   }
 
   @Public()
@@ -81,9 +82,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Login a user' })
   @ApiResponse({ status: 200, description: 'User logged in' })
   async login(@Body() loginDto: LoginDto, @Req() req: express.Request) {
-    const user = await this.authService.login(
-      req.user as { id: string; name: string },
-    );
+    const user = await this.authService.login(req.user as RequestUser);
     return user;
   }
 
@@ -100,9 +99,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout the current user' })
   @ApiResponse({ status: 200, description: 'User logged out' })
   async logout(@Req() req: express.Request) {
-    await this.authService.invalidateRefreshToken(
-      (req.user as { id: string; name: string }).id,
-    );
+    await this.authService.invalidateRefreshToken((req.user as RequestUser).id);
     return { message: 'The request was successfully processed' };
   }
 }

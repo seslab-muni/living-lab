@@ -4,6 +4,7 @@ import React from 'react';
 import { BACKEND_URL } from '../../../lib/constants';
 import { Box, Button, TextField, Typography } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
+import FeedbackMessage from '../../../components/FeedbackMessage';
 
 export default function EditUser() {
   const [formData, setFormData] = React.useState({
@@ -28,7 +29,7 @@ export default function EditUser() {
 
     try {
       console.log(formData);
-      const response = await authFetch(BACKEND_URL + '/user/update', {
+      const response = await authFetch(BACKEND_URL + '/users/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +65,7 @@ export default function EditUser() {
       p={{ sx: 4, md: 6 }}
     >
       <Box width="60%">
-        <Typography variant="h3" textAlign="left">
+        <Typography variant="h2" textAlign="left">
           Change your name for this platform
         </Typography>
       </Box>
@@ -78,29 +79,26 @@ export default function EditUser() {
         alignContent="end"
       >
         <Box width="40%" display="flex" flexDirection="column" gap={3}>
-          <div>
-            <TextField
-              fullWidth
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              label="First name"
-            />
-          </div>
-          <div>
-            <TextField
-              fullWidth
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              label="Last Name"
-            />
-          </div>
+          <TextField
+            fullWidth
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleChange}
+            label="First name"
+          />
+          <TextField
+            fullWidth
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleChange}
+            label="Last Name"
+          />
         </Box>
         <Box display="flex" alignItems="flex-end">
-          {error && <div style={{ color: 'red', margin: 1.8 }}>{error}</div>}
-          {ok && <div style={{ color: 'gray', margin: 1.8 }}>{ok}</div>}
-          <Button type="submit">change</Button>
+          <FeedbackMessage error={error} ok={ok} />
+          <Button type="submit" sx={{ ml: 2 }}>
+            change
+          </Button>
         </Box>
       </Box>
     </Box>

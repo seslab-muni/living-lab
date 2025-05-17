@@ -1,13 +1,20 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import databaseDevConfig from './configuration/database-dev.config';
-import { WelcomeController } from './welcome';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { OrganizationModule } from './organization/organization.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { TenantMiddleware } from './tennant.middleware';
+import { DomainModule } from './domain-role/domain.module';
+import { FacilityModule } from './facility/facility.module';
 
 @Module({
   imports: [
@@ -16,8 +23,11 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     UserModule,
     AuthModule,
     OrganizationModule,
+    DomainModule,
+    FacilityModule,
   ],
-  controllers: [WelcomeController],
+  controllers: [],
+
   providers: [
     {
       provide: APP_GUARD,
@@ -25,4 +35,19 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TenantMiddleware)
+      .forRoutes(
+        { path: 'domain/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'domain/:domainId', method: RequestMethod.ALL },
+        { path: 'facilities/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'facilities/:domainId', method: RequestMethod.ALL },
+        { path: 'organizations/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'organizations/:domainId', method: RequestMethod.ALL },
+        { path: 'projects/:domainId/*path', method: RequestMethod.ALL },
+        { path: 'projects/:domainId', method: RequestMethod.ALL },
+      );
+  }
+}

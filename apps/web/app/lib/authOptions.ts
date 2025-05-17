@@ -4,6 +4,7 @@ import { BACKEND_URL } from './constants';
 import { refreshAccessToken } from './auth';
 import { JWT } from 'next-auth/jwt';
 import { jwtDecode } from 'jwt-decode';
+import { Roles } from '../../types/next-auth';
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
@@ -36,7 +37,12 @@ export const authOptions: NextAuthOptions = {
         const data = (await res.json()) as {
           accessToken: string;
           refreshToken: string;
-          user: { id: string; name: string };
+          user: {
+            id: string;
+            name: string;
+            isAdmin: boolean;
+            roles: { domainId: string; role: Roles }[];
+          };
         };
 
         const { exp } = jwtDecode<{ exp: number }>(data.accessToken);
@@ -46,6 +52,8 @@ export const authOptions: NextAuthOptions = {
           user: {
             id: data.user.id,
             name: data.user.name,
+            isAdmin: data.user.isAdmin,
+            roles: data.user.roles,
           },
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
@@ -58,7 +66,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }): Promise<JWT> {
       if (user) {
-        token.user = user.user;
+        token.user = {
+          ...user.user,
+          roles: user.user.roles,
+        };
         token.sub = user.user.id;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
@@ -75,6 +86,8 @@ export const authOptions: NextAuthOptions = {
         ...t.user,
         id: t.user?.id,
         name: t.user?.name,
+        isAdmin: t.user?.isAdmin,
+        roles: t.user?.roles,
       };
       session.accessToken = t.accessToken;
       session.refreshToken = t.refreshToken;

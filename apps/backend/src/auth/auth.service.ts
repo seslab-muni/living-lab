@@ -16,6 +16,7 @@ import { randomUUID } from 'crypto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import refreshConfig from 'src/configuration/refresh.config';
 import * as config from '@nestjs/config';
+import { RequestUser } from 'src/common/types/request-user';
 
 @Injectable()
 export class AuthService {
@@ -69,25 +70,27 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Email or password are incorrect!');
     }
-    return { id: user.id, name: user.firstName };
+    const roles = await this.userService.getUserRoles(user.id);
+    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles };
   }
 
-  async login(user: { id: string; name: string }) {
-    const { accessToken, refreshToken } = await this.generateTokens(user.id);
+  async login(user: RequestUser) {
+    const { accessToken, refreshToken } = await this.generateTokens(user);
     const userData = await this.userService.findById(user.id, true);
     if (!userData) {
       throw new NotFoundException('No user found!');
     }
     await this.userService.updateRefreshToken(user.id, refreshToken);
+    const roles = await this.userService.getUserRoles(user.id);
+    console.log(roles);
     return {
-      user: { id: user.id, name: user.name },
+      user: { id: user.id, name: user.name, isAdmin: user.isAdmin, roles },
       accessToken,
       refreshToken,
     };
   }
-
-  async generateTokens(id: string) {
-    const payload: AuthPayload = { sub: id };
+  async generateTokens(user: RequestUser) {
+    const payload: AuthPayload = { sub: { ...user } };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, {
@@ -104,7 +107,8 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('No user found!');
     }
-    return { id: user.id };
+    const roles = await this.userService.getUserRoles(user.id);
+    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles };
   }
 
   async invalidateRefreshToken(id: string) {
@@ -130,7 +134,7 @@ export class AuthService {
       text: `Here is your verification code: ${verificationCode} you can use it to change your password.`,
     };
     await this.emailService.sendEmail(email);
-    return { id: user.id };
+    return user.id;
   }
   async changePassword(id: string, body: ChangePasswordDto) {
     const user = await this.userService.findById(id, true);
@@ -149,10 +153,16 @@ export class AuthService {
     if (!(await bcrypt.compare(token, user.password))) {
       throw new UnauthorizedException('Refresh token is invalid!');
     }
-    const { accessToken, refreshToken } = await this.generateTokens(user.id);
+    const roles = await this.userService.getUserRoles(userId);
+    const { accessToken, refreshToken } = await this.generateTokens({
+      id: user.id,
+      name: user.firstName,
+      isAdmin: user.isAdmin,
+      roles,
+    });
     await this.userService.updateRefreshToken(user.id, refreshToken);
     return {
-      user: { id: user.id, name: user.firstName },
+      user: { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles },
       accessToken,
       refreshToken,
     };
