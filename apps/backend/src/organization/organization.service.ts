@@ -13,6 +13,7 @@ import type { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { JoinRequest, JoinRequestStatus } from './entities/join-request.entity';
 import { User } from 'src/user/entities/user.entity';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
+import { JoinRequestDto } from './dto/join-request.dto';
 
 @Injectable()
 export class OrganizationService {
@@ -234,6 +235,91 @@ export class OrganizationService {
       status: JoinRequestStatus.PENDING,
     });
     return this.jrRepo.save(jr);
+  }
+
+  async findPendingRequestsForOrg(
+    ownerId: string,
+    orgId: number,
+  ): Promise<JoinRequestDto[]> {
+    const org = await this.orgRepo.findOne({
+      where: { id: orgId },
+      relations: ['owner'],
+    });
+    if (!org) throw new NotFoundException(`Org ${orgId} not found`);
+    if (org.ownerId !== ownerId) {
+      throw new ForbiddenException();
+    }
+    const reqs = await this.jrRepo.find({
+      where: {
+        organization: { id: orgId },
+        status: JoinRequestStatus.PENDING,
+      },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+    return reqs.map((r) => ({
+      id: r.id,
+      message: r.message,
+      status: r.status,
+      createdAt: r.createdAt,
+      user: {
+        id: r.user.id,
+        firstName: r.user.firstName,
+        lastName: r.user.lastName,
+      },
+    }));
+  }
+  async handleJoinRequest(
+    ownerId: string,
+    requestId: number,
+    approve: boolean,
+  ): Promise<void> {
+    const jr = await this.jrRepo.findOneOrFail({
+      where: { id: requestId },
+      relations: ['organization', 'user'],
+    });
+    if (jr.organization.ownerId !== ownerId) {
+      throw new ForbiddenException();
+    }
+    if (jr.status !== JoinRequestStatus.PENDING) {
+      throw new BadRequestException('Already processed');
+    }
+    jr.status = approve
+      ? JoinRequestStatus.APPROVED
+      : JoinRequestStatus.REJECTED;
+    await this.jrRepo.save(jr);
+
+    if (approve) {
+      await this.orgRepo
+        .createQueryBuilder()
+        .relation(Organization, 'members')
+        .of(jr.organization.id)
+        .add(jr.user.id);
+    }
+  }
+
+  async findJoinRequestByIdForOwner(
+    ownerId: string,
+    requestId: number,
+  ): Promise<JoinRequestDto> {
+    const jr = await this.jrRepo.findOneOrFail({
+      where: { id: requestId },
+      relations: ['user', 'organization'],
+    });
+    if (jr.organization.ownerId !== ownerId) {
+      throw new ForbiddenException('Only owner may review requests');
+    }
+    return {
+      id: jr.id,
+      message: jr.message,
+      status: jr.status,
+      createdAt: jr.createdAt,
+      user: {
+        id: jr.user.id,
+        firstName: jr.user.firstName,
+        lastName: jr.user.lastName,
+      },
+    };
   }
 
   private mapToDto(

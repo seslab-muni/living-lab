@@ -13,6 +13,7 @@ import {
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
+import type { JoinRequestDto } from '../types';
 import NextLink from 'next/link';
 
 export default function OrganizationDetailsPage() {
@@ -24,6 +25,7 @@ export default function OrganizationDetailsPage() {
     const [isMember, setIsMember] = useState(false);
     const [memberCount, setMemberCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [requests, setRequests] = useState<JoinRequestDto[] | null>(null);
 
     useEffect(() => {
       if (status !== 'authenticated') return;
@@ -40,6 +42,16 @@ export default function OrganizationDetailsPage() {
         })
         .catch(err => setError(err.message));
     }, [status, session, slug]);
+
+    useEffect(() => {
+        if (!org?.isOwner) return;
+        authFetch(
+            `${BACKEND_URL}/organizations/${org.slug}/join-requests`
+        )
+            .then((res) => res.json())
+            .then(setRequests)
+            .catch(() => setRequests([]));
+    }, [org]);
 
   if (status === 'loading' || org === null) {
       return (
@@ -121,6 +133,44 @@ export default function OrganizationDetailsPage() {
                           ))}
                         </Box>
                       </Box>
+                    )}
+
+                    {org.isOwner && (
+                        <Box mb={4}>
+                            <Typography variant="h6" gutterBottom>
+                                Pending Join Requests
+                            </Typography>
+
+                            {requests === null ? (
+                                <CircularProgress size={24} />
+                            ) : requests.length === 0 ? (
+                                <Typography>No new requests.</Typography>
+                            ) : (
+                                <Box
+                                    component="ul"
+                                    sx={{ m: 0, p: 0, listStyleType: 'disc' }}
+                                >
+                                    {requests.map((r) => (
+                                        <Box
+                                            component="li"
+                                            key={r.id}
+                                            sx={{ display: 'flex', alignItems: 'center', mb: 1 }}
+                                        >
+                                            <Typography sx={{ flexGrow: 1 }} variant="body2">
+                                                {r.user.firstName} {r.user.lastName}
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                component={NextLink}
+                                                href={`/auth/organizations/${org.slug}/requests/${r.id}`}
+                                            >
+                                                Review
+                                            </Button>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                        </Box>
                     )}
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
