@@ -17,6 +17,7 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
+import { JoinRequestDto } from './dto/join-request.dto';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -31,6 +32,17 @@ export class OrganizationController {
   @Get()
   findAll(@GetUser() user: JwtPayload) {
     return this.orgService.findAllForUser(user.id);
+  }
+
+  @Get(':idOrSlug/join-requests')
+  async listRequests(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ) {
+    const orgId = isNaN(+idOrSlug)
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.findPendingRequestsForOrg(user.id, orgId);
   }
 
   @Post(':idOrSlug/join')
@@ -119,6 +131,36 @@ export class OrganizationController {
       : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
 
     return this.orgService.update(user.id, id, dto);
+  }
+
+  @Get(':idOrSlug/join-requests/:reqId')
+  async getRequest(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('reqId') reqId: string,
+  ): Promise<JoinRequestDto> {
+    const requestId = Number(reqId);
+    return this.orgService.findJoinRequestByIdForOwner(user.id, requestId);
+  }
+
+  @Patch(':idOrSlug/join-requests/:reqId/approve')
+  async approve(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('reqId') reqId: string,
+  ) {
+    const requestId = Number(reqId);
+    return this.orgService.handleJoinRequest(user.id, requestId, true);
+  }
+
+  @Patch(':idOrSlug/join-requests/:reqId/reject')
+  async reject(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('reqId') reqId: string,
+  ) {
+    const requestId = Number(reqId);
+    return this.orgService.handleJoinRequest(user.id, requestId, false);
   }
 
   @Delete(':idOrSlug')
