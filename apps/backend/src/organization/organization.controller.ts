@@ -16,6 +16,7 @@ import { OrganizationService } from './organization.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
+import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -90,6 +91,19 @@ export class OrganizationController {
     }
     // otherwise parse as numeric ID
     return this.orgService.findOneForUser(user.id, +idOrSlug);
+  }
+
+  @Post(':idOrSlug/join-requests')
+  async joinRequest(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() dto: CreateJoinRequestDto,
+  ) {
+    const id = isNaN(Number(idOrSlug))
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+
+    return this.orgService.createJoinRequest(user.id, id, dto);
   }
 
   @Patch(':idOrSlug')

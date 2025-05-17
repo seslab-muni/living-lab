@@ -10,8 +10,8 @@ export class OrganizationDto {
   lastEdit: Date;
   memberCount: number;
   isMember: boolean;
-
-  // ← new: full member list
+  hasPendingRequest: boolean;
+  isOwner: boolean;
   members: Array<{
     id: string;
     firstName: string;

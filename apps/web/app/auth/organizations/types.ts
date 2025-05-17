@@ -10,7 +10,8 @@ export interface OrganizationDto {
   lastEdit: string;
   memberCount: number;
   isMember: boolean;
-
+  hasPendingRequest: boolean;
+  isOwner: boolean;
   members: Array<{
     id: string;
     firstName: string;

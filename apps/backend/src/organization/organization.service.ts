@@ -10,13 +10,19 @@ import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
 import type { UpdateOrganizationDto } from './dto/update-organization.dto';
+import { JoinRequest, JoinRequestStatus } from './entities/join-request.entity';
 import { User } from 'src/user/entities/user.entity';
+import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 
 @Injectable()
 export class OrganizationService {
   constructor(
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
+    @InjectRepository(JoinRequest)
+    private jrRepo: Repository<JoinRequest>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
   async create(
     userId: string,
@@ -88,7 +94,17 @@ export class OrganizationService {
       relations: ['members', 'owner'],
     });
     if (!org) throw new NotFoundException(`Organization "${slug}" not found`);
-    return this.mapToDto(org, org.members, userId);
+    const pendingCount = await this.jrRepo.count({
+      where: {
+        user: { id: userId },
+        organization: { id: org.id },
+        status: JoinRequestStatus.PENDING,
+      },
+    });
+    const dto = this.mapToDto(org, org.members, userId);
+    dto.hasPendingRequest = pendingCount > 0;
+    dto.isOwner = org.ownerId === userId;
+    return dto;
   }
 
   async findOneForUser(
@@ -100,7 +116,17 @@ export class OrganizationService {
       relations: ['members', 'owner'],
     });
     if (!org) throw new NotFoundException(`Organization ${orgId} not found`);
-    return this.mapToDto(org, org.members, userId);
+    const pendingCount = await this.jrRepo.count({
+      where: {
+        user: { id: userId },
+        organization: { id: orgId },
+        status: JoinRequestStatus.PENDING,
+      },
+    });
+    const dto = this.mapToDto(org, org.members, userId);
+    dto.hasPendingRequest = pendingCount > 0;
+    dto.isOwner = org.ownerId === userId;
+    return dto;
   }
 
   async findDuplicates(
@@ -186,6 +212,30 @@ export class OrganizationService {
       .remove({ id: memberId } as any);
   }
 
+  async createJoinRequest(
+    userId: string,
+    orgId: number,
+    dto: CreateJoinRequestDto,
+  ): Promise<JoinRequest> {
+    const org = await this.orgRepo.findOne({ where: { id: orgId } });
+    if (!org) throw new NotFoundException(`Org ${orgId} not found`);
+
+    // owner cannot request to join their own org
+    if (org.ownerId === userId) {
+      throw new ForbiddenException(`Owner cannot request to join`);
+    }
+
+    const user = this.userRepo.create({ id: userId });
+    const organization = this.orgRepo.create({ id: orgId });
+    const jr = this.jrRepo.create({
+      message: dto.message,
+      user,
+      organization,
+      status: JoinRequestStatus.PENDING,
+    });
+    return this.jrRepo.save(jr);
+  }
+
   private mapToDto(
     org: Organization,
     members: User[],
@@ -205,6 +255,8 @@ export class OrganizationService {
       isMember: currentUserId
         ? members.some((u) => u.id === currentUserId)
         : false,
+      hasPendingRequest: false,
+      isOwner: false,
       members: members.map((u) => ({
         id: u.id,
         firstName: u.firstName,
