@@ -117,7 +117,6 @@ export default function MembersMenu({ domainId, search }: MembersMenuProps) {
                           `${BACKEND_URL}/domain/${domainId}/users/${user.id}/delete`,
                           { method: 'PUT' },
                         );
-                        window.location.reload();
                       }}
                     >
                       <DeleteRoundedIcon color="error" />

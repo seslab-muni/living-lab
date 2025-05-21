@@ -15,11 +15,13 @@ import { useEffect, useState } from 'react';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import { FeedbackMessage, MembersMenu } from '../../../components';
+import { isAuthorized } from '../../../lib/isAuthorized';
+import { Roles } from '../../../../types/next-auth';
 
 export default function FacilityPage() {
   const { id } = useParams() as { id?: string };
   const [userId, setUserID] = useState('');
-  const [role, setRole] = useState('');
+  const [roles, setRoles] = useState<{ domainId: string; role: Roles }[]>([]);
   const [data, setData] = useState<{
     facility: { id: string; name: string };
   } | null>();
@@ -28,10 +30,7 @@ export default function FacilityPage() {
   useEffect(() => {
     const fetchSession = async () => {
       const session = await getSession();
-      const role =
-        session?.user.roles.find((r: { domainId: string }) => r.domainId === id)
-          ?.role ?? '';
-      setRole(role);
+      setRoles(session?.user.roles ?? []);
       setUserID(session?.user.id ?? '');
     };
     fetchSession();
@@ -46,7 +45,6 @@ export default function FacilityPage() {
         return res.json();
       })
       .then((json: { facility: { id: string; name: string } }) => {
-        console.log(data);
         setData(json);
       })
       .catch((err: Error) => {
@@ -79,7 +77,7 @@ export default function FacilityPage() {
               {data.facility.name}
             </Typography>
           )}
-          {['Owner', 'Manager'].includes(role) && (
+          {isAuthorized('Manager', id ?? '', roles) && (
             <>
               {' '}
               <Divider /> <MembersMenu domainId={id!} search={''} />{' '}
@@ -87,7 +85,7 @@ export default function FacilityPage() {
           )}
         </CardContent>
         <CardActions>
-          {['Owner', 'Manager', 'Moderator', 'Viewer'].includes(role) && (
+          {isAuthorized('Viewer', id ?? '', roles) && (
             <Button
               size="small"
               onClick={() =>
@@ -97,7 +95,7 @@ export default function FacilityPage() {
               Leave Facility
             </Button>
           )}
-          {role === '' && (
+          {!isAuthorized('Viewer', id ?? '', roles) && (
             <Button
               size="small"
               onClick={() =>

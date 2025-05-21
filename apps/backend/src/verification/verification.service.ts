@@ -48,7 +48,6 @@ export class VerificationService {
         ),
       },
     });
-    console.log(token);
     if (!token) {
       throw new UnprocessableEntityException(
         'No verification token found for this user.',

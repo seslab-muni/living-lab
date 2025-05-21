@@ -187,7 +187,9 @@ export default function AdminUsersPage() {
                     variant="outlined"
                     color={user.isAdmin ? 'error' : 'secondary'}
                     size="small"
-                    onClick={() => onToggleAdmin(user.id)}
+                    onClick={() => {
+                      onToggleAdmin(user.id);
+                    }}
                   >
                     {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
                   </Button>
@@ -195,7 +197,9 @@ export default function AdminUsersPage() {
                     variant="outlined"
                     color="error"
                     size="small"
-                    onClick={() => onDelete(user.id)}
+                    onClick={() => {
+                      onDelete(user.id);
+                    }}
                   >
                     Delete user
                   </Button>

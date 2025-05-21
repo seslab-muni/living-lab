@@ -50,7 +50,6 @@ export default function LoginForm() {
         setError('Wrong sign in credentials');
       }
     } else {
-      console.log('Success:', res);
       router.push(FRONTEND_URL + '/auth');
     }
   };

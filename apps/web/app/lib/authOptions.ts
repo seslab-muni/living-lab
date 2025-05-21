@@ -33,7 +33,6 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!res.ok) return null;
-
         const data = (await res.json()) as {
           accessToken: string;
           refreshToken: string;
@@ -57,7 +56,7 @@ export const authOptions: NextAuthOptions = {
           },
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
-          expiresAt: Date.now() + exp * 1000,
+          expiresAt: exp * 1000,
         };
       },
     }),
@@ -75,10 +74,11 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = user.refreshToken;
         token.expiresAt = user.expiresAt;
       }
+      if (Date.now() < (token.expiresAt ?? 0)) {
+        return token;
+      }
 
-      if (Date.now() < (token.expiresAt ?? 0)) return token;
-
-      return await refreshAccessToken(token);
+      return refreshAccessToken(token);
     },
     async session({ session, token }) {
       const t = token;

@@ -37,7 +37,6 @@ export default function EmailInput() {
       });
 
       const data = await response.json();
-      console.log('Response:', data);
 
       if (response.ok) {
         router.push('/password/change-password/' + data.id);
@@ -46,7 +45,7 @@ export default function EmailInput() {
         setError(data.message || 'Registration failed.');
       }
     } catch (err) {
-      console.log('Error:', err);
+      console.error('Error:', err);
       setError('Wrong code.');
     }
   };

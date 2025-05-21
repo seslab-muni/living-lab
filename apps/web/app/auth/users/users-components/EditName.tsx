@@ -28,7 +28,6 @@ export default function EditUser() {
     setError('');
 
     try {
-      console.log(formData);
       const response = await authFetch(BACKEND_URL + '/users/update', {
         method: 'PUT',
         headers: {

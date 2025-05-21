@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from 'src/common/decorators/roles.decorator';
 import { Roles } from 'src/common/types/roles';
 import { DomainService } from '../domain.service';
+import { UserService } from 'src/user/user.service';
 
 interface RequestWithUser extends Request {
   user: {
@@ -17,6 +18,7 @@ export class RolesGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private domainService: DomainService,
+    private userService: UserService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -33,9 +35,6 @@ export class RolesGuard implements CanActivate {
     if (!user || !user.id || !domainId) {
       return false;
     }
-    if (roles.includes('Admin') && user.isAdmin) {
-      return true;
-    }
     return this.validateAccess(user.id, domainId, roles);
   }
 
@@ -44,8 +43,14 @@ export class RolesGuard implements CanActivate {
     domain_id: string,
     roles: Roles[],
   ): Promise<boolean> {
+    if (roles.includes('Admin')) {
+      const user = await this.userService.findById(user_id, true);
+      if (user?.isAdmin) {
+        return true;
+      }
+    }
+
     const user_role = await this.domainService.getRole(user_id, domain_id);
-    console.log(user_role);
     if (!user_role) {
       return false;
     }
