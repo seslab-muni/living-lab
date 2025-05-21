@@ -7,6 +7,7 @@ import {
   CardContent,
   CircularProgress,
   Divider,
+  Toolbar,
   Typography,
 } from '@mui/material';
 import { getSession } from 'next-auth/react';
@@ -67,8 +68,9 @@ export default function FacilityPage() {
       }}
       mx="auto"
     >
+      <Toolbar />
       <FeedbackMessage error={error} />
-      <Card>
+      <Card sx={{ minWidth: 500 }}>
         <CardContent>
           {!data ? (
             <CircularProgress />

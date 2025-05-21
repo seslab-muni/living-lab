@@ -22,55 +22,8 @@ type Facility = {
   name: string;
 };
 
-function FacilityAccordion({ facility }: { facility: Facility }) {
-  return (
-    <Accordion>
-      <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        aria-controls={`panel-${facility.id}-content`}
-        id={`panel-${facility.id}-header`}
-      >
-        <Typography>{facility.name}</Typography>
-      </AccordionSummary>
-
-      <AccordionDetails>
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="flex-start"
-          sx={{ mb: 1 }}
-        >
-          <Button
-            variant="outlined"
-            color="error"
-            size="small"
-            sx={{ mr: 2 }}
-            onClick={() => {
-              authFetch(`${BACKEND_URL}/facilities/${facility.id}/delete`, {
-                method: 'PUT',
-              });
-              window.location.reload();
-            }}
-          >
-            Delete facility
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            size="small"
-            component={NextLink}
-            href={`/auth/admin/facilities/${facility.id}`}
-          >
-            Manage members
-          </Button>
-        </Box>
-      </AccordionDetails>
-    </Accordion>
-  );
-}
-
 export default function AdminFacilitiesPage() {
-  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [facilities, setFacilities] = useState<Facility[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState({ filter: '' });
 
@@ -134,11 +87,61 @@ export default function AdminFacilitiesPage() {
 
       <Divider />
 
-      {facilities
-        .filter((f) => !isFiltered(f))
-        .map((facility) => (
-          <FacilityAccordion key={facility.id} facility={facility} />
-        ))}
+      {!facilities ? (
+        <Typography>Loading facilities&hellip;</Typography>
+      ) : (
+        facilities
+          .filter((f) => !isFiltered(f))
+          .map((facility) => (
+            <Accordion key={facility.id}>
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                aria-controls={`panel-${facility.id}-content`}
+                id={`panel-${facility.id}-header`}
+              >
+                <Typography>{facility.name}</Typography>
+              </AccordionSummary>
+
+              <AccordionDetails>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="flex-start"
+                  sx={{ mb: 1 }}
+                >
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    sx={{ mr: 2 }}
+                    onClick={() => {
+                      setFacilities(
+                        facilities.filter(({ id }) => id !== facility.id),
+                      );
+                      authFetch(
+                        `${BACKEND_URL}/facilities/${facility.id}/delete`,
+                        {
+                          method: 'PUT',
+                        },
+                      );
+                    }}
+                  >
+                    Delete facility
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                    component={NextLink}
+                    href={`/auth/admin/facilities/${facility.id}`}
+                  >
+                    Manage members
+                  </Button>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          ))
+      )}
     </Box>
   );
 }

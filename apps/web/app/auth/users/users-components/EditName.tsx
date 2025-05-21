@@ -65,7 +65,7 @@ export default function EditUser() {
     >
       <Box width="60%">
         <Typography variant="h2" textAlign="left">
-          Change your name for this platform
+          Edit your name
         </Typography>
       </Box>
       <Box

@@ -113,6 +113,7 @@ export default function MembersMenu({ domainId, search }: MembersMenuProps) {
                     <IconButton
                       size="small"
                       onClick={() => {
+                        setUsers(users.filter(({ id }) => id !== user.id));
                         authFetch(
                           `${BACKEND_URL}/domain/${domainId}/users/${user.id}/delete`,
                           { method: 'PUT' },

@@ -13,8 +13,8 @@ export default async function AuthHomePage() {
           alignItems: 'center',
         }}
       >
-        <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-          TBD Homepage
+        <Typography variant="h2" component="h1" sx={{ mb: 2 }}>
+          Homepage
         </Typography>
       </Box>
     </Container>
