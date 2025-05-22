@@ -28,7 +28,7 @@ type User = {
 };
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState({
     filter: '',
@@ -61,6 +61,15 @@ export default function AdminUsersPage() {
   };
 
   function onToggleAdmin(id: number): void {
+    setUsers(
+      (users ?? []).map((user) => {
+        if (user.id != id) {
+          return user;
+        } else {
+          return { ...user, isAdmin: !user.isAdmin };
+        }
+      }),
+    );
     authFetch(BACKEND_URL + '/users/edit-admin/' + id, {
       method: 'PUT',
       headers: {
@@ -78,8 +87,9 @@ export default function AdminUsersPage() {
       .finally(() => {});
   }
 
-  function onDelete(id: number): void {
-    authFetch(BACKEND_URL + '/users/delete/' + id, {
+  function onDelete(userId: number): void {
+    setUsers((users ?? []).filter(({ id }) => id !== userId));
+    authFetch(BACKEND_URL + '/users/delete/' + userId, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -94,7 +104,6 @@ export default function AdminUsersPage() {
         setError(err.message);
       })
       .finally(() => {});
-    window.location.reload();
   }
 
   function isUserFiltered(user: User) {
@@ -148,61 +157,69 @@ export default function AdminUsersPage() {
         />
       </Box>
       <Divider />
-      {users.map(
-        (user) =>
-          !isUserFiltered(user) && (
-            <Accordion key={user.id}>
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                aria-controls={`panel-${user.id}-content`}
-                id={`panel-${user.id}-header`}
-              >
-                <Typography component="span">
-                  {user.firstName} {user.lastName}
-                  {user.isAdmin && (
-                    <Typography
-                      component="span"
-                      sx={{
-                        ml: 1,
-                        color: 'secondary.main',
-                        fontWeight: 'bold',
+      {!users ? (
+        <Typography>Loading users&hellip;</Typography>
+      ) : (
+        users.map(
+          (user) =>
+            !isUserFiltered(user) && (
+              <Accordion key={user.id}>
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  aria-controls={`panel-${user.id}-content`}
+                  id={`panel-${user.id}-header`}
+                >
+                  <Typography component="span">
+                    {user.firstName} {user.lastName}
+                    {user.isAdmin && (
+                      <Typography
+                        component="span"
+                        sx={{
+                          ml: 1,
+                          color: 'secondary.main',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        (Admin)
+                      </Typography>
+                    )}
+                  </Typography>
+                </AccordionSummary>
+
+                <AccordionDetails>
+                  <Box
+                    display="flex"
+                    flexDirection="row"
+                    gap="2"
+                    justifyContent="left"
+                  >
+                    <Typography sx={{ mr: 4 }}>{user.email}</Typography>
+                    <Button
+                      sx={{ mr: 4 }}
+                      variant="outlined"
+                      color={user.isAdmin ? 'error' : 'secondary'}
+                      size="small"
+                      onClick={() => {
+                        onToggleAdmin(user.id);
                       }}
                     >
-                      (Admin)
-                    </Typography>
-                  )}
-                </Typography>
-              </AccordionSummary>
-
-              <AccordionDetails>
-                <Box
-                  display="flex"
-                  flexDirection="row"
-                  gap="2"
-                  justifyContent="left"
-                >
-                  <Typography sx={{ mr: 4 }}>{user.email}</Typography>
-                  <Button
-                    sx={{ mr: 4 }}
-                    variant="outlined"
-                    color={user.isAdmin ? 'error' : 'secondary'}
-                    size="small"
-                    onClick={() => onToggleAdmin(user.id)}
-                  >
-                    {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    onClick={() => onDelete(user.id)}
-                  >
-                    Delete user
-                  </Button>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          ),
+                      {user.isAdmin ? 'Revoke Admin' : 'Make Admin'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => {
+                        onDelete(user.id);
+                      }}
+                    >
+                      Delete user
+                    </Button>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            ),
+        )
       )}
     </Box>
   );

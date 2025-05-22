@@ -1,3 +1,4 @@
+'use client';
 import * as React from 'react';
 import { Box } from '@mui/material';
 
@@ -8,6 +9,13 @@ export default function CenterCardLayout(props: { children: React.ReactNode }) {
         width: '100%',
         minHeight: '100vh',
         bgcolor: 'primary.main',
+        background: (theme) =>
+          `linear-gradient(
+         to bottom,
+         ${theme.palette.primary.main} 0%,
+         ${theme.palette.primary.main} 30%,
+         ${theme.palette.grey[900]} 100%
+       )`,
         py: 6,
       }}
     >

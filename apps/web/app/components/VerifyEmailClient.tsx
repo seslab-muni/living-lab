@@ -43,7 +43,7 @@ export default function VerifyEmail({ id }: { id: string }) {
         setError(data.message || 'Registration failed.');
       }
     } catch (err) {
-      console.log('Error:', err);
+      console.error('Error:', err);
       setError('Wrong token.');
     }
   };

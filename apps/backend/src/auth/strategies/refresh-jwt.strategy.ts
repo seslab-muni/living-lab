@@ -21,11 +21,12 @@ export class RefreshJwtStrategy extends PassportStrategy(
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: cfg.secret!,
+      passReqToCallback: true,
     });
   }
 
   async validate(req: Request, payload: AuthPayload) {
-    const refreshToken = req.get('authorization')?.replace('Bearer', '').trim();
+    const refreshToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
     if (!refreshToken) {
       throw new UnauthorizedException(
         'Authorization header is missing or malformed',

@@ -82,7 +82,6 @@ export class AuthService {
     }
     await this.userService.updateRefreshToken(user.id, refreshToken);
     const roles = await this.userService.getUserRoles(user.id);
-    console.log(roles);
     return {
       user: { id: user.id, name: user.name, isAdmin: user.isAdmin, roles },
       accessToken,
@@ -147,10 +146,11 @@ export class AuthService {
 
   async validateRefreshTokenValid(userId: string, token: string) {
     const user = await this.userService.findById(userId, true);
-    if (!user) {
+    if (!user || !user.refreshToken) {
       throw new NotFoundException('No user found!');
     }
-    if (!(await bcrypt.compare(token, user.password))) {
+
+    if (!(await bcrypt.compare(token, user.refreshToken))) {
       throw new UnauthorizedException('Refresh token is invalid!');
     }
     const roles = await this.userService.getUserRoles(userId);

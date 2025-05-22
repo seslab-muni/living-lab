@@ -27,7 +27,6 @@ export default function FacilitiesPage() {
       })
       .then((json: { id: string; name: string }[]) => {
         setData(json);
-        console.log(json);
       })
       .catch((err: Error) => {
         setError(err.message);

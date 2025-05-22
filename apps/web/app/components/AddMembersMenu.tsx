@@ -41,6 +41,7 @@ export default function AddMembersMenu({ domainId, search }: MembersMenuProps) {
   }, [domainId]);
 
   const handleRoleChange = async (userId: number, newRole: string) => {
+    setNotMembers((notMembers ?? []).filter(({ id }) => id !== userId));
     try {
       const res = await authFetch(
         `${BACKEND_URL}/domain/${domainId}/users/${userId}/role`,
@@ -58,7 +59,6 @@ export default function AddMembersMenu({ domainId, search }: MembersMenuProps) {
         setError('An unknown error occurred');
       }
     }
-    window.location.reload();
   };
 
   function isNotFiltered(user: UserAssignment) {
@@ -74,7 +74,7 @@ export default function AddMembersMenu({ domainId, search }: MembersMenuProps) {
       <Divider />
       <FeedbackMessage error={error} />
       {!notMembers ? (
-        <></>
+        <Typography>Loading users&hellip;</Typography>
       ) : (
         notMembers.map(
           (user) =>

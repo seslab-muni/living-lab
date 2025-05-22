@@ -1,13 +1,13 @@
 import { JWT } from 'next-auth/jwt';
 import { jwtDecode } from 'jwt-decode';
 import { getSession } from 'next-auth/react';
-import { FRONTEND_URL } from './constants';
+import { BACKEND_URL, FRONTEND_URL } from './constants';
 import { Roles } from '../../types/next-auth';
 
 export const refreshAccessToken = async (jwt: JWT) => {
   try {
-    const res = await fetch('/api/refresh', {
-      method: 'POST',
+    const res = await fetch(BACKEND_URL + '/auth/refresh', {
+      method: 'GET',
       headers: {
         Authorization: `Bearer ${jwt.refreshToken}`,
         'Content-Type': 'application/json',
@@ -19,22 +19,22 @@ export const refreshAccessToken = async (jwt: JWT) => {
     }
 
     const data = (await res.json()) as {
-      id: string;
-      name: string;
-      isAdmin: boolean;
-      roles: { domainId: string; role: Roles }[];
+      user: {
+        id: string;
+        name: string;
+        isAdmin: boolean;
+        roles: { domainId: string; role: Roles }[];
+      };
       accessToken: string;
       refreshToken: string;
     };
-
     const { exp } = jwtDecode<{ exp: number }>(data.accessToken);
-
     return {
       user: {
-        id: data.id,
-        name: data.name,
-        isAdmin: data.isAdmin,
-        roles: data.roles,
+        id: data.user.id,
+        name: data.user.name,
+        isAdmin: data.user.isAdmin,
+        roles: data.user.roles,
       },
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
@@ -50,11 +50,11 @@ export async function authFetch(
   input: RequestInfo,
   init: RequestInit = {},
 ): Promise<Response> {
-  const session = await getSession();
-  const token = session?.accessToken;
+  await getSession();
+  const { accessToken } = (await getSession()) || {};
   const headers = new Headers(init.headers);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
   }
   const res = await fetch(input, { ...init, headers });
   if (!res.ok) {

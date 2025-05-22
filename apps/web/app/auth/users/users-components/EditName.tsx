@@ -28,7 +28,6 @@ export default function EditUser() {
     setError('');
 
     try {
-      console.log(formData);
       const response = await authFetch(BACKEND_URL + '/users/update', {
         method: 'PUT',
         headers: {
@@ -66,7 +65,7 @@ export default function EditUser() {
     >
       <Box width="60%">
         <Typography variant="h2" textAlign="left">
-          Change your name for this platform
+          Edit your name
         </Typography>
       </Box>
       <Box
