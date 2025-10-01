@@ -13,7 +13,7 @@ export default async function AuthLayout({
   return (
     <AuthLayoutClient session={session}>
       <TopMenu />
-      <Container maxWidth="xl">
+      <Container maxWidth={false}>
         <Toolbar />
         {children}
       </Container>
