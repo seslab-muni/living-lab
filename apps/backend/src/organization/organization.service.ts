@@ -35,7 +35,8 @@ export class OrganizationService {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/^-+|-+$/g, '');
     let slug = base;
     let counter = 1;
     while (await this.orgRepo.findOne({ where: { slug } })) {
