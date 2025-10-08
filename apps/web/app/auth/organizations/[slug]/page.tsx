@@ -46,18 +46,32 @@ export default function OrganizationDetailsPage() {
     useEffect(() => {
       if (status !== 'authenticated') return;
 
-      authFetch(`${BACKEND_URL}/organizations/${slug}`)
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json();
-        })
-        .then((data: OrganizationDto) => {
+      const loadOrganization = async () => {
+        try {
+          const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`);
+          if (!res.ok) {
+            if (res.status === 404) {
+              setError('Organization not found.');
+            } else {
+              setError(`Failed to load organization (HTTP ${res.status}).`);
+            }
+            setOrg(null);
+            return;
+          }
+
+          const data: OrganizationDto = await res.json();
           setOrg(data);
           setIsMember(data.isMember);
           setMemberCount(data.memberCount);
-        })
-        .catch(err => setError(err.message));
-    }, [status, session, slug]);
+        } catch (err: any) {
+          console.error(err);
+          setError('Unable to load organization.');
+          setOrg(null);
+        }
+      };
+
+      loadOrganization();
+    }, [status, slug]);
 
     useEffect(() => {
         if (!org?.isOwner) return;
@@ -69,7 +83,7 @@ export default function OrganizationDetailsPage() {
             .catch(() => setRequests([]));
     }, [org]);
 
-  if (status === 'loading' || org === null) {
+    if (status === 'loading') {
       return (
         <Box display="flex" justifyContent="center" mt={4}>
           <CircularProgress />
@@ -79,8 +93,24 @@ export default function OrganizationDetailsPage() {
 
     if (error) {
       return (
-        <Box textAlign="center" mt={4}>
-          <Typography color="error">Error: {error}</Typography>
+        <Box textAlign="center" mt={8}>
+          <Typography variant="h6" color="error" gutterBottom>
+            {error}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => router.push('/auth/organizations')}
+          >
+            Back to Organizations
+          </Button>
+        </Box>
+      );
+    }
+
+    if (org === null) {
+      return (
+        <Box display="flex" justifyContent="center" mt={4}>
+          <CircularProgress />
         </Box>
       );
     }
