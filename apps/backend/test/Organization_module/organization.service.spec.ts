@@ -4,22 +4,34 @@ import { OrganizationService } from '../../src/organization/organization.service
 import { Organization } from '../../src/organization/entities/organization.entity';
 import { JoinRequest } from '../../src/organization/entities/join-request.entity';
 import { User } from '../../src/user/entities/user.entity';
+import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
 
-// Mock repositories
+const mockQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  orWhere: jest.fn().mockReturnThis(),
+  leftJoinAndSelect: jest.fn().mockReturnThis(),
+  getMany: jest.fn(),
+};
+
 const mockOrgRepo = {
   findOne: jest.fn(),
   findOneOrFail: jest.fn(),
   create: jest.fn(),
   save: jest.fn(),
+  createQueryBuilder: jest.fn(() => mockQueryBuilder),
 };
 
 const mockJoinRequestRepo = {};
 const mockUserRepo = {};
 
-describe('OrganizationService - Slug Generation', () => {
+describe('OrganizationService - Slug Generation (based on companyName, QueryBuilder version)', () => {
   let service: OrganizationService;
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrganizationService,
@@ -35,118 +47,136 @@ describe('OrganizationService - Slug Generation', () => {
     service = module.get<OrganizationService>(OrganizationService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  afterEach(() => jest.clearAllMocks());
 
-  it('should generate slug "m-2" if "m" and "m-1" already exist', async () => {
-    mockOrgRepo.findOne
-      .mockResolvedValueOnce({ slug: 'm' }) // "m" exists
-      .mockResolvedValueOnce({ slug: 'm-1' }) // "m-1" exists
-      .mockResolvedValueOnce(null); // "m-2" free
-
-    mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 1,
-      slug: 'm-2',
-      name: 'M',
-      owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
-      members: [],
-    });
+  it('should return base slug when no duplicates exist', async () => {
+    mockQueryBuilder.getMany.mockResolvedValue([]);
 
     mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
+      (dto: Partial<Organization>): Organization => dto as Organization,
     );
     mockOrgRepo.save.mockResolvedValue({ id: 1 });
-
-    await service.create('user-1', {
-      name: 'M',
-      companyId: 1,
-      companyName: 'Company',
-    } as any);
-
-    expect(mockOrgRepo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: 'm-2' }),
-    );
-  });
-
-  it('should normalize and remove diacritics: "Česká Firma" → "ceska-firma"', async () => {
-    mockOrgRepo.findOne.mockResolvedValue(null);
-
     mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 2,
-      slug: 'ceska-firma',
-      name: 'Česká Firma',
+      id: 1,
+      slug: 'm',
+      name: 'irrelevant',
       owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
       members: [],
     });
 
+    await service.create('user-1', {
+      name: 'irrelevant',
+      companyId: 1,
+      companyName: 'M',
+    } as CreateOrganizationDto);
+
+    expect(mockOrgRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'm' }),
+    );
+  });
+
+  it('should append "-1" when one duplicate exists', async () => {
+    mockQueryBuilder.getMany.mockResolvedValue([{ slug: 'm' }]);
+
     mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
+      (dto: Partial<Organization>): Organization => dto as Organization,
     );
     mockOrgRepo.save.mockResolvedValue({ id: 2 });
+    mockOrgRepo.findOneOrFail.mockResolvedValue({
+      id: 2,
+      slug: 'm-1',
+      name: 'irrelevant',
+      owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
+      members: [],
+    });
 
     await service.create('user-1', {
-      name: 'Česká Firma',
+      name: 'irrelevant',
       companyId: 1,
-      companyName: 'Company',
-    } as any);
+      companyName: 'M',
+    } as CreateOrganizationDto);
+
+    expect(mockOrgRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'm-1' }),
+    );
+  });
+
+  it('should append next available number if gaps exist (m, m-1, m-6 → m-7)', async () => {
+    mockQueryBuilder.getMany.mockResolvedValue([
+      { slug: 'm' },
+      { slug: 'm-1' },
+      { slug: 'm-6' },
+    ]);
+
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 3 });
+    mockOrgRepo.findOneOrFail.mockResolvedValue({
+      id: 3,
+      slug: 'm-7',
+      name: 'irrelevant',
+      owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
+      members: [],
+    });
+
+    await service.create('user-1', {
+      name: 'irrelevant',
+      companyId: 1,
+      companyName: 'M',
+    } as CreateOrganizationDto);
+
+    expect(mockOrgRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'm-7' }),
+    );
+  });
+
+  it('should normalize and remove diacritics ("Česká Firma" → "ceska-firma")', async () => {
+    mockQueryBuilder.getMany.mockResolvedValue([]);
+
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 4 });
+    mockOrgRepo.findOneOrFail.mockResolvedValue({
+      id: 4,
+      slug: 'ceska-firma',
+      name: 'irrelevant',
+      owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
+      members: [],
+    });
+
+    await service.create('user-1', {
+      name: 'irrelevant',
+      companyId: 1,
+      companyName: 'Česká Firma',
+    } as CreateOrganizationDto);
 
     expect(mockOrgRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'ceska-firma' }),
     );
   });
 
-  it('should generate slug "m-2" if "m", "m-1" and "m-6" already exist (gap case)', async () => {
-    mockOrgRepo.findOne
-      .mockResolvedValueOnce({ slug: 'm' }) // "m" exists
-      .mockResolvedValueOnce({ slug: 'm-1' }) // "m-1" exists
-      .mockResolvedValueOnce(null); // "m-2" free
-
-    mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 3,
-      slug: 'm-2',
-      name: 'M',
-      owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
-      members: [],
-    });
-
-    mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
-    );
-    mockOrgRepo.save.mockResolvedValue({ id: 3 });
-
-    await service.create('user-1', {
-      name: 'M',
-      companyId: 1,
-      companyName: 'Company',
-    } as any);
-
-    expect(mockOrgRepo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: 'm-2' }),
-    );
-  });
-
   it('should trim and replace multiple spaces with a single dash', async () => {
-    mockOrgRepo.findOne.mockResolvedValue(null);
+    mockQueryBuilder.getMany.mockResolvedValue([]);
 
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 5 });
     mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 4,
+      id: 5,
       slug: 'my-org',
-      name: '  My   Org  ',
+      name: 'irrelevant',
       owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
       members: [],
     });
 
-    mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
-    );
-    mockOrgRepo.save.mockResolvedValue({ id: 4 });
-
     await service.create('user-1', {
-      name: '  My   Org  ',
+      name: 'irrelevant',
       companyId: 1,
-      companyName: 'Company',
-    } as any);
+      companyName: '  My   Org  ',
+    } as CreateOrganizationDto);
 
     expect(mockOrgRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'my-org' }),
@@ -154,26 +184,25 @@ describe('OrganizationService - Slug Generation', () => {
   });
 
   it('should strip special characters and leave only valid slug parts', async () => {
-    mockOrgRepo.findOne.mockResolvedValue(null);
+    mockQueryBuilder.getMany.mockResolvedValue([]);
 
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 6 });
     mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 5,
+      id: 6,
       slug: 'my-org',
-      name: 'My Org!!! @#$%^&*()',
+      name: 'irrelevant',
       owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
       members: [],
     });
 
-    mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
-    );
-    mockOrgRepo.save.mockResolvedValue({ id: 5 });
-
     await service.create('user-1', {
-      name: 'My Org!!! @#$%^&*()',
+      name: 'irrelevant',
       companyId: 1,
-      companyName: 'Company',
-    } as any);
+      companyName: 'My Org!!! @#$%^&*()',
+    } as CreateOrganizationDto);
 
     expect(mockOrgRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'my-org' }),
@@ -181,62 +210,56 @@ describe('OrganizationService - Slug Generation', () => {
   });
 
   it('should generate slug "m-10" if "m" through "m-9" already exist', async () => {
-    // Simulate DB has m, m-1, m-2, ... m-9
-    for (let i = 0; i <= 9; i++) {
-      mockOrgRepo.findOne.mockResolvedValueOnce({
-        slug: i === 0 ? 'm' : `m-${i}`,
-      });
-    }
-    mockOrgRepo.findOne.mockResolvedValueOnce(null);
+    const slugs = [{ slug: 'm' }];
+    for (let i = 1; i <= 9; i++) slugs.push({ slug: `m-${i}` });
+    mockQueryBuilder.getMany.mockResolvedValue(slugs);
 
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 7 });
     mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 6,
+      id: 7,
       slug: 'm-10',
-      name: 'M',
+      name: 'irrelevant',
       owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
       members: [],
     });
 
-    mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
-    );
-    mockOrgRepo.save.mockResolvedValue({ id: 6 });
-
     await service.create('user-1', {
-      name: 'M',
+      name: 'irrelevant',
       companyId: 1,
-      companyName: 'Company',
-    } as any);
+      companyName: 'M',
+    } as CreateOrganizationDto);
 
     expect(mockOrgRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'm-10' }),
     );
   });
 
-  it('should handle very long names without crashing', async () => {
+  it('should handle very long company names without crashing', async () => {
     const longName = 'a'.repeat(300);
     const expectedSlug = 'a'.repeat(300);
 
-    mockOrgRepo.findOne.mockResolvedValue(null);
+    mockQueryBuilder.getMany.mockResolvedValue([]);
 
+    mockOrgRepo.create.mockImplementation(
+      (dto: Partial<Organization>): Organization => dto as Organization,
+    );
+    mockOrgRepo.save.mockResolvedValue({ id: 8 });
     mockOrgRepo.findOneOrFail.mockResolvedValue({
-      id: 7,
+      id: 8,
       slug: expectedSlug,
-      name: longName,
+      name: 'irrelevant',
       owner: { id: 'user-1', firstName: 'Test', lastName: 'Owner' },
       members: [],
     });
 
-    mockOrgRepo.create.mockImplementation(
-      (dto: Partial<Organization>) => dto as Organization,
-    );
-    mockOrgRepo.save.mockResolvedValue({ id: 7 });
-
     await service.create('user-1', {
-      name: longName,
+      name: 'irrelevant',
       companyId: 1,
-      companyName: 'Company',
-    } as any);
+      companyName: longName,
+    } as CreateOrganizationDto);
 
     expect(mockOrgRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ slug: expectedSlug }),
