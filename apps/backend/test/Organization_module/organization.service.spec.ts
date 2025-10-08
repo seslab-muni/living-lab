@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { OrganizationService } from './organization.service';
-import { Organization } from './entities/organization.entity';
-import { JoinRequest } from './entities/join-request.entity';
-import { User } from '../user/entities/user.entity';
+import { OrganizationService } from '../../src/organization/organization.service';
+import { Organization } from '../../src/organization/entities/organization.entity';
+import { JoinRequest } from '../../src/organization/entities/join-request.entity';
+import { User } from '../../src/user/entities/user.entity';
 
 // Mock repositories
 const mockOrgRepo = {
