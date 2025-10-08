@@ -85,7 +85,7 @@ export class OrganizationController {
     @Query('name') name?: string,
     @Query('companyId') companyId?: number,
     @Query('companyName') companyName?: string,
-    @Query('excludeId') excludeId?: number,  // 🟢 dôležité
+    @Query('excludeId') excludeId?: number,
   ) {
     const userId = (req.user as { id: string }).id;
 
