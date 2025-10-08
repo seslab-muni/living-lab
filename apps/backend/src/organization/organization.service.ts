@@ -25,23 +25,69 @@ export class OrganizationService {
     @InjectRepository(User)
     private userRepo: Repository<User>,
   ) {}
+
+  /**
+   * Converts a company name to a normalized, URL-friendly slug base.
+   */
+  private toSlugBase(input: string): string {
+    return input
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // odstráni diakritiku
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-') // medzery → pomlčky
+      .replace(/[^a-z0-9-]/g, '') // povolené len písmená, čísla a pomlčky
+      .replace(/^-+|-+$/g, ''); // odstráni pomlčky na začiatku/konci
+  }
+
+  /**
+   * Generates a unique slug from a given company name.
+   * Ensures uniqueness by appending a numeric suffix if needed.
+   * If excludeId is provided, that record is ignored (useful for update).
+   */
+  async generateUniqueSlug(
+    companyName: string,
+    excludeId?: number,
+  ): Promise<string> {
+    const base = this.toSlugBase(companyName);
+
+    const qb = this.orgRepo
+      .createQueryBuilder('org')
+      .select('org.slug')
+      .where('org.slug = :base OR org.slug LIKE :pattern', {
+        base,
+        pattern: `${base}-%`,
+      });
+
+    if (excludeId) {
+      qb.andWhere('org.id != :excludeId', { excludeId });
+    }
+
+    const existing = await qb.getMany();
+
+    if (existing.length === 0) {
+      return base;
+    }
+
+    const nums = existing
+      .map((o) => {
+        const match = o.slug.match(new RegExp(`^${base}-(\\d+)$`));
+        if (match && typeof match[1] === 'string') {
+          return parseInt(match[1], 10);
+        }
+        return 0;
+      })
+      .filter((n) => !isNaN(n));
+
+    const nextNum = nums.length ? Math.max(...nums) + 1 : 1;
+    return `${base}-${nextNum}`;
+  }
+
   async create(
     userId: string,
     dto: CreateOrganizationDto,
   ): Promise<OrganizationDto> {
-    const base = dto.name
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/^-+|-+$/g, '');
-    let slug = base;
-    let counter = 1;
-    while (await this.orgRepo.findOne({ where: { slug } })) {
-      slug = `${base}-${counter++}`;
-    }
+    const slug = await this.generateUniqueSlug(dto.companyName);
     let org = this.orgRepo.create({
       name: dto.name,
       slug,
@@ -161,22 +207,44 @@ export class OrganizationService {
     userId: string,
     orgId: number,
     dto: UpdateOrganizationDto,
-  ): Promise<OrganizationDto> {
+  ): Promise<OrganizationDto & { newSlug?: string }> {
     const org = await this.orgRepo.findOneOrFail({
       where: { id: orgId },
       relations: ['members', 'owner'],
     });
+
     if (org.ownerId !== userId) {
       throw new ForbiddenException('Only owner can edit');
     }
+
+    let slugChanged = false;
+    if (
+      typeof dto.companyName === 'string' &&
+      dto.companyName.trim() !== '' &&
+      dto.companyName.trim() !== org.companyName
+    ) {
+      org.companyName = dto.companyName;
+      org.slug = await this.generateUniqueSlug(dto.companyName, org.id);
+      slugChanged = true;
+    }
+
     if (typeof dto.name === 'string') org.name = dto.name;
     if (typeof dto.description === 'string') org.description = dto.description;
     if (typeof dto.companyId === 'number') org.companyId = dto.companyId;
-    if (typeof dto.companyName === 'string') org.companyName = dto.companyName;
 
     org.lastEdit = new Date();
     await this.orgRepo.save(org);
-    return this.mapToDto(org, org.members, userId);
+
+    const updatedDto = this.mapToDto(org, org.members, userId);
+
+    if (slugChanged) {
+      return {
+        ...updatedDto,
+        newSlug: org.slug,
+      };
+    }
+
+    return updatedDto;
   }
 
   async remove(userId: string, orgId: number): Promise<void> {

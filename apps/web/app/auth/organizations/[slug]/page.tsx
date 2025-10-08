@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
@@ -9,6 +10,8 @@ import {
     Button,
     CircularProgress,
     Stack,
+    Snackbar,
+    Alert,
 } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
@@ -26,6 +29,19 @@ export default function OrganizationDetailsPage() {
     const [memberCount, setMemberCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [requests, setRequests] = useState<JoinRequestDto[] | null>(null);
+    const searchParams = useSearchParams();
+    const savedParam = searchParams.get('saved') === 'true';
+    const [showSaved, setShowSaved] = useState(savedParam);
+
+    useEffect(() => {
+      if (!savedParam) return;
+      const timeout = setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('saved');
+        window.history.replaceState({}, '', url.toString());
+      }, 3500);
+      return () => clearTimeout(timeout);
+    }, [savedParam]);
 
     useEffect(() => {
       if (status !== 'authenticated') return;
@@ -202,6 +218,20 @@ export default function OrganizationDetailsPage() {
                     </Box>
                 </Stack>
             </Box>
+            <Snackbar
+              open={showSaved}
+              autoHideDuration={3000}
+              onClose={() => setShowSaved(false)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert
+                onClose={() => setShowSaved(false)}
+                severity="success"
+                sx={{ width: '100%' }}
+              >
+                Changes saved successfully
+              </Alert>
+            </Snackbar>
         </Box>
     );
 }

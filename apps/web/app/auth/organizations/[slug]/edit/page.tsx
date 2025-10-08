@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   TextField,
@@ -90,36 +90,43 @@ export default function EditOrganizationPage() {
     }, [name, companyId, companyName, hasFocused]);
 
     const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const f: {[k:string]:string} = {};
-        if (!name.trim()) f.name = 'Required';
-        if (!companyId) {
-            f.companyId = 'Required';
-        } else if (!/^\d{8}$/.test(companyId)) {
-            f.companyId = 'IČO must be exactly 8 digits';
-        }
-        if (!companyName.trim()) f.companyName = 'Required';
-        setErrors(f);
-        if (Object.keys(f).length) return;
+      e.preventDefault();
 
-        setSaving(true);
-        try {
-            await authFetch(`${BACKEND_URL}/organizations/${slug}`, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    name: name.trim(),
-                    description: description.trim(),
-                    companyId: parseInt(companyId, 10),
-                    companyName: companyName.trim(),
-                }),
-            });
-            router.push(`/auth/organizations/${slug}`);
-        } catch (err: any) {
-            setErrors({ form: err.message });
-        } finally {
-            setSaving(false);
-        }
+      const f: { [k: string]: string } = {};
+      if (!name.trim()) f.name = 'Required';
+      if (!companyId) {
+        f.companyId = 'Required';
+      } else if (!/^\d{8}$/.test(companyId)) {
+        f.companyId = 'IČO must be exactly 8 digits';
+      }
+      if (!companyName.trim()) f.companyName = 'Required';
+      setErrors(f);
+      if (Object.keys(f).length) return;
+
+      setSaving(true);
+      try {
+        const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            description: description.trim(),
+            companyId: parseInt(companyId, 10),
+            companyName: companyName.trim(),
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Update failed');
+
+        const targetSlug = data.newSlug && data.newSlug !== slug ? data.newSlug : slug;
+        router.push(`/auth/organizations/${targetSlug}?saved=true`);
+      } catch (err: any) {
+        console.error(err);
+        setErrors({ form: err.message || 'Unexpected error' });
+      } finally {
+        setSaving(false);
+      }
     };
 
     const handleDelete = async () => {
