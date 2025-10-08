@@ -182,24 +182,36 @@ export class OrganizationService {
     name?: string,
     companyId?: number,
     companyName?: string,
+    excludeId?: number,
   ): Promise<OrganizationDto[]> {
     const qb = this.orgRepo
       .createQueryBuilder('org')
       .leftJoinAndSelect('org.members', 'members')
       .leftJoinAndSelect('org.owner', 'owner');
+    const orConditions: string[] = [];
+    const params: Record<string, any> = {};
+
     if (name) {
-      qb.orWhere('org.name ILIKE :name', { name: `%${name.trim()}%` });
+      orConditions.push('org.name ILIKE :name');
+      params.name = `%${name.trim()}%`;
     }
     if (companyId != null) {
-      qb.orWhere('org.companyId = :companyId', { companyId });
+      orConditions.push('org.companyId = :companyId');
+      params.companyId = companyId;
     }
     if (companyName) {
-      qb.orWhere('org.companyName ILIKE :companyName', {
-        companyName: `%${companyName.trim()}%`,
-      });
+      orConditions.push('org.companyName ILIKE :companyName');
+      params.companyName = `%${companyName.trim()}%`;
+    }
+    if (orConditions.length > 0) {
+      qb.where(`(${orConditions.join(' OR ')})`, params);
+    }
+    if (excludeId) {
+      qb.andWhere('org.id != :excludeId', { excludeId });
     }
 
     const orgs = await qb.getMany();
+
     return orgs.map((o) => this.mapToDto(o, o.members, userId));
   }
 

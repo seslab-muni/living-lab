@@ -8,6 +8,7 @@ import {
   Query,
   Patch,
   Delete,
+  Req,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -18,6 +19,7 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { OrganizationDto } from './dto/organization.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
+import type { Request } from 'express';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -78,17 +80,21 @@ export class OrganizationController {
   }
 
   @Get('duplicates')
-  async findDuplicates(
-    @GetUser() user: JwtPayload,
+  findDuplicates(
+    @Req() req: Request,
     @Query('name') name?: string,
-    @Query('companyId') companyId?: string,
+    @Query('companyId') companyId?: number,
     @Query('companyName') companyName?: string,
-  ): Promise<OrganizationDto[]> {
+    @Query('excludeId') excludeId?: number,  // 🟢 dôležité
+  ) {
+    const userId = (req.user as { id: string }).id;
+
     return this.orgService.findDuplicates(
-      user.id,
+      userId,
       name,
-      companyId ? +companyId : undefined,
+      companyId,
       companyName,
+      excludeId,
     );
   }
 

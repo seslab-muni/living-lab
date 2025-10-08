@@ -67,27 +67,28 @@ export default function EditOrganizationPage() {
         }
 
         const t = setTimeout(async () => {
-            setLoadingDupes(true);
-            try {
-                const params = new URLSearchParams();
-                if (name)        params.set('name', name);
-                if (companyId)   params.set('companyId', companyId);
-                if (companyName) params.set('companyName', companyName);
+          setLoadingDupes(true);
+          try {
+            const params = new URLSearchParams();
+            if (name)        params.set('name', name);
+            if (companyId)   params.set('companyId', companyId);
+            if (companyName) params.set('companyName', companyName);
+            if (org?.id)     params.set('excludeId', String(org.id));
 
-                const res = await authFetch(
-                    `${BACKEND_URL}/organizations/duplicates?${params.toString()}`
-                );
-                const data: OrganizationDto[] = await res.json();
-                setSuggestions(data);
-            } catch {
-                setSuggestions([]);
-            } finally {
-                setLoadingDupes(false);
-            }
+            const res = await authFetch(
+              `${BACKEND_URL}/organizations/duplicates?${params.toString()}`
+            );
+            const data: OrganizationDto[] = await res.json();
+            setSuggestions(data);
+          } catch {
+            setSuggestions([]);
+          } finally {
+            setLoadingDupes(false);
+          }
         }, 300);
 
         return () => clearTimeout(t);
-    }, [name, companyId, companyName, hasFocused]);
+    }, [name, companyId, companyName, hasFocused, org?.id]);
 
     const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
