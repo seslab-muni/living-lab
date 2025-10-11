@@ -8,20 +8,42 @@ import { SendEmailDto } from './dto/email.dto';
 export class EmailService {
   private transporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
   private readonly logger = new Logger(EmailService.name);
+  private readonly emailEnabled: boolean;
 
   constructor(private readonly config: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: config.get('MAIL_HOST'),
-      port: config.get<number>('MAIL_PORT'),
-      secure: config.get<boolean>('MAIL_SECURE'),
-      auth: {
-        user: config.get('MAIL_USER'),
-        pass: config.get('MAIL_PASS'),
-      },
-    });
+    const host = config.get<string>('MAIL_HOST');
+    const port = config.get<number>('MAIL_PORT');
+    const user = config.get<string>('MAIL_USER');
+    const pass = config.get<string>('MAIL_PASS');
+
+    this.emailEnabled = !!(host && port && user && pass);
+
+    if (this.emailEnabled) {
+      this.transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: config.get<boolean>('MAIL_SECURE'),
+        auth: {
+          user,
+          pass,
+        },
+      });
+    } else {
+      this.logger.warn(
+        'No mail configuration found. Email sending is disabled — verification tokens will be printed to console.',
+      );
+    }
   }
 
   async sendEmail(sendEmail: SendEmailDto): Promise<void> {
+    if (!this.emailEnabled) {
+      this.logger.debug(`Mock email to ${sendEmail.recipient}:`);
+      this.logger.debug(`Subject: ${sendEmail.subject}`);
+      this.logger.debug(`Text: ${sendEmail.text}`);
+      this.logger.debug(`HTML: ${sendEmail.html}`);
+      return;
+    }
+
     try {
       await this.transporter.sendMail({
         from: `"Your App" <${this.config.get('MAIL_FROM')}>`,
