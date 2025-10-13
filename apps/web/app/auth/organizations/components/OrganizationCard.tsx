@@ -24,8 +24,21 @@ export default function OrganizationCard({
       sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
     >
       <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" display="flex" alignItems="center" gap={1}>
           {org.name}
+          {org.isPrivate && (
+            <Typography
+              variant="caption"
+              sx={{
+                px: 0.8,
+                py: 0.3,
+                backgroundColor: '#eee',
+                borderRadius: 1,
+              }}
+            >
+              Private
+            </Typography>
+          )}
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
           {org.description ?? 'No description provided.'}

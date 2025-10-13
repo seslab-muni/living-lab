@@ -7,6 +7,8 @@ export class OrganizationDto {
   ownerName: string;
   companyId: number;
   companyName: string;
+  isPrivate: boolean;
+  createdAt: Date;
   lastEdit: Date;
   memberCount: number;
   isMember: boolean;

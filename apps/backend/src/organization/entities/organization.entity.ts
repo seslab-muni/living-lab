@@ -37,6 +37,8 @@ export class Organization {
 
   @Column()
   companyName: string;
+  @Column({ default: false })
+  isPrivate: boolean;
   @UpdateDateColumn({ type: 'timestamp' })
   lastEdit: Date;
   @CreateDateColumn({ type: 'timestamp' })

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
   TextField,
@@ -16,6 +16,8 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  Switch,
+  FormControlLabel,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
@@ -40,6 +42,7 @@ export default function EditOrganizationPage() {
     const [hasFocused, setHasFocused] = useState(false);
     const [members, setMembers] = useState(org?.members ?? []);
     const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+    const [isPrivate, setIsPrivate] = useState(false);
 
     useEffect(() => {
         authFetch(`${BACKEND_URL}/organizations/${slug}`)
@@ -51,6 +54,7 @@ export default function EditOrganizationPage() {
                 setDescription(data.description ?? '');
                 setCompanyId(String(data.companyId));
                 setCompanyName(data.companyName);
+                setIsPrivate(data.isPrivate);
             })
             .catch(() => router.push('/auth/organizations'))
             .finally(() => setLoading(false));
@@ -114,6 +118,7 @@ export default function EditOrganizationPage() {
             description: description.trim(),
             companyId: parseInt(companyId, 10),
             companyName: companyName.trim(),
+            isPrivate,
           }),
         });
 
@@ -206,7 +211,20 @@ export default function EditOrganizationPage() {
                             helperText={errors.companyName}
                             required
                         />
-
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={isPrivate}
+                              onChange={(e) => setIsPrivate(e.target.checked)}
+                              color="primary"
+                            />
+                          }
+                          label={
+                            isPrivate
+                              ? 'Private organization (joining disabled)'
+                              : 'Public organization (anyone can request to join)'
+                          }
+                        />
                         {errors.form && (
                             <Typography color="error">{errors.form}</Typography>
                         )}

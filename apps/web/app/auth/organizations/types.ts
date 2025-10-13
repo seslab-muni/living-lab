@@ -11,6 +11,7 @@ export interface OrganizationDto {
   memberCount: number;
   isMember: boolean;
   hasPendingRequest: boolean;
+  isPrivate: boolean;
   isOwner: boolean;
   members: Array<{
     id: string;

@@ -130,7 +130,22 @@ export default function OrganizationDetailsPage() {
             <Box width={{ xs: '100%', md: '50%' }}>
                 <Stack spacing={2}>
                     <Typography variant="h4" textAlign="center">
-                        {org.name}
+                      {org.name}
+                      {org.isPrivate && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'inline-block',
+                            ml: 1,
+                            px: 1,
+                            py: 0.3,
+                            backgroundColor: '#eee',
+                            borderRadius: 1,
+                          }}
+                        >
+                          Private
+                        </Typography>
+                      )}
                     </Typography>
                     <Typography variant="body1">{org.description}</Typography>
                     <Box height={50}></Box>
@@ -230,7 +245,11 @@ export default function OrganizationDetailsPage() {
                             <Button variant="contained" disabled>
                               Request Sent
                             </Button>
-                          ) : (
+                          ) : org.isPrivate ? (
+                              <Button variant="contained" disabled>
+                                Private Organization
+                              </Button>
+                          )  : (
                             <Button
                               component={NextLink}
                               href={`/auth/organizations/${slug}/join`}

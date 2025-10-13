@@ -96,6 +96,7 @@ export class OrganizationService {
       companyId: dto.companyId,
       companyName: dto.companyName,
       members: [{ id: userId } as any],
+      isPrivate: false,
     });
     await this.orgRepo.save(org);
     org = await this.orgRepo.findOneOrFail({
@@ -285,6 +286,9 @@ export class OrganizationService {
     if (typeof dto.description === 'string') org.description = dto.description;
     if (typeof dto.companyId === 'number') org.companyId = dto.companyId;
 
+    if (typeof dto.isPrivate === 'boolean') {
+      org.isPrivate = dto.isPrivate;
+    }
     org.lastEdit = new Date();
     await this.orgRepo.save(org);
 
@@ -340,6 +344,8 @@ export class OrganizationService {
   ): Promise<JoinRequest> {
     const org = await this.orgRepo.findOne({ where: { id: orgId } });
     if (!org) throw new NotFoundException(`Org ${orgId} not found`);
+    if (org.isPrivate)
+      throw new ForbiddenException('This organization is private');
 
     // owner cannot request to join their own org
     if (org.ownerId === userId) {
@@ -456,6 +462,8 @@ export class OrganizationService {
       ownerName: `${org.owner.firstName} ${org.owner.lastName}`,
       companyId: org.companyId,
       companyName: org.companyName,
+      isPrivate: org.isPrivate,
+      createdAt: org.createdAt,
       lastEdit: org.lastEdit,
       memberCount: members.length,
       isMember: currentUserId
