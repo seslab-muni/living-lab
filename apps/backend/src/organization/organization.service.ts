@@ -111,6 +111,47 @@ export class OrganizationService {
     return orgs.map((org) => this.mapToDto(org, org.members, userId));
   }
 
+  async searchAndSortOrganizations(
+    query?: string,
+    sort: 'newest' | 'asc' | 'desc' = 'newest',
+    userId?: string,
+  ): Promise<Organization[]> {
+    const qb = this.orgRepo
+      .createQueryBuilder('organization')
+      .leftJoinAndSelect('organization.members', 'member');
+
+    if (query && query.trim().length > 0) {
+      qb.where('LOWER(organization.name) LIKE :q', {
+        q: `%${query.toLowerCase()}%`,
+      });
+    }
+
+    switch (sort) {
+      case 'asc':
+        qb.orderBy('organization.name', 'ASC');
+        break;
+      case 'desc':
+        qb.orderBy('organization.name', 'DESC');
+        break;
+      default:
+        qb.orderBy('organization.createdAt', 'DESC', 'NULLS LAST').addOrderBy(
+          'organization.name',
+          'ASC',
+        );
+        break;
+    }
+
+    const organizations = await qb.getMany();
+    if (userId) {
+      return organizations.map((org) => ({
+        ...org,
+        isMember: org.members?.some((m) => m.id === userId) ?? false,
+      }));
+    }
+
+    return organizations;
+  }
+
   async join(userId: string, orgId: number): Promise<void> {
     const org = await this.orgRepo.findOne({
       where: { id: orgId },

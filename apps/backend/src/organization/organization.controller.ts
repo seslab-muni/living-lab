@@ -47,6 +47,15 @@ export class OrganizationController {
     return this.orgService.findPendingRequestsForOrg(user.id, orgId);
   }
 
+  @Get('search')
+  searchOrganizations(
+    @GetUser() user: JwtPayload,
+    @Query('q') q?: string,
+    @Query('sort') sort: 'newest' | 'asc' | 'desc' = 'newest',
+  ) {
+    return this.orgService.searchAndSortOrganizations(q, sort, user.id);
+  }
+
   @Post(':idOrSlug/join')
   async join(
     @GetUser() user: JwtPayload,

@@ -7,6 +7,7 @@ import {
   JoinTable,
   JoinColumn,
   UpdateDateColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
@@ -38,6 +39,8 @@ export class Organization {
   companyName: string;
   @UpdateDateColumn({ type: 'timestamp' })
   lastEdit: Date;
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt: Date;
   @ManyToMany(() => User, (user) => user.organizations)
   @JoinTable({
     name: 'user_organizations',
