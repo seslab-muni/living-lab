@@ -15,11 +15,13 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { TenantMiddleware } from './tennant.middleware';
 import { DomainModule } from './domain-role/domain.module';
 import { FacilityModule } from './facility/facility.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(databaseDevConfig),
+    ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
     OrganizationModule,
