@@ -14,6 +14,12 @@ import { JoinRequest, JoinRequestStatus } from './entities/join-request.entity';
 import { User } from 'src/user/entities/user.entity';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
+import { EmailService } from 'src/email/email.service';
+import { SendEmailDto } from 'src/email/dto/email.dto';
+import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { LessThan } from 'typeorm';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class OrganizationService {
@@ -21,11 +27,14 @@ export class OrganizationService {
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
     @InjectRepository(JoinRequest)
-    private jrRepo: Repository<JoinRequest>,
+    private readonly jrRepo: Repository<JoinRequest>,
     @InjectRepository(User)
-    private userRepo: Repository<User>,
+    private readonly userRepo: Repository<User>,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
+  private readonly logger = new Logger(OrganizationService.name);
   /**
    * Converts a company name to a normalized, URL-friendly slug base.
    */
@@ -360,7 +369,42 @@ export class OrganizationService {
       organization,
       status: JoinRequestStatus.PENDING,
     });
-    return this.jrRepo.save(jr);
+    const saved = await this.jrRepo.save(jr);
+
+    const owner = await this.userRepo.findOne({ where: { id: org.ownerId } });
+    const requester = await this.userRepo.findOne({ where: { id: userId } }); // 👈 fetch requesting user
+    if (owner?.email) {
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ??
+        'http://localhost:3000';
+      const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${saved.id}`;
+
+      const requesterName = requester
+        ? `${requester.firstName} ${requester.lastName}`
+        : 'Unknown user';
+      const requesterMessage = dto.message?.trim() || '(no message provided)';
+
+      const email: SendEmailDto = {
+        recipient: owner.email,
+        subject: `BVV LL Platform: New join request for ${org.name}`,
+        html: `<p>Hello ${owner.firstName},</p>
+           <p><strong>${requesterName}</strong> has requested to join <strong>${org.name}</strong>.</p>
+           <p>Message:</p>
+           <blockquote>${requesterMessage}</blockquote>
+           <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
+           <p>— BVV Living Lab System</p>`,
+        text: `Hello ${owner.firstName}, ${requesterName} has requested to join ${org.name}.
+Message: ${requesterMessage}
+        Review it here: ${link}`,
+      };
+
+      await this.emailService.sendEmail(email);
+      this.logger.log(
+        `Sent join request notification to ${owner.email} for organization ${org.name} from ${requesterName}`,
+      );
+    }
+
+    return saved;
   }
 
   async findPendingRequestsForOrg(
@@ -446,6 +490,58 @@ export class OrganizationService {
         lastName: jr.user.lastName,
       },
     };
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendPendingJoinRequestReminders(): Promise<void> {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const pendingRequests = await this.jrRepo.find({
+      where: {
+        status: JoinRequestStatus.PENDING,
+        createdAt: LessThan(sevenDaysAgo),
+      },
+      relations: ['organization', 'user'],
+    });
+
+    if (pendingRequests.length === 0) return;
+
+    this.logger.log(
+      `Found ${pendingRequests.length} pending join requests older than 7 days.`,
+    );
+
+    for (const jr of pendingRequests) {
+      const org = jr.organization;
+      const owner = await this.userRepo.findOne({ where: { id: org.ownerId } });
+      if (!owner?.email) continue;
+
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ??
+        'http://localhost:3000';
+      const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${jr.id}`;
+
+      const requesterName = `${jr.user.firstName} ${jr.user.lastName}`;
+      const requesterMessage = jr.message?.trim() || '(no message provided)';
+
+      const email: SendEmailDto = {
+        recipient: owner.email,
+        subject: `Reminder: Pending join request for ${org.name}`,
+        html: `<p>Hello ${owner.firstName},</p>
+         <p>You still have a pending join request for <strong>${org.name}</strong>.</p>
+         <p>Requester: <strong>${requesterName}</strong></p>
+         <p>Message:</p>
+         <blockquote>${requesterMessage}</blockquote>
+         <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
+         <p>— BVV Living Lab System</p>`,
+        text: `Reminder: You have a pending join request for ${org.name} from ${requesterName}.
+        Message: ${requesterMessage}
+        Review it here: ${link}`,
+      };
+
+      await this.emailService.sendEmail(email);
+      this.logger.log(
+        `Sent reminder email for join request ${jr.id} (organization ${org.name}) to ${owner.email}`,
+      );
+    }
   }
 
   private mapToDto(
