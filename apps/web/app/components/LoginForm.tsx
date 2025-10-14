@@ -5,13 +5,14 @@ import NextLink from 'next/link';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { Typography } from '@mui/material';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FRONTEND_URL } from '../lib/constants';
 import DarkTextField from './DarkTextField';
 import { signIn } from 'next-auth/react';
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = React.useState({
     email: '',
     password: '',
@@ -50,9 +51,17 @@ export default function LoginForm() {
         setError('Wrong sign in credentials');
       }
     } else {
-      router.push(FRONTEND_URL + '/auth');
+      const redirectParam =
+        searchParams.get('redirect') ?? searchParams.get('callbackUrl');
+      let target = FRONTEND_URL + '/auth';
+      if (redirectParam) {
+        const decoded = decodeURIComponent(redirectParam);
+        // allow relative URLs only
+        if (decoded.startsWith('/')) target = decoded;
+      }
+      router.push(target);
     }
-  };
+  }
 
   return (
     <Box
