@@ -9,6 +9,7 @@ import {
   Patch,
   Delete,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -20,6 +21,8 @@ import { OrganizationDto } from './dto/organization.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
 import type { Request } from 'express';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { CreateInvitationDto } from './dto/create-invitation.dto';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -156,6 +159,50 @@ export class OrganizationController {
   ): Promise<JoinRequestDto> {
     const requestId = Number(reqId);
     return this.orgService.findJoinRequestByIdForOwner(user.id, requestId);
+  }
+
+  @Get(':idOrSlug/invitations')
+  async listInvitations(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ) {
+    const id = isNaN(Number(idOrSlug))
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.findPendingInvitations(user.id, id);
+  }
+
+  @Post(':idOrSlug/invitations')
+  async sendInvitations(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() dto: CreateInvitationDto,
+  ) {
+    const id = isNaN(Number(idOrSlug))
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.sendInvitations(user.id, id, dto);
+  }
+
+  @Delete(':idOrSlug/invitations/:inviteId')
+  async revokeInvitation(
+    @GetUser() user: JwtPayload,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.orgService.revokeInvitation(user.id, +inviteId);
+  }
+
+  @Post('invitations/accept')
+  @UseGuards(JwtAuthGuard)
+  async acceptInvitation(
+    @GetUser() user: JwtPayload,
+    @Body() dto: AcceptInvitationDto,
+  ) {
+    if (!user.email) {
+      throw new ForbiddenException('Authenticated user has no email in token');
+    }
+
+    return this.orgService.acceptInvitation(dto.token, user.email);
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/approve')

@@ -18,6 +18,8 @@ import {
   IconButton,
   Switch,
   FormControlLabel,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
@@ -42,7 +44,15 @@ export default function EditOrganizationPage() {
     const [hasFocused, setHasFocused] = useState(false);
     const [members, setMembers] = useState(org?.members ?? []);
     const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+    const [inviteEmails, setInviteEmails] = useState('');
+    const [inviteError, setInviteError] = useState('');
+    const [sendingInvites, setSendingInvites] = useState(false);
+    const [pendingInvites, setPendingInvites] = useState<{ id: number; email: string; createdAt: string }[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+    const [snackbarSeverity, setSnackbarSeverity] =
+      useState<'success' | 'warning' | 'error'>('success');
 
     useEffect(() => {
         authFetch(`${BACKEND_URL}/organizations/${slug}`)
@@ -93,6 +103,14 @@ export default function EditOrganizationPage() {
 
         return () => clearTimeout(t);
     }, [name, companyId, companyName, hasFocused, org?.id]);
+
+    useEffect(() => {
+      if (!org) return;
+      authFetch(`${BACKEND_URL}/organizations/${slug}/invitations`)
+        .then(r => r.ok ? r.json() : [])
+        .then(setPendingInvites)
+        .catch(() => setPendingInvites([]));
+    }, [org, slug]);
 
     const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -162,6 +180,110 @@ export default function EditOrganizationPage() {
       );
       setMembers(ms => ms.filter(m => m.id !== removeTarget));
       setRemoveTarget(null);
+    };
+
+    const handleSendInvites = async () => {
+      setInviteError('');
+
+      if (!inviteEmails.trim()) {
+        setInviteError('Please enter at least one email address.');
+        return;
+      }
+
+      const emailsArray = inviteEmails
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => e.length > 0);
+
+      const duplicates = emailsArray.filter(
+        (email, index) => emailsArray.indexOf(email) !== index
+      );
+
+      if (duplicates.length > 0) {
+        setInviteError(`Duplicate email(s): ${duplicates.join(', ')}`);
+        return;
+      }
+
+      const invalidEmails = emailsArray.filter(
+        (email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      );
+      if (invalidEmails.length > 0) {
+        setInviteError(`Invalid email(s): ${invalidEmails.join(', ')}`);
+        return;
+      }
+
+      setSendingInvites(true);
+      try {
+        const res = await authFetch(`${BACKEND_URL}/organizations/${slug}/invitations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails: emailsArray.join(', ') }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to send invitations.');
+        }
+
+        const sentCount = data.sent?.length || 0;
+        const skippedCount = data.skipped?.length || 0;
+        const skippedSummary =
+          data.skipped
+            ?.map((s: any) => `${s.email} (${s.reason})`)
+            .join(', ') || '';
+
+        if (sentCount > 0 && skippedCount === 0) {
+          setSnackbarMessage(`${sentCount} invitation(s) sent successfully.`);
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+        }
+
+        if (sentCount > 0 && skippedCount > 0) {
+          setSnackbarMessage(
+            `${sentCount} invitation(s) sent. Skipped: ${skippedSummary}`
+          );
+          setSnackbarSeverity('warning');
+          setSnackbarOpen(true);
+        }
+
+        if (sentCount === 0 && skippedCount > 0) {
+          setSnackbarMessage(
+            `No invitations sent. Skipped: ${skippedSummary}`
+          );
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+          return;
+        }
+
+        if (sentCount === 0 && skippedCount > 0) {
+          setInviteError('All provided emails were skipped. No invitations sent.');
+          return;
+        }
+
+        await authFetch(`${BACKEND_URL}/organizations/${slug}/invitations`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then(setPendingInvites)
+          .catch(() => {});
+
+        setInviteEmails('');
+      } catch (err: any) {
+        console.error(err);
+        setInviteError(err.message || 'Unexpected error.');
+      } finally {
+        setSendingInvites(false);
+      }
+    };
+
+    const handleRevokeInvite = async (inviteId: number) => {
+      try {
+        await authFetch(
+          `${BACKEND_URL}/organizations/${slug}/invitations/${inviteId}`,
+          { method: 'DELETE' }
+        );
+        setPendingInvites(invites => invites.filter(i => i.id !== inviteId));
+      } catch {
+        alert('Failed to revoke invitation.');
+      }
     };
 
     if (loading || !org) {
@@ -275,6 +397,78 @@ export default function EditOrganizationPage() {
                           </Box>
                         </Box>
 
+                        <Box my={4}>
+                          <Typography variant="h6">Pending Invitations</Typography>
+                          {pendingInvites.length === 0 ? (
+                            <Typography variant="body2" color="text.secondary">
+                              No pending invitations.
+                            </Typography>
+                          ) : (
+                            <List dense disablePadding>
+                              {pendingInvites.map(inv => (
+                                <ListItem
+                                  key={inv.id}
+                                  secondaryAction={
+                                    <IconButton edge="end" color="error" onClick={() => handleRevokeInvite(inv.id)}>
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  }
+                                >
+                                  <ListItemText
+                                    primary={inv.email}
+                                    secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()}`}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          )}
+                        </Box>
+
+                        <Box my={4}>
+                          <Typography variant="h6" gutterBottom>
+                            Invite New Members
+                          </Typography>
+
+                          <Box sx={{ mt: 1, pl: 0 }}>
+                            <TextField
+                              label="Email addresses"
+                              placeholder="example1@email.com, example2@email.com"
+                              fullWidth
+                              multiline
+                              minRows={2}
+                              value={inviteEmails}
+                              onChange={(e) => setInviteEmails(e.target.value)}
+                              helperText='Separate emails by ", " (comma and space).'
+                              error={!!inviteError}
+                              sx={{
+                                mt: 1,
+                                ml: 0,
+                                '& .MuiFormHelperText-root': {
+                                  pl: 0,
+                                  ml: 0,
+                                  textAlign: 'left',
+                                },
+                              }}
+                            />
+                          </Box>
+                          {inviteError && (
+                            <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
+                              {inviteError}
+                            </Typography>
+                          )}
+
+                          <Box display="flex" justifyContent="flex-end" mt={1}>
+                            <Button
+                              variant="contained"
+                              disabled={sendingInvites}
+                              onClick={handleSendInvites}
+                              sx={{ minWidth: 180 }}
+                            >
+                              {sendingInvites ? 'Sending…' : 'Send Invitations'}
+                            </Button>
+                          </Box>
+                        </Box>
+
                         <Box
                             display="flex"
                             justifyContent="space-between"
@@ -293,6 +487,7 @@ export default function EditOrganizationPage() {
                               variant="contained"
                               disabled={saving}
                               onClick={handleSave}
+                              sx={{ minWidth: 180 }}
                             >
                               {saving ? 'Saving…' : 'Save Changes'}
                             </Button>
@@ -334,6 +529,21 @@ export default function EditOrganizationPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <Snackbar
+              open={snackbarOpen}
+              autoHideDuration={4000}
+              onClose={() => setSnackbarOpen(false)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert
+                onClose={() => setSnackbarOpen(false)}
+                severity={snackbarSeverity}
+                variant="filled"
+                sx={{ width: '100%' }}
+              >
+                {snackbarMessage}
+              </Alert>
+            </Snackbar>
         </Box>
     );
 }

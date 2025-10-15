@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
 import { OrganizationService } from './organization.service';
@@ -7,10 +7,18 @@ import { JoinRequest } from './entities/join-request.entity';
 import { User } from '../user/entities/user.entity';
 import { EmailModule } from 'src/email/email.module';
 import { ConfigModule } from '@nestjs/config';
+import { OrganizationInvitation } from './entities/organization-invitation.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Organization, JoinRequest, User]),
+    TypeOrmModule.forFeature([
+      Organization,
+      JoinRequest,
+      User,
+      OrganizationInvitation,
+    ]),
+    forwardRef(() => AuthModule),
     EmailModule,
     ConfigModule,
   ],

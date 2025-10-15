@@ -20,6 +20,10 @@ import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { LessThan } from 'typeorm';
 import { Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
+import { OrganizationInvitation } from './entities/organization-invitation.entity';
+import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { MoreThan } from 'typeorm';
 
 @Injectable()
 export class OrganizationService {
@@ -30,6 +34,8 @@ export class OrganizationService {
     private readonly jrRepo: Repository<JoinRequest>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(OrganizationInvitation)
+    private readonly inviteRepo: Repository<OrganizationInvitation>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
@@ -125,10 +131,11 @@ export class OrganizationService {
     query?: string,
     sort: 'newest' | 'asc' | 'desc' = 'newest',
     userId?: string,
-  ): Promise<Organization[]> {
+  ): Promise<OrganizationDto[]> {
     const qb = this.orgRepo
       .createQueryBuilder('organization')
-      .leftJoinAndSelect('organization.members', 'member');
+      .leftJoinAndSelect('organization.members', 'member')
+      .leftJoinAndSelect('organization.owner', 'owner');
 
     if (query && query.trim().length > 0) {
       qb.where('LOWER(organization.name) LIKE :q', {
@@ -152,14 +159,8 @@ export class OrganizationService {
     }
 
     const organizations = await qb.getMany();
-    if (userId) {
-      return organizations.map((org) => ({
-        ...org,
-        isMember: org.members?.some((m) => m.id === userId) ?? false,
-      }));
-    }
 
-    return organizations;
+    return organizations.map((org) => this.mapToDto(org, org.members, userId));
   }
 
   async join(userId: string, orgId: number): Promise<void> {
@@ -168,10 +169,19 @@ export class OrganizationService {
       relations: ['members'],
     });
     if (!org) throw new NotFoundException('Organization not found');
-    if (!org.members.some((u) => u.id === userId)) {
-      org.members.push({ id: userId } as any);
-      await this.orgRepo.save(org);
+    if (org.members.some((u) => u.id === userId)) {
+      throw new BadRequestException(
+        'User is already a member of this organization',
+      );
     }
+
+    const userRef = new User();
+    userRef.id = userId;
+
+    org.members.push(userRef);
+    await this.orgRepo.save(org);
+
+    this.logger.log(`User ${userId} joined organization ${org.name}`);
   }
 
   async leave(userId: string, orgId: number): Promise<void> {
@@ -492,6 +502,185 @@ Message: ${requesterMessage}
     };
   }
 
+  async sendInvitations(
+    ownerId: string,
+    orgId: number,
+    dto: CreateInvitationDto,
+  ): Promise<{ sent: string[]; skipped: { email: string; reason: string }[] }> {
+    const org = await this.orgRepo.findOneOrFail({
+      where: { id: orgId },
+      relations: ['members', 'owner'],
+    });
+
+    if (org.ownerId !== ownerId) {
+      throw new ForbiddenException('Only owner can send invitations');
+    }
+    const emails = Array.from(
+      new Set(
+        dto.emails
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.length > 0),
+      ),
+    );
+
+    if (emails.length === 0) {
+      throw new BadRequestException('No valid email addresses provided.');
+    }
+
+    const now = new Date();
+    const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const sent: string[] = [];
+    const skipped: { email: string; reason: string }[] = [];
+
+    for (const email of emails) {
+      const existingInvite = await this.inviteRepo.findOne({
+        where: {
+          organization: { id: org.id },
+          email,
+          revoked: false,
+          expiresAt: MoreThan(new Date()),
+        },
+      });
+      if (existingInvite) {
+        skipped.push({ email, reason: 'Invitation already sent' });
+        continue;
+      }
+
+      const existingUser = await this.userRepo.findOne({ where: { email } });
+      if (existingUser && org.members.some((m) => m.id === existingUser.id)) {
+        skipped.push({ email, reason: 'User is already a member' });
+        continue;
+      }
+
+      const token = randomUUID();
+      const invitation = this.inviteRepo.create({
+        organization: org,
+        email,
+        token,
+        expiresAt: sevenDays,
+      });
+      await this.inviteRepo.save(invitation);
+
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ??
+        'http://localhost:3000';
+      const link = `${frontendUrl}/auth/invitations/${token}`;
+
+      const emailDto: SendEmailDto = {
+        recipient: email,
+        subject: `BVV LL Platform: Invitation to join ${org.name}`,
+        html: `<p>Hello,</p>
+             <p>You have been invited to join <strong>${org.name}</strong>.</p>
+             <p><a href="${link}">Click here</a> to accept the invitation. This link is valid for 7 days.</p>
+             <p>— BVV Living Lab System</p>`,
+        text: `You have been invited to join ${org.name}. Accept here: ${link}`,
+      };
+
+      await this.emailService.sendEmail(emailDto);
+      sent.push(email);
+    }
+
+    this.logger.log(
+      `Invitations processed for "${org.name}": ${sent.length} sent, ${skipped.length} skipped.`,
+    );
+
+    return { sent, skipped };
+  }
+
+  async acceptInvitation(
+    token: string,
+    email: string,
+  ): Promise<{ message: string; slug: string }> {
+    const invitation = await this.inviteRepo.findOne({
+      where: {
+        token,
+        email,
+        revoked: false,
+        expiresAt: MoreThan(new Date()),
+      },
+      relations: ['organization'],
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
+
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      throw new ForbiddenException('User must register with this email first');
+    }
+
+    const org = invitation.organization;
+
+    await this.join(user.id, org.id);
+
+    invitation.revoked = true;
+    await this.inviteRepo.save(invitation);
+
+    this.logger.log(
+      `User ${email} joined organization ${org.name} via invitation ${token}`,
+    );
+
+    return { message: `User ${email} joined ${org.name}`, slug: org.slug };
+  }
+
+  async findPendingInvitations(ownerId: string, orgId: number) {
+    const org = await this.orgRepo.findOne({
+      where: { id: orgId },
+      relations: ['owner'],
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    if (org.ownerId !== ownerId) throw new ForbiddenException();
+
+    return this.inviteRepo.find({
+      where: { organization: { id: orgId }, revoked: false },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async revokeInvitation(ownerId: string, inviteId: number): Promise<void> {
+    const invitation = await this.inviteRepo.findOne({
+      where: { id: inviteId },
+      relations: ['organization'],
+    });
+    if (!invitation) throw new NotFoundException('Invitation not found');
+
+    if (invitation.organization.ownerId !== ownerId) {
+      throw new ForbiddenException('Only owner can revoke invitations');
+    }
+
+    invitation.revoked = true;
+    await this.inviteRepo.save(invitation);
+  }
+
+  async handlePendingInvitationsForNewUser(
+    userId: string,
+    email: string,
+  ): Promise<void> {
+    const pendingInvites = await this.inviteRepo.find({
+      where: {
+        email,
+        revoked: false,
+        expiresAt: MoreThan(new Date()),
+      },
+      relations: ['organization'],
+    });
+
+    if (pendingInvites.length === 0) return;
+
+    for (const invite of pendingInvites) {
+      await this.join(userId, invite.organization.id);
+      invite.revoked = true;
+      await this.inviteRepo.save(invite);
+
+      this.logger.log(
+        `User ${email} automatically joined ${invite.organization.name} via pending invitation`,
+      );
+    }
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async sendPendingJoinRequestReminders(): Promise<void> {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -524,7 +713,7 @@ Message: ${requesterMessage}
 
       const email: SendEmailDto = {
         recipient: owner.email,
-        subject: `Reminder: Pending join request for ${org.name}`,
+        subject: `BVV LL Platform: Reminder: Pending join request for ${org.name}`,
         html: `<p>Hello ${owner.firstName},</p>
          <p>You still have a pending join request for <strong>${org.name}</strong>.</p>
          <p>Requester: <strong>${requesterName}</strong></p>
