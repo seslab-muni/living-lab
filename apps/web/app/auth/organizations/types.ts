@@ -17,6 +17,7 @@ export interface OrganizationDto {
     id: string;
     firstName: string;
     lastName: string;
+    role?: string;
   }>;
 }
 

@@ -24,6 +24,7 @@ import { randomUUID } from 'crypto';
 import { OrganizationInvitation } from './entities/organization-invitation.entity';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { MoreThan } from 'typeorm';
+import { DomainService } from '../domain-role/domain.service';
 
 @Injectable()
 export class OrganizationService {
@@ -38,6 +39,7 @@ export class OrganizationService {
     private readonly inviteRepo: Repository<OrganizationInvitation>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly domainService: DomainService,
   ) {}
 
   private readonly logger = new Logger(OrganizationService.name);
@@ -114,6 +116,7 @@ export class OrganizationService {
       isPrivate: false,
     });
     await this.orgRepo.save(org);
+    await this.domainService.create(String(org.id), 'Organization', userId);
     org = await this.orgRepo.findOneOrFail({
       where: { id: org.id },
       relations: ['members', 'owner'],
@@ -180,6 +183,7 @@ export class OrganizationService {
 
     org.members.push(userRef);
     await this.orgRepo.save(org);
+    await this.domainService.changeUserRole(String(orgId), userId, 'Viewer');
 
     this.logger.log(`User ${userId} joined organization ${org.name}`);
   }
@@ -192,6 +196,7 @@ export class OrganizationService {
     if (!org) throw new NotFoundException('Organization not found');
     org.members = org.members.filter((u) => u.id !== userId);
     await this.orgRepo.save(org);
+    await this.domainService.deleteRole(String(orgId), userId);
   }
 
   async findOneBySlugForUser(
@@ -331,6 +336,7 @@ export class OrganizationService {
     if (org.ownerId !== userId) {
       throw new ForbiddenException('Only owner can delete');
     }
+    await this.domainService.deleteDomain(String(orgId));
     await this.orgRepo.remove(org);
   }
 
@@ -354,6 +360,7 @@ export class OrganizationService {
       .relation(Organization, 'members')
       .of(org)
       .remove({ id: memberId } as any);
+    await this.domainService.deleteRole(String(orgId), memberId);
   }
 
   async createJoinRequest(
@@ -382,7 +389,7 @@ export class OrganizationService {
     const saved = await this.jrRepo.save(jr);
 
     const owner = await this.userRepo.findOne({ where: { id: org.ownerId } });
-    const requester = await this.userRepo.findOne({ where: { id: userId } }); // 👈 fetch requesting user
+    const requester = await this.userRepo.findOne({ where: { id: userId } });
     if (owner?.email) {
       const frontendUrl =
         this.configService.get<string>('FRONTEND_URL') ??
@@ -470,11 +477,7 @@ Message: ${requesterMessage}
     await this.jrRepo.save(jr);
 
     if (approve) {
-      await this.orgRepo
-        .createQueryBuilder()
-        .relation(Organization, 'members')
-        .of(jr.organization.id)
-        .add(jr.user.id);
+      await this.join(jr.user.id, jr.organization.id);
     }
   }
 

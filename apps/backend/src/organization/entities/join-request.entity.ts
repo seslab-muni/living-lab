@@ -29,10 +29,16 @@ export class JoinRequest {
   })
   status: JoinRequestStatus;
 
-  @ManyToOne(() => User, (user) => user.id, { eager: true })
+  @ManyToOne(() => User, (user) => user.id, {
+    eager: true,
+    onDelete: 'CASCADE',
+  })
   user: User;
 
-  @ManyToOne(() => Organization, (org) => org.id, { eager: true })
+  @ManyToOne(() => Organization, (org) => org.id, {
+    eager: true,
+    onDelete: 'CASCADE',
+  })
   organization: Organization;
 
   @CreateDateColumn({ type: 'timestamp' })

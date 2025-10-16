@@ -10,6 +10,12 @@ import { ConfigModule } from '@nestjs/config';
 import { OrganizationInvitation } from './entities/organization-invitation.entity';
 import { AuthModule } from '../auth/auth.module';
 
+import { DomainService } from 'src/domain-role/domain.service';
+import { Role } from 'src/domain-role/entities/role.entity';
+import { Domain } from 'src/domain-role/entities/domain.entity';
+import { UserService } from 'src/user/user.service';
+import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -17,13 +23,15 @@ import { AuthModule } from '../auth/auth.module';
       JoinRequest,
       User,
       OrganizationInvitation,
+      Domain,
+      Role,
     ]),
     forwardRef(() => AuthModule),
     EmailModule,
     ConfigModule,
   ],
   controllers: [OrganizationController],
-  providers: [OrganizationService],
+  providers: [OrganizationService, DomainService, UserService, RolesGuard],
   exports: [OrganizationService],
 })
 export class OrganizationModule {}

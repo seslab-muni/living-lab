@@ -20,6 +20,10 @@ import {
   FormControlLabel,
   Snackbar,
   Alert,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
@@ -53,21 +57,36 @@ export default function EditOrganizationPage() {
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] =
       useState<'success' | 'warning' | 'error'>('success');
+    const [editedRoles, setEditedRoles] = useState<Record<string, 'Owner'|'Manager'|'Viewer'>>({});
 
     useEffect(() => {
-        authFetch(`${BACKEND_URL}/organizations/${slug}`)
-            .then(r => r.json())
-            .then((data: OrganizationDto) => {
-                setOrg(data);
-                setMembers(data.members);
-                setName(data.name);
-                setDescription(data.description ?? '');
-                setCompanyId(String(data.companyId));
-                setCompanyName(data.companyName);
-                setIsPrivate(data.isPrivate);
-            })
-            .catch(() => router.push('/auth/organizations'))
-            .finally(() => setLoading(false));
+      authFetch(`${BACKEND_URL}/organizations/${slug}`)
+        .then((r) => r.json())
+        .then(async (data: OrganizationDto) => {
+          setOrg(data);
+          setName(data.name);
+          setDescription(data.description ?? '');
+          setCompanyId(String(data.companyId));
+          setCompanyName(data.companyName);
+          setIsPrivate(data.isPrivate);
+          try {
+            const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
+            if (rolesRes.ok) {
+              const withRoles = await rolesRes.json();
+              const merged = data.members.map((m) => {
+                const found = withRoles.find((u: any) => u.id === m.id);
+                return { ...m, role: found?.role ?? 'Viewer' };
+              });
+              setMembers(merged);
+            } else {
+              setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+            }
+          } catch {
+            setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+          }
+        })
+        .catch(() => router.push('/auth/organizations'))
+        .finally(() => setLoading(false));
     }, [router, slug]);
 
     useEffect(() => {
@@ -112,46 +131,58 @@ export default function EditOrganizationPage() {
         .catch(() => setPendingInvites([]));
     }, [org, slug]);
 
-    const handleSave = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-      const f: { [k: string]: string } = {};
-      if (!name.trim()) f.name = 'Required';
-      if (!companyId) {
-        f.companyId = 'Required';
-      } else if (!/^\d{8}$/.test(companyId)) {
-        f.companyId = 'IČO must be exactly 8 digits';
+    const f: { [k: string]: string } = {};
+    if (!name.trim()) f.name = 'Required';
+    if (!companyId) {
+      f.companyId = 'Required';
+    } else if (!/^\d{8}$/.test(companyId)) {
+      f.companyId = 'IČO must be exactly 8 digits';
+    }
+    if (!companyName.trim()) f.companyName = 'Required';
+    setErrors(f);
+    if (Object.keys(f).length) return;
+
+    setSaving(true);
+    try {
+      const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          companyId: parseInt(companyId, 10),
+          companyName: companyName.trim(),
+          isPrivate,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Update failed');
+
+      if (org?.id && Object.keys(editedRoles).length > 0) {
+        await Promise.all(
+          Object.entries(editedRoles).map(([userId, role]) =>
+            authFetch(`${BACKEND_URL}/domain/${org.id}/users/${userId}/role`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ role }),
+            })
+          )
+        );
+        setEditedRoles({});
       }
-      if (!companyName.trim()) f.companyName = 'Required';
-      setErrors(f);
-      if (Object.keys(f).length) return;
-
-      setSaving(true);
-      try {
-        const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: name.trim(),
-            description: description.trim(),
-            companyId: parseInt(companyId, 10),
-            companyName: companyName.trim(),
-            isPrivate,
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Update failed');
-
-        const targetSlug = data.newSlug && data.newSlug !== slug ? data.newSlug : slug;
-        router.push(`/auth/organizations/${targetSlug}?saved=true`);
-      } catch (err: any) {
-        console.error(err);
-        setErrors({ form: err.message || 'Unexpected error' });
-      } finally {
-        setSaving(false);
-      }
-    };
+      const targetSlug = data.newSlug && data.newSlug !== slug ? data.newSlug : slug;
+      router.push(`/auth/organizations/${targetSlug}?saved=true`);
+    } catch (err: any) {
+      console.error(err);
+      setErrors({ form: err.message || 'Unexpected error' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
     const handleDelete = async () => {
         setConfirmOpen(false);
@@ -372,30 +403,51 @@ export default function EditOrganizationPage() {
                             </Box>
                         ) : null}
 
-                        <Box my={4}>
-                          <Typography variant="h6">Members</Typography>
-                          <Box component="ul" sx={{ m:0, p:0, pl:2, listStyle:'disc' }}>
-                            {members.map((m) => (
-                              <Box
-                                key={m.id}
-                                component="li"
-                                sx={{ display:'flex', alignItems:'center', mb:0.5 }}
-                              >
-                                <Typography variant="body2" sx={{ flexGrow:1, m:0 }}>
-                                  {m.firstName} {m.lastName}
-                                </Typography>
+                      <Box my={4}>
+                        <Typography variant="h6">Members</Typography>
+                        <Box component="ul" sx={{ m: 0, p: 0, pl: 2, listStyle: 'none' }}>
+                          {members.map((m) => (
+                            <Box
+                              key={m.id}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="space-between"
+                              mb={0.5}
+                            >
+                              <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                                {m.firstName} {m.lastName}
+                              </Typography>
+
+                              <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
+                                <InputLabel id={`role-${m.id}`}>Role</InputLabel>
+                                <Select
+                                  labelId={`role-${m.id}`}
+                                  value={editedRoles[m.id] ?? m.role ?? 'Viewer'}
+                                  label="Role"
+                                  onChange={(e) => {
+                                    const val = e.target.value as 'Owner' | 'Manager' | 'Viewer';
+                                    setEditedRoles((prev) => ({ ...prev, [m.id]: val }));
+                                  }}
+                                >
+                                  {['Owner', 'Manager', 'Viewer'].map((role) => (
+                                    <MenuItem key={role} value={role}>
+                                      {role}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+
+                              <Box sx={{ width: 36, textAlign: 'center' }}>
                                 {m.id !== org.ownerId && (
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setRemoveTarget(m.id)}
-                                  >
+                                  <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
                                     <DeleteIcon fontSize="small" color="error" />
                                   </IconButton>
                                 )}
                               </Box>
-                            ))}
-                          </Box>
+                            </Box>
+                          ))}
                         </Box>
+                      </Box>
 
                         <Box my={4}>
                           <Typography variant="h6">Pending Invitations</Typography>
