@@ -1,9 +1,18 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { DomainService } from './domain.service';
 import { RolesDto } from './dto/roles.dto';
 import { RolesGuard } from './guards/access-control.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
 
 @ApiTags('Domain')
 @Controller('domain')
@@ -32,11 +41,42 @@ export class DomainController {
   @DefineRoles('Admin', 'Owner', 'Manager')
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update user role in a domain.' })
-  @ApiResponse({ status: 200, description: 'Role updated succesfully.' })
+  @ApiResponse({ status: 200, description: 'Role updated successfully.' })
   async changeUserRole(
     @Param() param: { domainId: string; userId: string },
     @Body() body: RolesDto,
+    @GetUser() user: { id: string },
   ) {
+    const callerId = user.id;
+
+    const callerRole = await this.domainService.getRole(
+      callerId,
+      param.domainId,
+    );
+    const targetRole = await this.domainService.getRole(
+      param.userId,
+      param.domainId,
+    );
+
+    const hierarchy = ['Viewer', 'Manager', 'Owner'];
+    const rank = (r: string | null) => (r ? hierarchy.indexOf(r) : -1);
+
+    if (callerRole === 'Manager' && rank(body.role) > rank('Manager')) {
+      throw new ForbiddenException(
+        'Managers cannot assign higher than Manager.',
+      );
+    }
+
+    if (targetRole === 'Owner' && body.role !== 'Owner') {
+      const users = await this.domainService.getAllUsers(param.domainId);
+      const ownersLeft = users.filter(
+        (u) => u.role === 'Owner' && u.id !== param.userId,
+      ).length;
+      if (ownersLeft < 1) {
+        throw new ForbiddenException('At least one Owner must remain.');
+      }
+    }
+
     return await this.domainService.changeUserRole(
       param.domainId,
       param.userId,

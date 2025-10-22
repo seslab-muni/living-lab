@@ -19,6 +19,8 @@ export interface OrganizationDto {
     lastName: string;
     role?: string;
   }>;
+  currentUserRole?: 'Viewer' | 'Manager' | 'Owner' | 'Admin' | null;
+  isAdmin?: boolean;
 }
 
 export interface JoinRequestDto {

@@ -43,18 +43,80 @@ export class OrganizationService {
   ) {}
 
   private readonly logger = new Logger(OrganizationService.name);
+  private readonly ROLE_HIERARCHY = ['Viewer', 'Manager', 'Owner'] as const;
+  private readonly roleOrder = (r?: string | null) =>
+    r ? this.ROLE_HIERARCHY.indexOf(r as any) : -1;
+
+  private async getCallerContext(userId: string, orgId: number) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const isAdmin = !!user?.isAdmin;
+    const callerRole = await this.domainService.getRole(userId, String(orgId));
+    return {
+      isAdmin,
+      callerRole: (callerRole as 'Viewer' | 'Manager' | 'Owner' | null) ?? null,
+    };
+  }
+
+  private canActOn(
+    caller: 'Viewer' | 'Manager' | 'Owner' | null,
+    target: 'Viewer' | 'Manager' | 'Owner' | null,
+    isAdmin: boolean,
+  ) {
+    if (isAdmin) return true;
+    return this.roleOrder(caller) >= this.roleOrder(target);
+  }
+
+  private ensureAllowed(
+    required:
+      | ('Viewer' | 'Manager' | 'Owner')[]
+      | 'OwnerOnly'
+      | 'OwnerOrManager',
+    ctx: {
+      isAdmin: boolean;
+      callerRole: 'Viewer' | 'Manager' | 'Owner' | null;
+    },
+  ) {
+    if (ctx.isAdmin) return;
+    if (required === 'OwnerOnly') {
+      if (ctx.callerRole !== 'Owner')
+        throw new ForbiddenException('Only Owner or Admin.');
+      return;
+    }
+    if (required === 'OwnerOrManager') {
+      if (ctx.callerRole === 'Owner' || ctx.callerRole === 'Manager') return;
+      throw new ForbiddenException('Only Owner/Manager or Admin.');
+    }
+    if (!ctx.callerRole || !required.includes(ctx.callerRole)) {
+      throw new ForbiddenException('Insufficient role.');
+    }
+  }
+
+  private async ensureAtLeastOneOwnerLeft(
+    orgId: number,
+    removingUserId?: string,
+    demotingUserId?: string,
+  ) {
+    const users = await this.domainService.getAllUsers(String(orgId));
+    const owners = users.filter((u) => u.role === 'Owner');
+    const ownersLeft = owners
+      .map((o) => o.id)
+      .filter((id) => id !== removingUserId && id !== demotingUserId).length;
+    if (ownersLeft < 1)
+      throw new ForbiddenException('At least one Owner must remain.');
+  }
+
   /**
    * Converts a company name to a normalized, URL-friendly slug base.
    */
   private toSlugBase(input: string): string {
     return input
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // odstráni diakritiku
+      .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim()
-      .replace(/\s+/g, '-') // medzery → pomlčky
-      .replace(/[^a-z0-9-]/g, '') // povolené len písmená, čísla a pomlčky
-      .replace(/^-+|-+$/g, ''); // odstráni pomlčky na začiatku/konci
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/^-+|-+$/g, '');
   }
 
   /**
@@ -122,12 +184,14 @@ export class OrganizationService {
       relations: ['members', 'creator'],
     });
 
-    return this.mapToDto(org, org.members, userId);
+    return await this.mapToDto(org, org.members, userId);
   }
 
   async findAllForUser(userId: string): Promise<OrganizationDto[]> {
     const orgs = await this.orgRepo.find({ relations: ['members', 'creator'] });
-    return orgs.map((org) => this.mapToDto(org, org.members, userId));
+    return Promise.all(
+      orgs.map((org) => this.mapToDto(org, org.members, userId)),
+    );
   }
 
   async searchAndSortOrganizations(
@@ -163,7 +227,9 @@ export class OrganizationService {
 
     const organizations = await qb.getMany();
 
-    return organizations.map((org) => this.mapToDto(org, org.members, userId));
+    return Promise.all(
+      organizations.map((org) => this.mapToDto(org, org.members, userId)),
+    );
   }
 
   async join(userId: string, orgId: number): Promise<void> {
@@ -189,6 +255,16 @@ export class OrganizationService {
   }
 
   async leave(userId: string, orgId: number): Promise<void> {
+    const role = (await this.domainService.getRole(userId, String(orgId))) as
+      | 'Viewer'
+      | 'Manager'
+      | 'Owner'
+      | null;
+
+    if (role === 'Owner') {
+      await this.ensureAtLeastOneOwnerLeft(orgId, userId);
+    }
+
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
       relations: ['members'],
@@ -215,7 +291,7 @@ export class OrganizationService {
         status: JoinRequestStatus.PENDING,
       },
     });
-    const dto = this.mapToDto(org, org.members, userId);
+    const dto = await this.mapToDto(org, org.members, userId);
     dto.hasPendingRequest = pendingCount > 0;
     dto.isOwner = org.creatorId === userId;
     return dto;
@@ -237,7 +313,7 @@ export class OrganizationService {
         status: JoinRequestStatus.PENDING,
       },
     });
-    const dto = this.mapToDto(org, org.members, userId);
+    const dto = await this.mapToDto(org, org.members, userId);
     dto.hasPendingRequest = pendingCount > 0;
     dto.isOwner = org.creatorId === userId;
     return dto;
@@ -278,7 +354,7 @@ export class OrganizationService {
 
     const orgs = await qb.getMany();
 
-    return orgs.map((o) => this.mapToDto(o, o.members, userId));
+    return Promise.all(orgs.map((o) => this.mapToDto(o, o.members, userId)));
   }
 
   async update(
@@ -291,9 +367,8 @@ export class OrganizationService {
       relations: ['members', 'creator'],
     });
 
-    if (org.creatorId !== userId) {
-      throw new ForbiddenException('Only owner can edit');
-    }
+    const ctx = await this.getCallerContext(userId, orgId);
+    this.ensureAllowed(['Owner'], ctx);
 
     let slugChanged = false;
     if (
@@ -316,7 +391,7 @@ export class OrganizationService {
     org.lastEdit = new Date();
     await this.orgRepo.save(org);
 
-    const updatedDto = this.mapToDto(org, org.members, userId);
+    const updatedDto = await this.mapToDto(org, org.members, userId);
 
     if (slugChanged) {
       return {
@@ -333,33 +408,39 @@ export class OrganizationService {
       where: { id: orgId },
       relations: ['members', 'creator'],
     });
-    if (org.creatorId !== userId) {
-      throw new ForbiddenException('Only owner can delete');
-    }
+    const ctx = await this.getCallerContext(userId, orgId);
+    this.ensureAllowed(['Owner'], ctx);
     await this.domainService.deleteDomain(String(orgId));
     await this.orgRepo.remove(org);
   }
 
   async removeMember(
-    creatorId: string,
+    callerId: string,
     orgId: number,
     memberId: string,
   ): Promise<void> {
-    const org = await this.orgRepo.findOneOrFail({
-      where: { id: orgId },
-      relations: ['creator', 'members'],
-    });
-    if (org.creatorId !== creatorId) {
-      throw new ForbiddenException('Only owner can remove members');
+    const ctx = await this.getCallerContext(callerId, orgId);
+    this.ensureAllowed('OwnerOrManager', ctx);
+
+    const targetRole = (await this.domainService.getRole(
+      memberId,
+      String(orgId),
+    )) as 'Viewer' | 'Manager' | 'Owner' | null;
+
+    if (!this.canActOn(ctx.callerRole, targetRole, ctx.isAdmin)) {
+      throw new ForbiddenException('You cannot remove a higher-role member.');
     }
-    if (memberId === creatorId) {
-      throw new BadRequestException('Owner cannot remove themselves');
+
+    if (targetRole === 'Owner') {
+      await this.ensureAtLeastOneOwnerLeft(orgId, memberId);
     }
+
     await this.orgRepo
       .createQueryBuilder()
       .relation(Organization, 'members')
-      .of(org)
+      .of(orgId)
       .remove({ id: memberId } as any);
+
     await this.domainService.deleteRole(String(orgId), memberId);
   }
 
@@ -373,10 +454,9 @@ export class OrganizationService {
     if (org.isPrivate)
       throw new ForbiddenException('This organization is private');
 
-    // owner cannot request to join their own org
-    if (org.creatorId === userId) {
-      throw new ForbiddenException(`Owner cannot request to join`);
-    }
+    const role = await this.domainService.getRole(userId, String(org.id));
+    if (role === 'Owner' || role === 'Manager' || role === 'Viewer')
+      throw new ForbiddenException('Member cannot request to join.');
 
     const user = this.userRepo.create({ id: userId });
     const organization = this.orgRepo.create({ id: orgId });
@@ -435,9 +515,8 @@ Message: ${requesterMessage}
       relations: ['creator'],
     });
     if (!org) throw new NotFoundException(`Org ${orgId} not found`);
-    if (org.creatorId !== creatorId) {
-      throw new ForbiddenException();
-    }
+    const ctx = await this.getCallerContext(creatorId, org.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
     const reqs = await this.jrRepo.find({
       where: {
         organization: { id: orgId },
@@ -459,7 +538,7 @@ Message: ${requesterMessage}
     }));
   }
   async handleJoinRequest(
-    creatorId: string,
+    callerId: string,
     requestId: number,
     approve: boolean,
   ): Promise<void> {
@@ -467,20 +546,18 @@ Message: ${requesterMessage}
       where: { id: requestId },
       relations: ['organization', 'user'],
     });
-    if (jr.organization.creatorId !== creatorId) {
-      throw new ForbiddenException();
-    }
-    if (jr.status !== JoinRequestStatus.PENDING) {
+    const ctx = await this.getCallerContext(callerId, jr.organization.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
+
+    if (jr.status !== JoinRequestStatus.PENDING)
       throw new BadRequestException('Already processed');
-    }
+
     jr.status = approve
       ? JoinRequestStatus.APPROVED
       : JoinRequestStatus.REJECTED;
     await this.jrRepo.save(jr);
 
-    if (approve) {
-      await this.join(jr.user.id, jr.organization.id);
-    }
+    if (approve) await this.join(jr.user.id, jr.organization.id);
   }
 
   async findJoinRequestByIdForOwner(
@@ -491,9 +568,8 @@ Message: ${requesterMessage}
       where: { id: requestId },
       relations: ['user', 'organization'],
     });
-    if (jr.organization.creatorId !== creatorId) {
-      throw new ForbiddenException('Only owner may review requests');
-    }
+    const ctx = await this.getCallerContext(creatorId, jr.organization.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
     return {
       id: jr.id,
       message: jr.message,
@@ -517,9 +593,8 @@ Message: ${requesterMessage}
       relations: ['members', 'creator'],
     });
 
-    if (org.creatorId !== creatorId) {
-      throw new ForbiddenException('Only owner can send invitations');
-    }
+    const ctx = await this.getCallerContext(creatorId, org.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
     const emails = Array.from(
       new Set(
         dto.emails
@@ -637,7 +712,8 @@ Message: ${requesterMessage}
       relations: ['creator'],
     });
     if (!org) throw new NotFoundException('Organization not found');
-    if (org.creatorId !== creatorId) throw new ForbiddenException();
+    const ctx = await this.getCallerContext(creatorId, org.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
 
     return this.inviteRepo.find({
       where: { organization: { id: orgId }, revoked: false },
@@ -652,9 +728,11 @@ Message: ${requesterMessage}
     });
     if (!invitation) throw new NotFoundException('Invitation not found');
 
-    if (invitation.organization.creatorId !== creatorId) {
-      throw new ForbiddenException('Only owner can revoke invitations');
-    }
+    const ctx = await this.getCallerContext(
+      creatorId,
+      invitation.organization.id,
+    );
+    this.ensureAllowed('OwnerOrManager', ctx);
 
     invitation.revoked = true;
     await this.inviteRepo.save(invitation);
@@ -740,11 +818,24 @@ Message: ${requesterMessage}
     }
   }
 
-  private mapToDto(
+  private async mapToDto(
     org: Organization,
     members: User[],
     currentUserId?: string,
-  ): OrganizationDto {
+  ): Promise<OrganizationDto> {
+    const currentUser = currentUserId
+      ? await this.userRepo.findOne({ where: { id: currentUserId } })
+      : null;
+
+    const isAdmin = !!currentUser?.isAdmin;
+    let currentUserRole = currentUserId
+      ? await this.domainService.getRole(currentUserId, String(org.id))
+      : null;
+
+    if (isAdmin) {
+      currentUserRole = 'Admin';
+    }
+
     return {
       id: org.id,
       name: org.name,
@@ -758,16 +849,16 @@ Message: ${requesterMessage}
       createdAt: org.createdAt,
       lastEdit: org.lastEdit,
       memberCount: members.length,
-      isMember: currentUserId
-        ? members.some((u) => u.id === currentUserId)
-        : false,
+      isMember: !!currentUserId && members.some((u) => u.id === currentUserId),
       hasPendingRequest: false,
-      isOwner: false,
+      isOwner: currentUserRole === 'Owner',
       members: members.map((u) => ({
         id: u.id,
         firstName: u.firstName,
         lastName: u.lastName,
       })),
+      currentUserRole: currentUserRole ?? null,
+      isAdmin,
     };
   }
 }

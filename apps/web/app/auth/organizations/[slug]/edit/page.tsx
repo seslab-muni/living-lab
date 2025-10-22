@@ -58,6 +58,12 @@ export default function EditOrganizationPage() {
     const [snackbarSeverity, setSnackbarSeverity] =
       useState<'success' | 'warning' | 'error'>('success');
     const [editedRoles, setEditedRoles] = useState<Record<string, 'Owner'|'Manager'|'Viewer'>>({});
+    const [userRole, setUserRole] = useState<'Owner' | 'Manager' | 'Viewer' | 'Admin' | null>(null);
+    const [authChecked, setAuthChecked] = useState(false);
+    const canEditInfo = userRole === 'Owner' || userRole === 'Admin';
+    const canManageRoles = userRole === 'Owner' || userRole === 'Manager' || userRole === 'Admin';
+    const canInviteMembers = canManageRoles;
+    const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
 
     useEffect(() => {
       authFetch(`${BACKEND_URL}/organizations/${slug}`)
@@ -69,24 +75,31 @@ export default function EditOrganizationPage() {
           setCompanyId(String(data.companyId));
           setCompanyName(data.companyName);
           setIsPrivate(data.isPrivate);
+          const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null = (data.currentUserRole as never) ?? (data.isAdmin ? 'Admin' : null);
+          setUserRole(role);
+          if (role !== 'Owner' && role !== 'Manager' && role !== 'Admin') {router.replace(`/auth/organizations/${data.slug}`); return;}
           try {
-            const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
-            if (rolesRes.ok) {
-              const withRoles = await rolesRes.json();
-              const merged = data.members.map((m) => {
-                const found = withRoles.find((u: any) => u.id === m.id);
-                return { ...m, role: found?.role ?? 'Viewer' };
-              });
-              setMembers(merged);
-            } else {
-              setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
-            }
+              const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
+              if (rolesRes.ok) {
+                  const withRoles = await rolesRes.json();
+                  const merged = data.members.map((m) => {
+                      const found = withRoles.find((u: any) => u.id === m.id);
+                      return { ...m, role: found?.role ?? 'Viewer' };
+                  });
+                  setMembers(merged);
+              } else {
+                  setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+              }
           } catch {
-            setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+              setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+          } finally {
+              setAuthChecked(true);
           }
         })
-        .catch(() => router.push('/auth/organizations'))
-        .finally(() => setLoading(false));
+          .catch(() => router.push('/auth/organizations'))
+          .finally(() => {
+              setLoading(false);
+              setAuthChecked(true);});
     }, [router, slug]);
 
     useEffect(() => {
@@ -177,8 +190,11 @@ export default function EditOrganizationPage() {
       const targetSlug = data.newSlug && data.newSlug !== slug ? data.newSlug : slug;
       router.push(`/auth/organizations/${targetSlug}?saved=true`);
     } catch (err: any) {
-      console.error(err);
-      setErrors({ form: err.message || 'Unexpected error' });
+        const msg = err.message?.includes('Managers cannot assign')
+            ? 'You cannot assign a higher role than your own.'
+            : err.message || 'Unexpected error';
+        console.error(err);
+        setErrors({ form: msg });
     } finally {
       setSaving(false);
     }
@@ -194,6 +210,14 @@ export default function EditOrganizationPage() {
         } catch {
         }
     };
+
+    if (!authChecked) {
+        return (
+            <Box display="flex" justifyContent="center" p={6}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     if (loading || !org) {
         return (
@@ -337,6 +361,7 @@ export default function EditOrganizationPage() {
                             error={!!errors.name}
                             helperText={errors.name}
                             required
+                            disabled={!canEditInfo}
                         />
                         <TextField
                             label="Description"
@@ -344,6 +369,7 @@ export default function EditOrganizationPage() {
                             multiline
                             minRows={3}
                             onChange={e => setDescription(e.target.value)}
+                            disabled={!canEditInfo}
                         />
                         <TextField
                             label="IČO"
@@ -354,6 +380,7 @@ export default function EditOrganizationPage() {
                             error={!!errors.companyId}
                             helperText={errors.companyId}
                             required
+                            disabled={!canEditInfo}
                         />
                         <TextField
                             label="Company Name"
@@ -363,6 +390,7 @@ export default function EditOrganizationPage() {
                             error={!!errors.companyName}
                             helperText={errors.companyName}
                             required
+                            disabled={!canEditInfo}
                         />
                         <FormControlLabel
                           control={
@@ -370,6 +398,7 @@ export default function EditOrganizationPage() {
                               checked={isPrivate}
                               onChange={(e) => setIsPrivate(e.target.checked)}
                               color="primary"
+                              disabled={!canEditInfo}
                             />
                           }
                           label={
@@ -414,35 +443,59 @@ export default function EditOrganizationPage() {
                               justifyContent="space-between"
                               mb={0.5}
                             >
-                              <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                                {m.firstName} {m.lastName}
-                              </Typography>
+                            <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                            {m.firstName} {m.lastName}
+                            </Typography>
 
-                              <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
-                                <InputLabel id={`role-${m.id}`}>Role</InputLabel>
-                                <Select
-                                  labelId={`role-${m.id}`}
-                                  value={editedRoles[m.id] ?? m.role ?? 'Viewer'}
-                                  label="Role"
-                                  onChange={(e) => {
-                                    const val = e.target.value as 'Owner' | 'Manager' | 'Viewer';
-                                    setEditedRoles((prev) => ({ ...prev, [m.id]: val }));
-                                  }}
-                                >
-                                  {['Owner', 'Manager', 'Viewer'].map((role) => (
-                                    <MenuItem key={role} value={role}>
-                                      {role}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
+                            {(() => {
+                                const isHigherRole =
+                                    ['Viewer', 'Manager', 'Owner', 'Admin'].indexOf(m.role ?? 'Viewer') >
+                                    ['Viewer', 'Manager', 'Owner', 'Admin'].indexOf(userRole ?? 'Viewer');
+
+                            if (isHigherRole && userRole !== 'Admin') {
+                                return (
+                                    <Typography variant="body2" sx={{ width: 120, mr: 1, textAlign: 'center' }}>
+                                        {m.role ?? 'Viewer'}
+                                    </Typography>
+                                );
+                            }
+
+                            return (
+                                <FormControl size="small" sx={{ minWidth: 120, mr: 1 }}>
+                                    <InputLabel id={`role-${m.id}`}>Role</InputLabel>
+                                    <Select
+                                        labelId={`role-${m.id}`}
+                                        value={editedRoles[m.id] ?? m.role ?? 'Viewer'}
+                                        label="Role"
+                                        onChange={(e) => {
+                                            const val = e.target.value as 'Owner' | 'Manager' | 'Viewer';
+                                            setEditedRoles((prev) => ({ ...prev, [m.id]: val }));
+                                        }}
+                                        disabled={!canManageRoles}
+                                    >
+                                        {['Owner', 'Manager', 'Viewer']
+                                            .filter((role) => {
+                                                if (userRole === 'Admin') return true;
+                                                if (userRole === 'Owner') return true;
+                                                if (userRole === 'Manager') return role !== 'Owner';
+                                                return false;
+                                            })
+                                            .map((role) => (
+                                                <MenuItem key={role} value={role}>
+                                                    {role}
+                                                </MenuItem>
+                                            ))}
+                                    </Select>
+                                </FormControl>
+                            );
+                            })()}
 
                               <Box sx={{ width: 36, textAlign: 'center' }}>
-                                {m.id !== org.creatorId && (
-                                  <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
-                                    <DeleteIcon fontSize="small" color="error" />
-                                  </IconButton>
-                                )}
+                                  {canManageRoles && m.id !== org.creatorId && (
+                                      <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
+                                          <DeleteIcon fontSize="small" color="error" />
+                                      </IconButton>
+                                  )}
                               </Box>
                             </Box>
                           ))}
@@ -476,6 +529,7 @@ export default function EditOrganizationPage() {
                           )}
                         </Box>
 
+                        {canInviteMembers && (
                         <Box my={4}>
                           <Typography variant="h6" gutterBottom>
                             Invite New Members
@@ -520,6 +574,7 @@ export default function EditOrganizationPage() {
                             </Button>
                           </Box>
                         </Box>
+                        )}
 
                         <Box
                             display="flex"
@@ -530,7 +585,7 @@ export default function EditOrganizationPage() {
                                 variant="outlined"
                                 color="error"
                                 onClick={() => setConfirmOpen(true)}
-                                disabled={saving}
+                                disabled={saving || !canDeleteOrganization}
                             >
                                 Delete Organization
                             </Button>

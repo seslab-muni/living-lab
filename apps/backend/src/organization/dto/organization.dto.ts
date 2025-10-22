@@ -19,4 +19,12 @@ export class OrganizationDto {
     firstName: string;
     lastName: string;
   }>;
+  currentUserRole?:
+    | 'Viewer'
+    | 'Manager'
+    | 'Owner'
+    | 'Admin'
+    | 'Moderator'
+    | null;
+  isAdmin?: boolean;
 }

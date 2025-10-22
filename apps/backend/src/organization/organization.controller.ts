@@ -23,6 +23,8 @@ import { JoinRequestDto } from './dto/join-request.dto';
 import type { Request } from 'express';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { DefineRoles } from 'src/common/decorators/roles.decorator';
+import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +42,8 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug/join-requests')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async listRequests(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -137,6 +141,8 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug')
+  @DefineRoles('Owner', 'Admin')
+  @UseGuards(RolesGuard)
   async update(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -152,6 +158,8 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug/join-requests/:reqId')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async getRequest(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -162,6 +170,8 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug/invitations')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async listInvitations(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -173,6 +183,8 @@ export class OrganizationController {
   }
 
   @Post(':idOrSlug/invitations')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async sendInvitations(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -185,6 +197,8 @@ export class OrganizationController {
   }
 
   @Delete(':idOrSlug/invitations/:inviteId')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async revokeInvitation(
     @GetUser() user: JwtPayload,
     @Param('inviteId') inviteId: string,
@@ -206,6 +220,8 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/approve')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async approve(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -216,6 +232,8 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/reject')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async reject(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
@@ -226,20 +244,26 @@ export class OrganizationController {
   }
 
   @Delete(':idOrSlug')
-  remove(
+  @DefineRoles('Owner', 'Admin')
+  @UseGuards(RolesGuard)
+  async remove(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,
   ): Promise<void> {
     const id = +idOrSlug;
     if (isNaN(id)) {
-      return this.orgService
-        .findOneBySlugForUser(user.id, idOrSlug)
-        .then((found) => this.orgService.remove(user.id, found.id));
+      const found = await this.orgService.findOneBySlugForUser(
+        user.id,
+        idOrSlug,
+      );
+      return await this.orgService.remove(user.id, found.id);
     }
     return this.orgService.remove(user.id, id);
   }
 
   @Delete(':idOrSlug/members/:memberId')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
   async removeMember(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug') idOrSlug: string,

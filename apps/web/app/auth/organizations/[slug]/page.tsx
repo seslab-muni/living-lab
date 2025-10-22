@@ -32,6 +32,9 @@ export default function OrganizationDetailsPage() {
     const searchParams = useSearchParams();
     const savedParam = searchParams.get('saved') === 'true';
     const [showSaved, setShowSaved] = useState(savedParam);
+    const [userRole, setUserRole] = useState<
+        'Viewer' | 'Manager' | 'Owner' | 'Admin' | 'Moderator' | null
+    >(null);
 
     useEffect(() => {
       if (!savedParam) return;
@@ -63,6 +66,7 @@ export default function OrganizationDetailsPage() {
           setOrg(data);
           setIsMember(data.isMember);
           setMemberCount(data.memberCount);
+          setUserRole(data.currentUserRole ?? null);
         } catch (err: any) {
           console.error(err);
           setError('Unable to load organization.');
@@ -74,7 +78,11 @@ export default function OrganizationDetailsPage() {
     }, [status, slug]);
 
     useEffect(() => {
-        if (!org?.isOwner) return;
+        if (
+            !org ||
+            !['Owner', 'Manager', 'Admin'].includes(org.currentUserRole ?? '')
+        )
+            return;
         authFetch(
             `${BACKEND_URL}/organizations/${org.slug}/join-requests`
         )
@@ -115,14 +123,23 @@ export default function OrganizationDetailsPage() {
       );
     }
 
-    const handleLeave = () => {
-        authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, { method: 'POST' })
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                setIsMember(false);
-                setMemberCount(c => Math.max(c - 1, 0));
-            })
-            .catch(err => setError(err.message));
+    const handleLeave = async () => {
+        authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, {
+          method: 'POST',
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              const friendlyMessage =
+                data?.message ||
+                `Failed to leave organization (HTTP ${res.status})`;
+              throw new Error(friendlyMessage);
+            }
+            setIsMember(false);
+            setMemberCount((c) => Math.max(c - 1, 0));
+            setUserRole(null);
+          })
+          .catch((err) => setError(err.message));
     };
 
     return (
@@ -147,6 +164,23 @@ export default function OrganizationDetailsPage() {
                         </Typography>
                       )}
                     </Typography>
+                    {userRole && (
+                        <Box
+                            sx={{
+                                display: 'inline-block',
+                                alignSelf: 'center',
+                                backgroundColor: '#eee',
+                                borderRadius: '8px',
+                                px: 1.2,
+                                py: 0.3,
+                                mt: 0.5,
+                            }}
+                        >
+                            <Typography variant="caption" color="text.secondary">
+                                Role: {userRole}
+                            </Typography>
+                        </Box>
+                    )}
                     <Typography variant="body1">{org.description}</Typography>
                     <Box height={50}></Box>
                     <Typography variant="caption" color="text.secondary">
@@ -162,7 +196,7 @@ export default function OrganizationDetailsPage() {
                         Members: {memberCount}
                     </Typography>
 
-                    {org.isOwner && org.members.length > 0 && (
+                    {(userRole === 'Owner' || userRole === 'Admin') && org.members.length > 0 && (
                       <Box mb={4}>
                         <Typography variant="h6" gutterBottom>
                           Members
@@ -196,7 +230,7 @@ export default function OrganizationDetailsPage() {
                       </Box>
                     )}
 
-                    {org.isOwner && (
+                    {(userRole === 'Owner' || userRole === 'Admin') && (
                         <Box mb={4}>
                             <Typography variant="h6" gutterBottom>
                                 Pending Join Requests
@@ -235,7 +269,7 @@ export default function OrganizationDetailsPage() {
                     )}
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
-                      {!org.isOwner && (
+                      {(userRole !== 'Owner') && (
                         isMember ? (
                           <Button variant="outlined" color="error" onClick={handleLeave}>
                             Leave
@@ -259,7 +293,7 @@ export default function OrganizationDetailsPage() {
                             )
                           )
                         )}
-                      {org.isOwner && (
+                      {(userRole === 'Owner' || userRole === 'Manager' || userRole === 'Admin') && (
                         <Button variant="outlined" onClick={() => router.push(`/auth/organizations/${slug}/edit`)}>
                           Edit Organization
                         </Button>
