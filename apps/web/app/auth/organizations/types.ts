@@ -3,8 +3,8 @@ export interface OrganizationDto {
   name: string;
   slug: string;
   description?: string;
-  ownerId: string;
-  ownerName: string;
+  creatorId: string;
+  creatorName: string;
   companyId: number;
   companyName: string;
   lastEdit: string;

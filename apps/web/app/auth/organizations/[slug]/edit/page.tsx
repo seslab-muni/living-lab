@@ -438,7 +438,7 @@ export default function EditOrganizationPage() {
                               </FormControl>
 
                               <Box sx={{ width: 36, textAlign: 'center' }}>
-                                {m.id !== org.ownerId && (
+                                {m.id !== org.creatorId && (
                                   <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
                                     <DeleteIcon fontSize="small" color="error" />
                                   </IconButton>

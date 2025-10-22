@@ -29,8 +29,8 @@ export class User {
   @ManyToMany(() => Organization, (org) => org.members)
   organizations: Organization[];
 
-  @OneToMany(() => Organization, (org) => org.owner)
-  ownedOrganizations: Organization[];
+  @OneToMany(() => Organization, (org) => org.creator)
+  createdOrganizations: Organization[];
 
   @UpdateDateColumn({ type: 'timestamp' })
   lastEdit: Date;

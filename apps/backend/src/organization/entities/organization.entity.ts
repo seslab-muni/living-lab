@@ -25,13 +25,13 @@ export class Organization {
   @Column({ type: 'text', nullable: true })
   description?: string;
   @Column()
-  ownerId: string;
+  creatorId: string;
 
-  @ManyToOne(() => User, (user) => user.ownedOrganizations, {
+  @ManyToOne(() => User, (user) => user.createdOrganizations, {
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'ownerId' })
-  owner: User;
+  @JoinColumn({ name: 'creatorId' })
+  creator: User;
   @Column({ type: 'int' })
   companyId: number;
 

@@ -156,7 +156,7 @@ export default function OrganizationDetailsPage() {
                         Last updated: {new Date(org.lastEdit).toLocaleString()}
                     </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Owner of organization: {org.ownerName}
+                    Creator of organization: {org.creatorName}
                   </Typography>
                     <Typography variant="caption" color="text.secondary">
                         Members: {memberCount}

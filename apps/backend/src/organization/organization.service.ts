@@ -109,7 +109,7 @@ export class OrganizationService {
       name: dto.name,
       slug,
       description: dto.description ?? 'your description goes here',
-      ownerId: userId,
+      creatorId: userId,
       companyId: dto.companyId,
       companyName: dto.companyName,
       members: [{ id: userId } as any],
@@ -119,14 +119,14 @@ export class OrganizationService {
     await this.domainService.create(String(org.id), 'Organization', userId);
     org = await this.orgRepo.findOneOrFail({
       where: { id: org.id },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
 
     return this.mapToDto(org, org.members, userId);
   }
 
   async findAllForUser(userId: string): Promise<OrganizationDto[]> {
-    const orgs = await this.orgRepo.find({ relations: ['members', 'owner'] });
+    const orgs = await this.orgRepo.find({ relations: ['members', 'creator'] });
     return orgs.map((org) => this.mapToDto(org, org.members, userId));
   }
 
@@ -138,7 +138,7 @@ export class OrganizationService {
     const qb = this.orgRepo
       .createQueryBuilder('organization')
       .leftJoinAndSelect('organization.members', 'member')
-      .leftJoinAndSelect('organization.owner', 'owner');
+      .leftJoinAndSelect('organization.creator', 'creator');
 
     if (query && query.trim().length > 0) {
       qb.where('LOWER(organization.name) LIKE :q', {
@@ -205,7 +205,7 @@ export class OrganizationService {
   ): Promise<OrganizationDto> {
     const org = await this.orgRepo.findOne({
       where: { slug },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
     if (!org) throw new NotFoundException(`Organization "${slug}" not found`);
     const pendingCount = await this.jrRepo.count({
@@ -217,7 +217,7 @@ export class OrganizationService {
     });
     const dto = this.mapToDto(org, org.members, userId);
     dto.hasPendingRequest = pendingCount > 0;
-    dto.isOwner = org.ownerId === userId;
+    dto.isOwner = org.creatorId === userId;
     return dto;
   }
 
@@ -227,7 +227,7 @@ export class OrganizationService {
   ): Promise<OrganizationDto> {
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
     if (!org) throw new NotFoundException(`Organization ${orgId} not found`);
     const pendingCount = await this.jrRepo.count({
@@ -239,7 +239,7 @@ export class OrganizationService {
     });
     const dto = this.mapToDto(org, org.members, userId);
     dto.hasPendingRequest = pendingCount > 0;
-    dto.isOwner = org.ownerId === userId;
+    dto.isOwner = org.creatorId === userId;
     return dto;
   }
 
@@ -253,7 +253,7 @@ export class OrganizationService {
     const qb = this.orgRepo
       .createQueryBuilder('org')
       .leftJoinAndSelect('org.members', 'members')
-      .leftJoinAndSelect('org.owner', 'owner');
+      .leftJoinAndSelect('org.creator', 'creator');
     const orConditions: string[] = [];
     const params: Record<string, any> = {};
 
@@ -288,10 +288,10 @@ export class OrganizationService {
   ): Promise<OrganizationDto & { newSlug?: string }> {
     const org = await this.orgRepo.findOneOrFail({
       where: { id: orgId },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
 
-    if (org.ownerId !== userId) {
+    if (org.creatorId !== userId) {
       throw new ForbiddenException('Only owner can edit');
     }
 
@@ -331,9 +331,9 @@ export class OrganizationService {
   async remove(userId: string, orgId: number): Promise<void> {
     const org = await this.orgRepo.findOneOrFail({
       where: { id: orgId },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
-    if (org.ownerId !== userId) {
+    if (org.creatorId !== userId) {
       throw new ForbiddenException('Only owner can delete');
     }
     await this.domainService.deleteDomain(String(orgId));
@@ -341,18 +341,18 @@ export class OrganizationService {
   }
 
   async removeMember(
-    ownerId: string,
+    creatorId: string,
     orgId: number,
     memberId: string,
   ): Promise<void> {
     const org = await this.orgRepo.findOneOrFail({
       where: { id: orgId },
-      relations: ['owner', 'members'],
+      relations: ['creator', 'members'],
     });
-    if (org.ownerId !== ownerId) {
+    if (org.creatorId !== creatorId) {
       throw new ForbiddenException('Only owner can remove members');
     }
-    if (memberId === ownerId) {
+    if (memberId === creatorId) {
       throw new BadRequestException('Owner cannot remove themselves');
     }
     await this.orgRepo
@@ -374,7 +374,7 @@ export class OrganizationService {
       throw new ForbiddenException('This organization is private');
 
     // owner cannot request to join their own org
-    if (org.ownerId === userId) {
+    if (org.creatorId === userId) {
       throw new ForbiddenException(`Owner cannot request to join`);
     }
 
@@ -388,9 +388,11 @@ export class OrganizationService {
     });
     const saved = await this.jrRepo.save(jr);
 
-    const owner = await this.userRepo.findOne({ where: { id: org.ownerId } });
+    const creator = await this.userRepo.findOne({
+      where: { id: org.creatorId },
+    });
     const requester = await this.userRepo.findOne({ where: { id: userId } });
-    if (owner?.email) {
+    if (creator?.email) {
       const frontendUrl =
         this.configService.get<string>('FRONTEND_URL') ??
         'http://localhost:3000';
@@ -402,22 +404,22 @@ export class OrganizationService {
       const requesterMessage = dto.message?.trim() || '(no message provided)';
 
       const email: SendEmailDto = {
-        recipient: owner.email,
+        recipient: creator.email,
         subject: `BVV LL Platform: New join request for ${org.name}`,
-        html: `<p>Hello ${owner.firstName},</p>
+        html: `<p>Hello ${creator.firstName},</p>
            <p><strong>${requesterName}</strong> has requested to join <strong>${org.name}</strong>.</p>
            <p>Message:</p>
            <blockquote>${requesterMessage}</blockquote>
            <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
            <p>— BVV Living Lab System</p>`,
-        text: `Hello ${owner.firstName}, ${requesterName} has requested to join ${org.name}.
+        text: `Hello ${creator.firstName}, ${requesterName} has requested to join ${org.name}.
 Message: ${requesterMessage}
         Review it here: ${link}`,
       };
 
       await this.emailService.sendEmail(email);
       this.logger.log(
-        `Sent join request notification to ${owner.email} for organization ${org.name} from ${requesterName}`,
+        `Sent join request notification to ${creator.email} for organization ${org.name} from ${requesterName}`,
       );
     }
 
@@ -425,15 +427,15 @@ Message: ${requesterMessage}
   }
 
   async findPendingRequestsForOrg(
-    ownerId: string,
+    creatorId: string,
     orgId: number,
   ): Promise<JoinRequestDto[]> {
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
-      relations: ['owner'],
+      relations: ['creator'],
     });
     if (!org) throw new NotFoundException(`Org ${orgId} not found`);
-    if (org.ownerId !== ownerId) {
+    if (org.creatorId !== creatorId) {
       throw new ForbiddenException();
     }
     const reqs = await this.jrRepo.find({
@@ -457,7 +459,7 @@ Message: ${requesterMessage}
     }));
   }
   async handleJoinRequest(
-    ownerId: string,
+    creatorId: string,
     requestId: number,
     approve: boolean,
   ): Promise<void> {
@@ -465,7 +467,7 @@ Message: ${requesterMessage}
       where: { id: requestId },
       relations: ['organization', 'user'],
     });
-    if (jr.organization.ownerId !== ownerId) {
+    if (jr.organization.creatorId !== creatorId) {
       throw new ForbiddenException();
     }
     if (jr.status !== JoinRequestStatus.PENDING) {
@@ -482,14 +484,14 @@ Message: ${requesterMessage}
   }
 
   async findJoinRequestByIdForOwner(
-    ownerId: string,
+    creatorId: string,
     requestId: number,
   ): Promise<JoinRequestDto> {
     const jr = await this.jrRepo.findOneOrFail({
       where: { id: requestId },
       relations: ['user', 'organization'],
     });
-    if (jr.organization.ownerId !== ownerId) {
+    if (jr.organization.creatorId !== creatorId) {
       throw new ForbiddenException('Only owner may review requests');
     }
     return {
@@ -506,16 +508,16 @@ Message: ${requesterMessage}
   }
 
   async sendInvitations(
-    ownerId: string,
+    creatorId: string,
     orgId: number,
     dto: CreateInvitationDto,
   ): Promise<{ sent: string[]; skipped: { email: string; reason: string }[] }> {
     const org = await this.orgRepo.findOneOrFail({
       where: { id: orgId },
-      relations: ['members', 'owner'],
+      relations: ['members', 'creator'],
     });
 
-    if (org.ownerId !== ownerId) {
+    if (org.creatorId !== creatorId) {
       throw new ForbiddenException('Only owner can send invitations');
     }
     const emails = Array.from(
@@ -629,13 +631,13 @@ Message: ${requesterMessage}
     return { message: `User ${email} joined ${org.name}`, slug: org.slug };
   }
 
-  async findPendingInvitations(ownerId: string, orgId: number) {
+  async findPendingInvitations(creatorId: string, orgId: number) {
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
-      relations: ['owner'],
+      relations: ['creator'],
     });
     if (!org) throw new NotFoundException('Organization not found');
-    if (org.ownerId !== ownerId) throw new ForbiddenException();
+    if (org.creatorId !== creatorId) throw new ForbiddenException();
 
     return this.inviteRepo.find({
       where: { organization: { id: orgId }, revoked: false },
@@ -643,14 +645,14 @@ Message: ${requesterMessage}
     });
   }
 
-  async revokeInvitation(ownerId: string, inviteId: number): Promise<void> {
+  async revokeInvitation(creatorId: string, inviteId: number): Promise<void> {
     const invitation = await this.inviteRepo.findOne({
       where: { id: inviteId },
       relations: ['organization'],
     });
     if (!invitation) throw new NotFoundException('Invitation not found');
 
-    if (invitation.organization.ownerId !== ownerId) {
+    if (invitation.organization.creatorId !== creatorId) {
       throw new ForbiddenException('Only owner can revoke invitations');
     }
 
@@ -703,8 +705,10 @@ Message: ${requesterMessage}
 
     for (const jr of pendingRequests) {
       const org = jr.organization;
-      const owner = await this.userRepo.findOne({ where: { id: org.ownerId } });
-      if (!owner?.email) continue;
+      const creator = await this.userRepo.findOne({
+        where: { id: org.creatorId },
+      });
+      if (!creator?.email) continue;
 
       const frontendUrl =
         this.configService.get<string>('FRONTEND_URL') ??
@@ -715,9 +719,9 @@ Message: ${requesterMessage}
       const requesterMessage = jr.message?.trim() || '(no message provided)';
 
       const email: SendEmailDto = {
-        recipient: owner.email,
+        recipient: creator.email,
         subject: `BVV LL Platform: Reminder: Pending join request for ${org.name}`,
-        html: `<p>Hello ${owner.firstName},</p>
+        html: `<p>Hello ${creator.firstName},</p>
          <p>You still have a pending join request for <strong>${org.name}</strong>.</p>
          <p>Requester: <strong>${requesterName}</strong></p>
          <p>Message:</p>
@@ -731,7 +735,7 @@ Message: ${requesterMessage}
 
       await this.emailService.sendEmail(email);
       this.logger.log(
-        `Sent reminder email for join request ${jr.id} (organization ${org.name}) to ${owner.email}`,
+        `Sent reminder email for join request ${jr.id} (organization ${org.name}) to ${creator.email}`,
       );
     }
   }
@@ -746,8 +750,8 @@ Message: ${requesterMessage}
       name: org.name,
       slug: org.slug,
       description: org.description,
-      ownerId: org.ownerId,
-      ownerName: `${org.owner.firstName} ${org.owner.lastName}`,
+      creatorId: org.creatorId,
+      creatorName: `${org.creator.firstName} ${org.creator.lastName}`,
       companyId: org.companyId,
       companyName: org.companyName,
       isPrivate: org.isPrivate,
