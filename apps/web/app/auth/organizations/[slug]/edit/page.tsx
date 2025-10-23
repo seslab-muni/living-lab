@@ -77,7 +77,10 @@ export default function EditOrganizationPage() {
           setIsPrivate(data.isPrivate);
           const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null = (data.currentUserRole as never) ?? (data.isAdmin ? 'Admin' : null);
           setUserRole(role);
-          if (role !== 'Owner' && role !== 'Manager' && role !== 'Admin') {router.replace(`/auth/organizations/${data.slug}`); return;}
+          if (role !== 'Owner' && role !== 'Manager' && role !== 'Admin') {
+            router.replace(`/auth/organizations/${data.slug}`);
+            return;
+          }
           try {
               const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
               if (rolesRes.ok) {
@@ -92,14 +95,14 @@ export default function EditOrganizationPage() {
               }
           } catch {
               setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
-          } finally {
-              setAuthChecked(true);
           }
+
+          setAuthChecked(true);
+          setLoading(false);
         })
-          .catch(() => router.push('/auth/organizations'))
-          .finally(() => {
-              setLoading(false);
-              setAuthChecked(true);});
+        .catch(() => {
+          router.push('/auth/organizations');
+        });
     }, [router, slug]);
 
     useEffect(() => {
@@ -143,6 +146,14 @@ export default function EditOrganizationPage() {
         .then(setPendingInvites)
         .catch(() => setPendingInvites([]));
     }, [org, slug]);
+
+    useEffect(() => {
+      if (errors.form) {
+        setSnackbarMessage(errors.form);
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+      }
+    }, [errors.form]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,10 +200,19 @@ export default function EditOrganizationPage() {
       }
       const targetSlug = data.newSlug && data.newSlug !== slug ? data.newSlug : slug;
       router.push(`/auth/organizations/${targetSlug}?saved=true`);
-    } catch (err: any) {
-        const msg = err.message?.includes('Managers cannot assign')
-            ? 'You cannot assign a higher role than your own.'
-            : err.message || 'Unexpected error';
+    } catch (err: unknown) {
+        let msg = 'Unexpected error';
+
+        if (err instanceof Error) {
+            if (err.message.includes('Managers cannot assign')) {
+                msg = 'You cannot assign a higher role than your own.';
+            } else if (err.message.includes('At least one Owner must remain')) {
+                msg = 'At least one Owner must remain in the organization.';
+            } else {
+                msg = err.message;
+            }
+        }
+
         console.error(err);
         setErrors({ form: msg });
     } finally {
@@ -351,6 +371,15 @@ export default function EditOrganizationPage() {
                 <Typography variant="h4" textAlign="center" gutterBottom>
                     Edit Organization
                 </Typography>
+                {userRole && (
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', textAlign: 'center', mb: 2 }}
+                    >
+                        You are logged in as: <strong>{userRole}</strong>
+                    </Typography>
+                 )}
                 <Box>
                     <Stack spacing={3}>
                         <TextField
@@ -407,9 +436,6 @@ export default function EditOrganizationPage() {
                               : 'Public organization (anyone can request to join)'
                           }
                         />
-                        {errors.form && (
-                            <Typography color="error">{errors.form}</Typography>
-                        )}
                         {loadingDupes ? (
                             <Box display="flex" justifyContent="center" py={2}>
                                 <CircularProgress size={24} />
@@ -491,11 +517,25 @@ export default function EditOrganizationPage() {
                             })()}
 
                               <Box sx={{ width: 36, textAlign: 'center' }}>
-                                  {canManageRoles && m.id !== org.creatorId && (
-                                      <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
-                                          <DeleteIcon fontSize="small" color="error" />
-                                      </IconButton>
-                                  )}
+                                {canManageRoles && org.currentUserId && (() => {
+                                  const hierarchy = ['Viewer', 'Manager', 'Owner', 'Admin'];
+                                  const roleRank = (r: string | null | undefined) =>
+                                    hierarchy.indexOf(r ?? 'Viewer');
+
+                                  const currentRank = roleRank(userRole);
+                                  const memberRank = roleRank(m.role);
+
+
+                                  const isSelf = m.id === org.currentUserId;
+                                  const canDeleteThisMember =
+                                    !isSelf && currentRank >= memberRank;
+
+                                  return canDeleteThisMember ? (
+                                    <IconButton size="small" onClick={() => setRemoveTarget(m.id)}>
+                                      <DeleteIcon fontSize="small" color="error" />
+                                    </IconButton>
+                                  ) : null;
+                                })()}
                               </Box>
                             </Box>
                           ))}
@@ -575,7 +615,6 @@ export default function EditOrganizationPage() {
                           </Box>
                         </Box>
                         )}
-
                         <Box
                             display="flex"
                             justifyContent="space-between"
@@ -636,21 +675,27 @@ export default function EditOrganizationPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
-            <Snackbar
-              open={snackbarOpen}
-              autoHideDuration={4000}
-              onClose={() => setSnackbarOpen(false)}
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={4000}
+            onClose={() => {
+              setSnackbarOpen(false);
+              setErrors((prev) => ({ ...prev, form: '' }));
+            }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert
+              onClose={() => {
+                setSnackbarOpen(false);
+                setErrors((prev) => ({ ...prev, form: '' }));
+              }}
+              severity={snackbarSeverity}
+              variant="filled"
+              sx={{ width: '100%' }}
             >
-              <Alert
-                onClose={() => setSnackbarOpen(false)}
-                severity={snackbarSeverity}
-                variant="filled"
-                sx={{ width: '100%' }}
-              >
-                {snackbarMessage}
-              </Alert>
-            </Snackbar>
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
         </Box>
     );
 }

@@ -368,7 +368,7 @@ export class OrganizationService {
     });
 
     const ctx = await this.getCallerContext(userId, orgId);
-    this.ensureAllowed(['Owner'], ctx);
+    this.ensureAllowed('OwnerOrManager', ctx);
 
     let slugChanged = false;
     if (
@@ -468,38 +468,42 @@ export class OrganizationService {
     });
     const saved = await this.jrRepo.save(jr);
 
-    const creator = await this.userRepo.findOne({
-      where: { id: org.creatorId },
-    });
-    const requester = await this.userRepo.findOne({ where: { id: userId } });
-    if (creator?.email) {
-      const frontendUrl =
-        this.configService.get<string>('FRONTEND_URL') ??
-        'http://localhost:3000';
-      const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${saved.id}`;
+    const owners = await this.domainService.getAllUsers(String(org.id));
+    const ownerUsers = owners.filter((u) => u.role === 'Owner');
 
-      const requesterName = requester
-        ? `${requester.firstName} ${requester.lastName}`
-        : 'Unknown user';
-      const requesterMessage = dto.message?.trim() || '(no message provided)';
+    const requester = await this.userRepo.findOne({ where: { id: userId } });
+    const requesterName = requester
+      ? `${requester.firstName} ${requester.lastName}`
+      : 'Unknown user';
+    const requesterMessage = dto.message?.trim() || '(no message provided)';
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${saved.id}`;
+
+    for (const owner of ownerUsers) {
+      const ownerUser = await this.userRepo.findOne({
+        where: { id: owner.id },
+      });
+      if (!ownerUser?.email) continue;
 
       const email: SendEmailDto = {
-        recipient: creator.email,
+        recipient: ownerUser.email,
         subject: `BVV LL Platform: New join request for ${org.name}`,
-        html: `<p>Hello ${creator.firstName},</p>
+        html: `<p>Hello ${ownerUser.firstName},</p>
            <p><strong>${requesterName}</strong> has requested to join <strong>${org.name}</strong>.</p>
            <p>Message:</p>
            <blockquote>${requesterMessage}</blockquote>
            <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
            <p>— BVV Living Lab System</p>`,
-        text: `Hello ${creator.firstName}, ${requesterName} has requested to join ${org.name}.
+        text: `Hello ${ownerUser.firstName}, ${requesterName} has requested to join ${org.name}.
 Message: ${requesterMessage}
         Review it here: ${link}`,
       };
 
       await this.emailService.sendEmail(email);
       this.logger.log(
-        `Sent join request notification to ${creator.email} for organization ${org.name} from ${requesterName}`,
+        `Sent join request notification to ${ownerUser.email} for organization ${org.name} from ${requesterName}`,
       );
     }
 
@@ -859,6 +863,7 @@ Message: ${requesterMessage}
       })),
       currentUserRole: currentUserRole ?? null,
       isAdmin,
+      currentUserId,
     };
   }
 }

@@ -99,22 +99,6 @@ export default function OrganizationDetailsPage() {
       );
     }
 
-    if (error) {
-      return (
-        <Box textAlign="center" mt={8}>
-          <Typography variant="h6" color="error" gutterBottom>
-            {error}
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => router.push('/auth/organizations')}
-          >
-            Back to Organizations
-          </Button>
-        </Box>
-      );
-    }
-
     if (org === null) {
       return (
         <Box display="flex" justifyContent="center" mt={4}>
@@ -124,22 +108,35 @@ export default function OrganizationDetailsPage() {
     }
 
     const handleLeave = async () => {
-        authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, {
-          method: 'POST',
-        })
-          .then(async (res) => {
+        try {
+            const res = await authFetch(`${BACKEND_URL}/organizations/${slug}/leave`, {
+                method: 'POST',
+            });
+
             if (!res.ok) {
-              const data = await res.json().catch(() => null);
-              const friendlyMessage =
-                data?.message ||
-                `Failed to leave organization (HTTP ${res.status})`;
-              throw new Error(friendlyMessage);
+                const data = await res.json().catch(() => null);
+                const msg =
+                    data?.message || `Failed to leave organization (HTTP ${res.status})`;
+
+                console.error(msg);
+                setError(
+                    msg.includes('At least one Owner must remain')
+                        ? 'At least one Owner must remain in the organization.'
+                        : msg
+                );
+                return;
             }
             setIsMember(false);
             setMemberCount((c) => Math.max(c - 1, 0));
             setUserRole(null);
-          })
-          .catch((err) => setError(err.message));
+        } catch (err: unknown) {
+            let msg = 'Unexpected error';
+
+            if (err instanceof Error) msg = err.message;
+
+            console.error(err);
+            setError(msg);
+        }
     };
 
     return (
@@ -196,7 +193,7 @@ export default function OrganizationDetailsPage() {
                         Members: {memberCount}
                     </Typography>
 
-                    {(userRole === 'Owner' || userRole === 'Admin') && org.members.length > 0 && (
+                    {(userRole === 'Owner' || userRole === 'Admin' || userRole === 'Viewer' || userRole === 'Manager') && org.members.length > 0 && (
                       <Box mb={4}>
                         <Typography variant="h6" gutterBottom>
                           Members
@@ -230,7 +227,7 @@ export default function OrganizationDetailsPage() {
                       </Box>
                     )}
 
-                    {(userRole === 'Owner' || userRole === 'Admin') && (
+                    {(userRole === 'Owner' || userRole === 'Admin' || userRole === 'Manager') && (
                         <Box mb={4}>
                             <Typography variant="h6" gutterBottom>
                                 Pending Join Requests
@@ -269,7 +266,7 @@ export default function OrganizationDetailsPage() {
                     )}
 
                     <Box display="flex" justifyContent="center" gap={2} mt={2}>
-                      {(userRole !== 'Owner') && (
+                      { (
                         isMember ? (
                           <Button variant="outlined" color="error" onClick={handleLeave}>
                             Leave
@@ -314,6 +311,16 @@ export default function OrganizationDetailsPage() {
               >
                 Changes saved successfully
               </Alert>
+            </Snackbar>
+            <Snackbar
+                open={!!error}
+                autoHideDuration={4000}
+                onClose={() => setError(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+                    {error}
+                </Alert>
             </Snackbar>
         </Box>
     );

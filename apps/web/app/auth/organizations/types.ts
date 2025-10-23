@@ -21,6 +21,7 @@ export interface OrganizationDto {
   }>;
   currentUserRole?: 'Viewer' | 'Manager' | 'Owner' | 'Admin' | null;
   isAdmin?: boolean;
+  currentUserId?: string;
 }
 
 export interface JoinRequestDto {

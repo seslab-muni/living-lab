@@ -141,7 +141,7 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug')
-  @DefineRoles('Owner', 'Admin')
+  @DefineRoles('Owner', 'Admin', 'Manager')
   @UseGuards(RolesGuard)
   async update(
     @GetUser() user: JwtPayload,

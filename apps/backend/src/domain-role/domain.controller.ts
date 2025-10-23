@@ -13,11 +13,15 @@ import { DomainService } from './domain.service';
 import { RolesDto } from './dto/roles.dto';
 import { RolesGuard } from './guards/access-control.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
+import { UserService } from 'src/user/user.service';
 
 @ApiTags('Domain')
 @Controller('domain')
 export class DomainController {
-  constructor(private domainService: DomainService) {}
+  constructor(
+    private domainService: DomainService,
+    private userService: UserService,
+  ) {}
 
   @Get('/:domainId/users')
   @DefineRoles('Admin', 'Owner', 'Manager', 'Moderator', 'Viewer')
@@ -48,6 +52,15 @@ export class DomainController {
     @GetUser() user: { id: string },
   ) {
     const callerId = user.id;
+
+    const caller = await this.userService.findById(callerId, true);
+    if (caller?.isAdmin) {
+      return this.domainService.changeUserRole(
+        param.domainId,
+        param.userId,
+        body.role,
+      );
+    }
 
     const callerRole = await this.domainService.getRole(
       callerId,

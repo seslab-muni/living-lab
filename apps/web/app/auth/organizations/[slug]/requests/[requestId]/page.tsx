@@ -43,6 +43,9 @@ export default function ReviewJoinRequestPage() {
         router.push(`/auth/organizations/${slug}`);
     };
 
+    const isProcessed =
+      req.status === 'APPROVED' || req.status === 'REJECTED';
+
     return (
         <Box p={{ xs: 4, md: 6 }} display="flex" justifyContent="center">
             <Box width={{ xs: '100%', md: '50%' }}>
@@ -72,21 +75,33 @@ export default function ReviewJoinRequestPage() {
                 <Typography variant="body1" gutterBottom>
                     {req.message ?? 'No message provided.'}
                 </Typography>
-                <Stack direction="row" spacing={2} justifyContent="center" mt={4}>
+                {isProcessed ? (
+                  <Box mt={4} textAlign="center">
+                    <Typography variant="h6" color="text.secondary">
+                      This request has already been {req.status.toLowerCase()}.
+                    </Typography>
                     <Button
-                        variant="contained"
-                        onClick={() => handle('approve')}
+                      sx={{ mt: 2 }}
+                      variant="contained"
+                      onClick={() => router.push(`/auth/organizations/${slug}`)}
                     >
-                        Approve
+                      Back to Organization
+                    </Button>
+                  </Box>
+                ) : (
+                  <Stack direction="row" spacing={2} justifyContent="center" mt={4}>
+                    <Button variant="contained" onClick={() => handle('approve')}>
+                      Approve
                     </Button>
                     <Button
-                        variant="contained"
-                        color="error"
-                        onClick={() => handle('reject')}
+                      variant="contained"
+                      color="error"
+                      onClick={() => handle('reject')}
                     >
-                        Reject
+                      Reject
                     </Button>
-                </Stack>
+                  </Stack>
+                )}
             </Box>
         </Box>
     );

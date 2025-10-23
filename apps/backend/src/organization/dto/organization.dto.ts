@@ -27,4 +27,5 @@ export class OrganizationDto {
     | 'Moderator'
     | null;
   isAdmin?: boolean;
+  currentUserId?: string;
 }
