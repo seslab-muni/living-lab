@@ -43,6 +43,8 @@ export class Organization {
   lastEdit: Date;
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
+  @Column({ nullable: true })
+  modifiedBy?: string;
   @ManyToMany(() => User, (user) => user.organizations)
   @JoinTable({
     name: 'user_organizations',

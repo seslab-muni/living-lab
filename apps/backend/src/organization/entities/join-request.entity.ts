@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Organization } from './organization.entity';
@@ -43,4 +44,10 @@ export class JoinRequest {
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  modifiedAt?: Date;
+
+  @Column({ nullable: true })
+  modifiedBy?: string; // stores userId of approver/rejecter
 }

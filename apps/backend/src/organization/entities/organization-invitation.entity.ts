@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from './organization.entity';
 
@@ -26,6 +27,15 @@ export class OrganizationInvitation {
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
+
+  @Column({ nullable: true })
+  createdBy?: string;
+
+  @UpdateDateColumn({ type: 'timestamp', nullable: true })
+  modifiedAt?: Date;
+
+  @Column({ nullable: true })
+  modifiedBy?: string;
 
   @Column({ type: 'timestamp' })
   expiresAt: Date;

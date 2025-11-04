@@ -10,6 +10,7 @@ export class OrganizationDto {
   isPrivate: boolean;
   createdAt: Date;
   lastEdit: Date;
+  modifiedBy?: string;
   memberCount: number;
   isMember: boolean;
   hasPendingRequest: boolean;

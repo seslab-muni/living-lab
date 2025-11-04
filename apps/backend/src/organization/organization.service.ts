@@ -390,6 +390,7 @@ export class OrganizationService {
     if (typeof dto.isPrivate === 'boolean') {
       org.isPrivate = dto.isPrivate;
     }
+    org.modifiedBy = userId;
     org.lastEdit = new Date();
     await this.orgRepo.save(org);
 
@@ -561,6 +562,9 @@ Message: ${requesterMessage}
     jr.status = approve
       ? JoinRequestStatus.APPROVED
       : JoinRequestStatus.REJECTED;
+
+    jr.modifiedBy = callerId;
+    jr.modifiedAt = new Date();
     await this.jrRepo.save(jr);
 
     if (approve) await this.join(jr.user.id, jr.organization.id);
@@ -589,6 +593,8 @@ Message: ${requesterMessage}
       message: jr.message,
       status: jr.status,
       createdAt: jr.createdAt,
+      modifiedAt: jr.modifiedAt,
+      modifiedBy: jr.modifiedBy,
       user: {
         id: jr.user.id,
         firstName: jr.user.firstName,
@@ -654,6 +660,8 @@ Message: ${requesterMessage}
         email,
         token,
         expiresAt: sevenDays,
+        createdBy: creatorId,
+        modifiedBy: creatorId,
       });
       await this.inviteRepo.save(invitation);
 
@@ -749,6 +757,8 @@ Message: ${requesterMessage}
     this.ensureAllowed('OwnerOrManager', ctx);
 
     invitation.revoked = true;
+    invitation.modifiedBy = creatorId;
+    invitation.modifiedAt = new Date();
     await this.inviteRepo.save(invitation);
   }
 
@@ -862,6 +872,7 @@ Message: ${requesterMessage}
       isPrivate: org.isPrivate,
       createdAt: org.createdAt,
       lastEdit: org.lastEdit,
+      modifiedBy: org.modifiedBy,
       memberCount: members.length,
       isMember: !!currentUserId && members.some((u) => u.id === currentUserId),
       hasPendingRequest: false,

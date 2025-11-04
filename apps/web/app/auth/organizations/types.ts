@@ -8,6 +8,7 @@ export interface OrganizationDto {
   companyId: string;
   companyName: string;
   lastEdit: string;
+  modifiedBy?: string;
   memberCount: number;
   isMember: boolean;
   hasPendingRequest: boolean;
@@ -29,6 +30,8 @@ export interface JoinRequestDto {
   message?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   createdAt: string;
+  modifiedAt?: Date;
+  modifiedBy?: string;
   user: {
     id: string;
     firstName: string;
