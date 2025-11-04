@@ -178,7 +178,11 @@ export default function OrganizationDetailsPage() {
                             </Typography>
                         </Box>
                     )}
-                    <Typography variant="body1">{org.description}</Typography>
+                    <Typography variant="body1">
+                      {org.description?.trim()
+                        ? org.description
+                        : 'No description provided.'}
+                    </Typography>
                     <Box height={50}></Box>
                     <Typography variant="caption" color="text.secondary">
                         Company: {org.companyName} (IČO: {org.companyId})

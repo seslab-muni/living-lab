@@ -71,8 +71,8 @@ export default function EditOrganizationPage() {
         .then(async (data: OrganizationDto) => {
           setOrg(data);
           setName(data.name);
-          setDescription(data.description ?? '');
-          setCompanyId(String(data.companyId));
+          setDescription(data.description?.trim() || '');
+          setCompanyId(data.companyId?.toString() ?? '');
           setCompanyName(data.companyName);
           setIsPrivate(data.isPrivate);
           const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null = (data.currentUserRole as never) ?? (data.isAdmin ? 'Admin' : null);
@@ -177,8 +177,8 @@ export default function EditOrganizationPage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          companyId: parseInt(companyId, 10),
-          companyName: companyName.trim(),
+            companyId: companyId.trim(),
+            companyName: companyName.trim(),
           isPrivate,
         }),
       });
@@ -395,6 +395,7 @@ export default function EditOrganizationPage() {
                         <TextField
                             label="Description"
                             value={description}
+                            placeholder="Add a short description about your organization..."
                             multiline
                             minRows={3}
                             onChange={e => setDescription(e.target.value)}

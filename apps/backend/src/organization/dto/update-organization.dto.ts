@@ -1,4 +1,9 @@
-import { IsString, IsOptional, IsInt, Min, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  Matches,
+} from 'class-validator';
 
 export class UpdateOrganizationDto {
   @IsOptional()
@@ -10,9 +15,10 @@ export class UpdateOrganizationDto {
   description?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  companyId?: number;
+  @Matches(/^\d{8}$/, {
+    message: 'IČO must be exactly 8 digits',
+  })
+  companyId?: string;
 
   @IsOptional()
   @IsString()

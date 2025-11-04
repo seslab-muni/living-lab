@@ -5,7 +5,7 @@ export interface OrganizationDto {
   description?: string;
   creatorId: string;
   creatorName: string;
-  companyId: number;
+  companyId: string;
   companyName: string;
   lastEdit: string;
   memberCount: number;

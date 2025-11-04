@@ -32,8 +32,8 @@ export class Organization {
   })
   @JoinColumn({ name: 'creatorId' })
   creator: User;
-  @Column({ type: 'int' })
-  companyId: number;
+  @Column({ type: 'varchar', length: 8 })
+  companyId: string;
 
   @Column()
   companyName: string;

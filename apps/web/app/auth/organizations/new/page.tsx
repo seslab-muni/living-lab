@@ -77,7 +77,7 @@ export default function CreateOrganizationPage() {
                 credentials: 'include',
                 body: JSON.stringify({
                     name,
-                    companyId: parseInt(companyId, 10),
+                    companyId: companyId.trim(),
                     companyName,
                 }),
             });

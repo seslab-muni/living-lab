@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt } from 'class-validator';
+import { IsString, IsOptional, Matches } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
@@ -8,8 +8,10 @@ export class CreateOrganizationDto {
   @IsString()
   description?: string;
 
-  @IsInt()
-  companyId: number;
+  @Matches(/^\d{8}$/, {
+    message: 'IČO must be exactly 8 digits',
+  })
+  companyId: string;
 
   @IsString()
   companyName: string;

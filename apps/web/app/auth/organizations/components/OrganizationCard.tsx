@@ -5,6 +5,13 @@ import { Card, CardContent, Typography, Button, CardActions, Box } from '@mui/ma
 import NextLink from 'next/link';
 import type { OrganizationDto } from '../types';
 
+function truncateDescription(text: string | null | undefined, maxLength = 300): string {
+  if (!text) return 'No description provided.';
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return 'No description provided.';
+  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) + '…' : trimmed;
+}
+
 export default function OrganizationCard({
   org,
 }: {
@@ -40,9 +47,15 @@ export default function OrganizationCard({
             </Typography>
           )}
         </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          {org.description ?? 'No description provided.'}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          paragraph
+          title={org.description ?? 'No description provided.'}
+        >
+          {truncateDescription(org.description)}
         </Typography>
+
         <Typography variant="caption" color="text.secondary">
           Members: {memberCount}
         </Typography>

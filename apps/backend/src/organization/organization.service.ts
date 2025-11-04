@@ -170,9 +170,9 @@ export class OrganizationService {
     let org = this.orgRepo.create({
       name: dto.name,
       slug,
-      description: dto.description ?? 'your description goes here',
+      description: dto.description ?? '',
       creatorId: userId,
-      companyId: dto.companyId,
+      companyId: dto.companyId.trim(),
       companyName: dto.companyName,
       members: [{ id: userId } as any],
       isPrivate: false,
@@ -383,7 +383,9 @@ export class OrganizationService {
 
     if (typeof dto.name === 'string') org.name = dto.name;
     if (typeof dto.description === 'string') org.description = dto.description;
-    if (typeof dto.companyId === 'number') org.companyId = dto.companyId;
+    if (typeof dto.companyId === 'string' && /^\d{8}$/.test(dto.companyId)) {
+      org.companyId = dto.companyId.trim();
+    }
 
     if (typeof dto.isPrivate === 'boolean') {
       org.isPrivate = dto.isPrivate;
