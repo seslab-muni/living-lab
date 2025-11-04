@@ -570,10 +570,18 @@ Message: ${requesterMessage}
     creatorId: string,
     requestId: number,
   ): Promise<JoinRequestDto> {
-    const jr = await this.jrRepo.findOneOrFail({
+    const jr = await this.jrRepo.findOne({
       where: { id: requestId },
       relations: ['user', 'organization'],
     });
+
+    if (!jr) {
+      throw new NotFoundException(`Join request ${requestId} not found`);
+    }
+
+    if (jr.organization.creatorId !== creatorId) {
+      throw new ForbiddenException('Only owner/manager may review requests');
+    }
     const ctx = await this.getCallerContext(creatorId, jr.organization.id);
     this.ensureAllowed('OwnerOrManager', ctx);
     return {

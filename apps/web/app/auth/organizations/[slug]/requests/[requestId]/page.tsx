@@ -18,21 +18,79 @@ export default function ReviewJoinRequestPage() {
     const router = useRouter();
     const [req, setReq] = useState<JoinRequestDto | null>(null);
 
-    useEffect(() => {
-        authFetch(
-            `${BACKEND_URL}/organizations/${slug}/join-requests/${requestId}`
-        )
-            .then((res) => res.json())
-            .then(setReq)
-            .catch(() => router.push(`/auth/organizations/${slug}`));
-    }, [slug, requestId, router]);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    if (!req) {
-        return (
-            <Box display="flex" justifyContent="center" p={6}>
-                <CircularProgress />
-            </Box>
-        );
+    useEffect(() => {
+      const loadRequest = async () => {
+        try {
+          const res = await authFetch(
+            `${BACKEND_URL}/organizations/${slug}/join-requests/${requestId}`
+          );
+
+          if (!res.ok) {
+            if (res.status === 404) {
+              setError('Join request not found.');
+            } else if (res.status === 403) {
+              setError('You are not authorized to view this request.');
+            } else {
+              setError(`Failed to load request (HTTP ${res.status}).`);
+            }
+            setReq(null);
+            return;
+          }
+
+          const data: JoinRequestDto = await res.json().catch(() => null);
+          if (!data) {
+            setError('Invalid response from server.');
+            setReq(null);
+            return;
+          }
+
+          setReq(data);
+        } catch (err: any) {
+          if (err instanceof Response && err.status === 404) {
+            setError('Join request not found.');
+          } else if (typeof err?.message === 'string' && err.message.includes('404')) {
+            setError('Join request not found.');
+          } else if (err instanceof Response && err.status === 403) {
+            setError('You are not authorized to view this request.');
+          } else if (typeof err?.message === 'string' && err.message.includes('403')) {
+            setError('You are not authorized to view this request.');
+          } else {
+            setError('Unable to load request.');
+          }
+          setReq(null);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadRequest();
+    }, [slug, requestId]);
+
+    if (loading) {
+      return (
+        <Box display="flex" justifyContent="center" p={6}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box textAlign="center" mt={8}>
+          <Typography variant="h6" color="error" gutterBottom>
+            {error}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => router.push(`/auth/organizations/${slug}`)}
+          >
+            Back to Organization
+          </Button>
+        </Box>
+      );
     }
 
     const handle = async (action: 'approve' | 'reject') => {
@@ -42,6 +100,10 @@ export default function ReviewJoinRequestPage() {
         );
         router.push(`/auth/organizations/${slug}`);
     };
+
+    if (!req) {
+      return null;
+    }
 
     const isProcessed =
       req.status === 'APPROVED' || req.status === 'REJECTED';

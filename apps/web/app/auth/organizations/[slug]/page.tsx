@@ -47,34 +47,47 @@ export default function OrganizationDetailsPage() {
     }, [savedParam]);
 
     useEffect(() => {
-      if (status !== 'authenticated') return;
+        if (status !== 'authenticated') return;
 
-      const loadOrganization = async () => {
-        try {
-          const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`);
-          if (!res.ok) {
-            if (res.status === 404) {
-              setError('Organization not found.');
-            } else {
-              setError(`Failed to load organization (HTTP ${res.status}).`);
+        const loadOrganization = async () => {
+            try {
+                const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`);
+
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        setError('Organization not found.');
+                    } else {
+                        setError(`Failed to load organization (HTTP ${res.status}).`);
+                    }
+                    setOrg(null);
+                    return;
+                }
+
+                const data: OrganizationDto = await res.json().catch(() => null);
+
+                if (!data) {
+                    setError('Invalid response from server.');
+                    setOrg(null);
+                    return;
+                }
+
+                setOrg(data);
+                setIsMember(data.isMember);
+                setMemberCount(data.memberCount);
+                setUserRole(data.currentUserRole ?? null);
+            } catch (err: any) {
+                if (err instanceof Response && err.status === 404) {
+                    setError('Organization not found.');
+                } else if (typeof err?.message === 'string' && err.message.includes('404')) {
+                    setError('Organization not found.');
+                } else {
+                    setError('Unable to load request.');
+                }
+                setOrg(null);
             }
-            setOrg(null);
-            return;
-          }
+        };
 
-          const data: OrganizationDto = await res.json();
-          setOrg(data);
-          setIsMember(data.isMember);
-          setMemberCount(data.memberCount);
-          setUserRole(data.currentUserRole ?? null);
-        } catch (err: any) {
-          console.error(err);
-          setError('Unable to load organization.');
-          setOrg(null);
-        }
-      };
-
-      loadOrganization();
+        loadOrganization();
     }, [status, slug]);
 
     useEffect(() => {
@@ -99,13 +112,30 @@ export default function OrganizationDetailsPage() {
       );
     }
 
-    if (org === null) {
-      return (
-        <Box display="flex" justifyContent="center" mt={4}>
-          <CircularProgress />
-        </Box>
-      );
+    if (error) {
+        return (
+            <Box textAlign="center" mt={8}>
+                <Typography variant="h6" color="error" gutterBottom>
+                    {error}
+                </Typography>
+                <Button
+                    variant="contained"
+                    onClick={() => router.push('/auth/organizations')}
+                >
+                    Back to Organizations
+                </Button>
+            </Box>
+        );
     }
+
+    if (org === null) {
+        return (
+            <Box display="flex" justifyContent="center" mt={4}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
 
     const handleLeave = async () => {
         try {

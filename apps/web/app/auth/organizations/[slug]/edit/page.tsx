@@ -40,6 +40,7 @@ export default function EditOrganizationPage() {
     const [companyId, setCompanyId] = useState('');
     const [companyName, setCompanyName] = useState('');
     const [errors, setErrors] = useState<{[k:string]:string}>({});
+    const [fatalError, setFatalError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -66,44 +67,74 @@ export default function EditOrganizationPage() {
     const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
 
     useEffect(() => {
-      authFetch(`${BACKEND_URL}/organizations/${slug}`)
-        .then((r) => r.json())
-        .then(async (data: OrganizationDto) => {
+      const loadOrganization = async () => {
+        setFatalError(null)
+        setLoading(true);
+        setAuthChecked(false);
+        setErrors({});
+
+        try {
+          const res = await authFetch(`${BACKEND_URL}/organizations/${slug}`);
+
+          if (!res.ok) {
+            if (res.status === 404) {
+              setFatalError('Organization not found.');
+            } else if (res.status === 403) {
+              setFatalError('You are not authorized to edit this organization.');
+            } else {
+              setFatalError(`Failed to load organization (HTTP ${res.status}).`);
+            }
+            setLoading(false);
+            setAuthChecked(true);
+            return;
+          }
+
+          const data: OrganizationDto = await res.json();
           setOrg(data);
           setName(data.name);
           setDescription(data.description?.trim() || '');
           setCompanyId(data.companyId?.toString() ?? '');
           setCompanyName(data.companyName);
           setIsPrivate(data.isPrivate);
-          const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null = (data.currentUserRole as never) ?? (data.isAdmin ? 'Admin' : null);
+
+          const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null =
+            (data.currentUserRole as never) ?? (data.isAdmin ? 'Admin' : null);
           setUserRole(role);
+
           if (role !== 'Owner' && role !== 'Manager' && role !== 'Admin') {
-            router.replace(`/auth/organizations/${data.slug}`);
+            setFatalError('You do not have permission to edit this organization.');
+            setLoading(false);
+            setAuthChecked(true);
             return;
           }
+
           try {
-              const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
-              if (rolesRes.ok) {
-                  const withRoles = await rolesRes.json();
-                  const merged = data.members.map((m) => {
-                      const found = withRoles.find((u: any) => u.id === m.id);
-                      return { ...m, role: found?.role ?? 'Viewer' };
-                  });
-                  setMembers(merged);
-              } else {
-                  setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
-              }
-          } catch {
+            const rolesRes = await authFetch(`${BACKEND_URL}/domain/${data.id}/users`);
+            if (rolesRes.ok) {
+              const withRoles = await rolesRes.json();
+              const merged = data.members.map((m) => {
+                const found = withRoles.find((u: any) => u.id === m.id);
+                return { ...m, role: found?.role ?? 'Viewer' };
+              });
+              setMembers(merged);
+            } else {
               setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
+            }
+          } catch {
+            setMembers(data.members.map((m) => ({ ...m, role: 'Viewer' })));
           }
 
-          setAuthChecked(true);
+          setErrors({});
+        } catch (err) {
+          setFatalError('Unable to connect to server.');
+        } finally {
           setLoading(false);
-        })
-        .catch(() => {
-          router.push('/auth/organizations');
-        });
-    }, [router, slug]);
+          setAuthChecked(true);
+        }
+      };
+
+      loadOrganization();
+    }, [slug]);
 
     useEffect(() => {
         if (!hasFocused) {
@@ -231,6 +262,22 @@ export default function EditOrganizationPage() {
         }
     };
 
+    if (fatalError) {
+      return (
+        <Box textAlign="center" mt={8}>
+          <Typography variant="h6" color="error" gutterBottom>
+            {fatalError}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => router.push(`/auth/organizations/${slug}`)}
+          >
+            Back to Organization
+          </Button>
+        </Box>
+      );
+    }
+
     if (!authChecked) {
         return (
             <Box display="flex" justifyContent="center" p={6}>
@@ -245,6 +292,22 @@ export default function EditOrganizationPage() {
                 <CircularProgress />
             </Box>
         );
+    }
+
+    if (errors.form && (!org || errors.form.includes('not found') || errors.form.includes('authorized'))) {
+      return (
+        <Box textAlign="center" mt={8}>
+          <Typography variant="h6" color="error" gutterBottom>
+            {errors.form}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => router.push('/auth/organizations')}
+          >
+            Back to Organizations
+          </Button>
+        </Box>
+      );
     }
 
     const handleRemoveMember = async () => {
