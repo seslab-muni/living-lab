@@ -632,7 +632,7 @@ export default function EditOrganizationPage() {
                                         }}
                                         disabled={!canManageRoles}
                                     >
-                                        {['Owner', 'Manager', 'Viewer']
+                                        {['Owner', 'Manager', 'Moderator', 'Viewer']
                                             .filter((role) => {
                                                 if (userRole === 'Admin') return true;
                                                 if (userRole === 'Owner') return true;

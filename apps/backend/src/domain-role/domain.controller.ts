@@ -61,7 +61,7 @@ export class DomainController {
       param.userId,
       param.domainId,
     );
-    const hierarchy = ['Viewer', 'Manager', 'Owner'];
+    const hierarchy = ['Viewer', 'Moderator', 'Manager', 'Owner'];
     const rank = (r: string | null) => (r ? hierarchy.indexOf(r) : -1);
 
     if (!callerRole) {

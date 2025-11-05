@@ -43,7 +43,12 @@ export class OrganizationService {
   ) {}
 
   private readonly logger = new Logger(OrganizationService.name);
-  private readonly ROLE_HIERARCHY = ['Viewer', 'Manager', 'Owner'] as const;
+  private readonly ROLE_HIERARCHY = [
+    'Viewer',
+    'Moderator',
+    'Manager',
+    'Owner',
+  ] as const;
   private readonly roleOrder = (r?: string | null) =>
     r ? this.ROLE_HIERARCHY.indexOf(r as any) : -1;
 

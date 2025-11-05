@@ -22,10 +22,10 @@ export class OrganizationDto {
   }>;
   currentUserRole?:
     | 'Viewer'
+    | 'Moderator'
     | 'Manager'
     | 'Owner'
     | 'Admin'
-    | 'Moderator'
     | null;
   isAdmin?: boolean;
   currentUserId?: string;
