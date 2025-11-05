@@ -17,7 +17,7 @@ import { JoinRequestDto } from './dto/join-request.dto';
 import { EmailService } from 'src/email/email.service';
 import { SendEmailDto } from 'src/email/dto/email.dto';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { CronExpression } from '@nestjs/schedule';
 import { LessThan } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -25,9 +25,12 @@ import { OrganizationInvitation } from './entities/organization-invitation.entit
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { MoreThan } from 'typeorm';
 import { DomainService } from '../domain-role/domain.service';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
+import { OnModuleInit } from '@nestjs/common';
 
 @Injectable()
-export class OrganizationService {
+export class OrganizationService implements OnModuleInit {
   constructor(
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
@@ -40,7 +43,37 @@ export class OrganizationService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly domainService: DomainService,
-  ) {}
+    private readonly schedulerRegistry: SchedulerRegistry,
+  ) {
+    const cronValue = this.configService.get<string>('ORG_REMINDER_CRON');
+    const daysValue = this.configService.get<string>('ORG_REMINDER_DAYS');
+    console.log('ORG_REMINDER_CRON from env:', cronValue);
+    console.log('ORG_REMINDER_DAYS from env:', daysValue);
+  }
+
+  onModuleInit(): void {
+    const cron = this.configService.get<string>('ORG_REMINDER_CRON');
+    const days = this.configService.get<string>('ORG_REMINDER_DAYS');
+
+    const cronExpression =
+      cron && cron.trim() !== '' ? cron : CronExpression.EVERY_DAY_AT_9AM;
+    const thresholdDays = Number(days ?? 7);
+
+    this.logger.log(
+      `Scheduling reminder job with expression "${cronExpression}" and threshold ${thresholdDays} days.`,
+    );
+
+    const job = new CronJob(cronExpression, async () => {
+      try {
+        await this.sendPendingJoinRequestReminders();
+      } catch (error) {
+        this.logger.error('Error running reminder job', error);
+      }
+    });
+
+    this.schedulerRegistry.addCronJob('organizationReminders', job);
+    job.start();
+  }
 
   private readonly logger = new Logger(OrganizationService.name);
   private readonly ROLE_HIERARCHY = [
@@ -810,9 +843,11 @@ Message: ${requesterMessage}
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async sendPendingJoinRequestReminders(): Promise<void> {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const rawDays = this.configService.get<string>('ORG_REMINDER_DAYS');
+    const days = Number(rawDays ?? 7);
+    const sevenDaysAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
     const pendingRequests = await this.jrRepo.find({
       where: {
         status: JoinRequestStatus.PENDING,
@@ -824,44 +859,106 @@ Message: ${requesterMessage}
     if (pendingRequests.length === 0) return;
 
     this.logger.log(
-      `Found ${pendingRequests.length} pending join requests older than 7 days.`,
+      `Found ${pendingRequests.length} pending join requests older than ${days} day(s).`,
     );
+
+    const recipientMap = new Map<
+      string,
+      {
+        user: User;
+        requests: {
+          orgName: string;
+          orgSlug: string;
+          requester: string;
+          message: string;
+          link: string;
+        }[];
+      }
+    >();
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
 
     for (const jr of pendingRequests) {
       const org = jr.organization;
-      const creator = await this.userRepo.findOne({
-        where: { id: org.creatorId },
-      });
-      if (!creator?.email) continue;
 
-      const frontendUrl =
-        this.configService.get<string>('FRONTEND_URL') ??
-        'http://localhost:3000';
-      const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${jr.id}`;
+      const domainUsers = await this.domainService.getAllUsers(String(org.id));
+      const notifyUsers = domainUsers.filter(
+        (u) => u.role === 'Owner' || u.role === 'Manager',
+      );
 
-      const requesterName = `${jr.user.firstName} ${jr.user.lastName}`;
-      const requesterMessage = jr.message?.trim() || '(no message provided)';
+      for (const roleUser of notifyUsers) {
+        const dbUser = await this.userRepo.findOne({
+          where: { id: roleUser.id },
+        });
+        if (!dbUser?.email) continue;
 
-      const email: SendEmailDto = {
-        recipient: creator.email,
-        subject: `BVV LL Platform: Reminder: Pending join request for ${org.name}`,
-        html: `<p>Hello ${creator.firstName},</p>
-         <p>You still have a pending join request for <strong>${org.name}</strong>.</p>
-         <p>Requester: <strong>${requesterName}</strong></p>
-         <p>Message:</p>
-         <blockquote>${requesterMessage}</blockquote>
-         <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
-         <p>— BVV Living Lab System</p>`,
-        text: `Reminder: You have a pending join request for ${org.name} from ${requesterName}.
-        Message: ${requesterMessage}
-        Review it here: ${link}`,
+        const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${jr.id}`;
+        const requesterName = `${jr.user.firstName} ${jr.user.lastName}`;
+        const requesterMessage = jr.message?.trim() || '(no message provided)';
+
+        const record = recipientMap.get(dbUser.email) ?? {
+          user: dbUser,
+          requests: [],
+        };
+
+        record.requests.push({
+          orgName: org.name,
+          orgSlug: org.slug,
+          requester: requesterName,
+          message: requesterMessage,
+          link,
+        });
+
+        recipientMap.set(dbUser.email, record);
+      }
+    }
+
+    for (const [email, { user, requests }] of recipientMap.entries()) {
+      const requestListHtml = requests
+        .map(
+          (r) => `
+          <li>
+            <strong>${r.requester}</strong> requested to join
+            <strong>${r.orgName}</strong><br/>
+            <em>${r.message}</em><br/>
+            <a href="${r.link}">Review request</a>
+          </li>`,
+        )
+        .join('');
+
+      const emailHtml = `
+      <p>Hello ${user.firstName},</p>
+      <p>You have ${requests.length} pending join request(s) awaiting review:</p>
+      <ul>${requestListHtml}</ul>
+      <p>— BVV Living Lab System</p>
+    `;
+
+      const emailText =
+        `Hello ${user.firstName}, you have ${requests.length} pending join request(s):\n\n` +
+        requests
+          .map(
+            (r) =>
+              `- ${r.requester} → ${r.orgName}\n  Message: ${r.message}\n  Review: ${r.link}`,
+          )
+          .join('\n\n');
+
+      const emailDto: SendEmailDto = {
+        recipient: email,
+        subject: `BVV LL Platform: You have ${requests.length} pending join request(s)`,
+        html: emailHtml,
+        text: emailText,
       };
 
-      await this.emailService.sendEmail(email);
+      await this.emailService.sendEmail(emailDto);
       this.logger.log(
-        `Sent reminder email for join request ${jr.id} (organization ${org.name}) to ${creator.email}`,
+        `Sent grouped reminder to ${email} with ${requests.length} pending request(s).`,
       );
     }
+
+    this.logger.log(
+      `Reminder emails sent to ${recipientMap.size} recipient(s).`,
+    );
   }
 
   private async mapToDto(
