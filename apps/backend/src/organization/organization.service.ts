@@ -110,6 +110,20 @@ export class OrganizationService {
       throw new ForbiddenException('At least one Owner must remain.');
   }
 
+  private ensureAdminHasDomainRights(
+    ctx: { isAdmin: boolean; callerRole?: string | null },
+    action: string,
+  ) {
+    if (
+      ctx.isAdmin &&
+      (!ctx.callerRole || ['Viewer', 'Moderator'].includes(ctx.callerRole))
+    ) {
+      throw new ForbiddenException(
+        `Admins who are not Manager or Owner in this organization cannot ${action}.`,
+      );
+    }
+  }
+
   /**
    * Converts a company name to a normalized, URL-friendly slug base.
    */
@@ -476,8 +490,10 @@ export class OrganizationService {
     });
     const saved = await this.jrRepo.save(jr);
 
-    const owners = await this.domainService.getAllUsers(String(org.id));
-    const ownerUsers = owners.filter((u) => u.role === 'Owner');
+    const orgUsers = await this.domainService.getAllUsers(String(org.id));
+    const notifyUsers = orgUsers.filter(
+      (u) => u.role === 'Owner' || u.role === 'Manager',
+    );
 
     const requester = await this.userRepo.findOne({ where: { id: userId } });
     const requesterName = requester
@@ -489,29 +505,29 @@ export class OrganizationService {
       this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
     const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${saved.id}`;
 
-    for (const owner of ownerUsers) {
-      const ownerUser = await this.userRepo.findOne({
-        where: { id: owner.id },
+    for (const user of notifyUsers) {
+      const dbUser = await this.userRepo.findOne({
+        where: { id: user.id },
       });
-      if (!ownerUser?.email) continue;
+      if (!dbUser?.email) continue;
 
       const email: SendEmailDto = {
-        recipient: ownerUser.email,
+        recipient: dbUser.email,
         subject: `BVV LL Platform: New join request for ${org.name}`,
-        html: `<p>Hello ${ownerUser.firstName},</p>
+        html: `<p>Hello ${dbUser.firstName},</p>
            <p><strong>${requesterName}</strong> has requested to join <strong>${org.name}</strong>.</p>
            <p>Message:</p>
            <blockquote>${requesterMessage}</blockquote>
            <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
            <p>— BVV Living Lab System</p>`,
-        text: `Hello ${ownerUser.firstName}, ${requesterName} has requested to join ${org.name}.
+        text: `Hello ${dbUser.firstName}, ${requesterName} has requested to join ${org.name}.
 Message: ${requesterMessage}
         Review it here: ${link}`,
       };
 
       await this.emailService.sendEmail(email);
       this.logger.log(
-        `Sent join request notification to ${ownerUser.email} for organization ${org.name} from ${requesterName}`,
+        `Sent join request notification to ${dbUser.email} for organization ${org.name} from ${requesterName}`,
       );
     }
 
@@ -559,6 +575,7 @@ Message: ${requesterMessage}
       relations: ['organization', 'user'],
     });
     const ctx = await this.getCallerContext(callerId, jr.organization.id);
+    this.ensureAdminHasDomainRights(ctx, 'send invitations');
     this.ensureAllowed('OwnerOrManager', ctx);
 
     if (jr.status !== JoinRequestStatus.PENDING)
@@ -588,10 +605,8 @@ Message: ${requesterMessage}
       throw new NotFoundException(`Join request ${requestId} not found`);
     }
 
-    if (jr.organization.creatorId !== creatorId) {
-      throw new ForbiddenException('Only owner/manager may review requests');
-    }
     const ctx = await this.getCallerContext(creatorId, jr.organization.id);
+    this.ensureAdminHasDomainRights(ctx, 'send invitations');
     this.ensureAllowed('OwnerOrManager', ctx);
     return {
       id: jr.id,
@@ -619,12 +634,7 @@ Message: ${requesterMessage}
     });
 
     const ctx = await this.getCallerContext(creatorId, org.id);
-    if (ctx.isAdmin && (!ctx.callerRole || ctx.callerRole === 'Viewer')) {
-      throw new ForbiddenException(
-        'Admins who are not Manager or Owner in this organization cannot send invitations.',
-      );
-    }
-
+    this.ensureAdminHasDomainRights(ctx, 'send invitations');
     this.ensureAllowed('OwnerOrManager', ctx);
     const emails = Array.from(
       new Set(
@@ -765,11 +775,7 @@ Message: ${requesterMessage}
       creatorId,
       invitation.organization.id,
     );
-    if (ctx.isAdmin && (!ctx.callerRole || ctx.callerRole === 'Viewer')) {
-      throw new ForbiddenException(
-        'Admins who are not Manager or Owner in this organization cannot revoke invitations.',
-      );
-    }
+    this.ensureAdminHasDomainRights(ctx, 'send invitations');
     this.ensureAllowed('OwnerOrManager', ctx);
 
     invitation.revoked = true;
