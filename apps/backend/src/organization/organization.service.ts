@@ -614,6 +614,12 @@ Message: ${requesterMessage}
     });
 
     const ctx = await this.getCallerContext(creatorId, org.id);
+    if (ctx.isAdmin && (!ctx.callerRole || ctx.callerRole === 'Viewer')) {
+      throw new ForbiddenException(
+        'Admins who are not Manager or Owner in this organization cannot send invitations.',
+      );
+    }
+
     this.ensureAllowed('OwnerOrManager', ctx);
     const emails = Array.from(
       new Set(
@@ -754,6 +760,11 @@ Message: ${requesterMessage}
       creatorId,
       invitation.organization.id,
     );
+    if (ctx.isAdmin && (!ctx.callerRole || ctx.callerRole === 'Viewer')) {
+      throw new ForbiddenException(
+        'Admins who are not Manager or Owner in this organization cannot revoke invitations.',
+      );
+    }
     this.ensureAllowed('OwnerOrManager', ctx);
 
     invitation.revoked = true;

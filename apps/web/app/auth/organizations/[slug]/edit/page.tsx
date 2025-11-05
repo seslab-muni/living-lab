@@ -242,6 +242,10 @@ export default function EditOrganizationPage() {
                 msg = 'At least one Owner must remain in the organization.';
             } else if (err.message.includes('cannot demote the last remaining Owner')) {
                 msg = 'You cannot change the role of the last remaining Owner.';
+            } else if (err.message.includes('must be a member of this organization')) {
+              msg = 'You must be part of this organization to assign roles.';
+            } else if (err.message.includes('You cannot assign a higher role than your own')) {
+              msg = 'You cannot assign a higher role than your own.';
             } else {
                 msg = err.message;
             }
@@ -449,8 +453,18 @@ export default function EditOrganizationPage() {
 
         setInviteEmails('');
       } catch (err: any) {
-        console.error(err);
-        setInviteError(err.message || 'Unexpected error.');
+          let message = err.message || 'Unexpected error.';
+          if (
+              message.includes('cannot send invitations') ||
+              message.includes('cannot revoke invitations')
+          ) {
+              message = 'You do not have permission to manage invitations.';
+          } else if (message.includes('Forbidden')) {
+              message = 'You are not authorized to send invitations.';
+          }
+          setSnackbarMessage(message);
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
       } finally {
         setSendingInvites(false);
       }
@@ -463,9 +477,20 @@ export default function EditOrganizationPage() {
           { method: 'DELETE' }
         );
         setPendingInvites(invites => invites.filter(i => i.id !== inviteId));
-      } catch {
-        alert('Failed to revoke invitation.');
-      }
+      } catch (err: any) {
+            let message = err.message || 'Failed to revoke invitation.';
+
+            if (
+                message.includes('cannot revoke invitations') ||
+                message.includes('cannot send invitations')
+            ) {
+                message = 'You do not have permission to manage invitations.';
+            }
+
+            setSnackbarMessage(message);
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+        }
     };
 
     if (loading || !org) {
