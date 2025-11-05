@@ -23,6 +23,8 @@ export default function OrganizationDetailsPage() {
     const { slug } = useParams();
     const router = useRouter();
     const { data: session, status } = useSession();
+    const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
 
     const [org, setOrg] = useState<OrganizationDto | null>(null);
     const [isMember, setIsMember] = useState(false);
@@ -112,22 +114,6 @@ export default function OrganizationDetailsPage() {
       );
     }
 
-    if (error) {
-        return (
-            <Box textAlign="center" mt={8}>
-                <Typography variant="h6" color="error" gutterBottom>
-                    {error}
-                </Typography>
-                <Button
-                    variant="contained"
-                    onClick={() => router.push('/auth/organizations')}
-                >
-                    Back to Organizations
-                </Button>
-            </Box>
-        );
-    }
-
     if (org === null) {
         return (
             <Box display="flex" justifyContent="center" mt={4}>
@@ -143,29 +129,51 @@ export default function OrganizationDetailsPage() {
                 method: 'POST',
             });
 
-            if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                const msg =
-                    data?.message || `Failed to leave organization (HTTP ${res.status})`;
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            let msg =
+              data?.message || `Failed to leave organization (HTTP ${res.status}).`;
 
-                console.error(msg);
-                setError(
-                    msg.includes('At least one Owner must remain')
-                        ? 'At least one Owner must remain in the organization.'
-                        : msg
-                );
-                return;
+            if (typeof msg === 'string' && msg.includes('{')) {
+              try {
+                const parsed = JSON.parse(msg.match(/\{.*\}$/)?.[0] || '{}');
+                msg = parsed.message || msg;
+              } catch {
+                // ignore parse errors
+              }
             }
-            setIsMember(false);
-            setMemberCount((c) => Math.max(c - 1, 0));
-            setUserRole(null);
+            if (msg.includes('At least one Owner must remain')) {
+              msg = 'You cannot leave as the only Owner of this organization.';
+            }
+
+            setSnackbarMessage(msg);
+            setSnackbarOpen(true);
+            return;
+          }
+          setIsMember(false);
+          setMemberCount((c) => Math.max(c - 1, 0));
+          setUserRole(null);
         } catch (err: unknown) {
-            let msg = 'Unexpected error';
+          let msg = 'Network error while leaving organization.';
+          if (err instanceof Error && err.message) {
+            const match = err.message.match(/\{.*\}$/);
+            if (match) {
+              try {
+                const parsed = JSON.parse(match[0]);
+                if (parsed?.message) msg = parsed.message;
+              } catch {
+                // ignore parse errors
+              }
+            } else if (!err.message.startsWith('Fetch error')) {
+              msg = err.message;
+            }
+          }
+          if (msg.includes('At least one Owner must remain')) {
+            msg = 'You cannot leave as the only Owner of this organization.';
+          }
 
-            if (err instanceof Error) msg = err.message;
-
-            console.error(err);
-            setError(msg);
+          setSnackbarMessage(msg);
+          setSnackbarOpen(true);
         }
     };
 
@@ -355,6 +363,20 @@ export default function OrganizationDetailsPage() {
                 <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
                     {error}
                 </Alert>
+            </Snackbar>
+            <Snackbar
+              open={snackbarOpen}
+              autoHideDuration={4000}
+              onClose={() => setSnackbarOpen(false)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+              <Alert
+                onClose={() => setSnackbarOpen(false)}
+                severity="error"
+                sx={{ width: '100%' }}
+              >
+                {snackbarMessage}
+              </Alert>
             </Snackbar>
         </Box>
     );

@@ -52,16 +52,7 @@ export class DomainController {
     @GetUser() user: { id: string },
   ) {
     const callerId = user.id;
-
     const caller = await this.userService.findById(callerId, true);
-    if (caller?.isAdmin) {
-      return this.domainService.changeUserRole(
-        param.domainId,
-        param.userId,
-        body.role,
-      );
-    }
-
     const callerRole = await this.domainService.getRole(
       callerId,
       param.domainId,
@@ -70,7 +61,27 @@ export class DomainController {
       param.userId,
       param.domainId,
     );
-
+    const ensureAtLeastOneOwnerRemains = async (message: string) => {
+      if (targetRole === 'Owner' && body.role !== 'Owner') {
+        const users = await this.domainService.getAllUsers(param.domainId);
+        const ownersLeft = users.filter(
+          (u) => u.role === 'Owner' && u.id !== param.userId,
+        ).length;
+        if (ownersLeft < 1) {
+          throw new ForbiddenException(message);
+        }
+      }
+    };
+    if (caller?.isAdmin) {
+      await ensureAtLeastOneOwnerRemains(
+        'Even Admins cannot demote the last remaining Owner.',
+      );
+      return this.domainService.changeUserRole(
+        param.domainId,
+        param.userId,
+        body.role,
+      );
+    }
     const hierarchy = ['Viewer', 'Manager', 'Owner'];
     const rank = (r: string | null) => (r ? hierarchy.indexOf(r) : -1);
 
@@ -80,17 +91,9 @@ export class DomainController {
       );
     }
 
-    if (targetRole === 'Owner' && body.role !== 'Owner') {
-      const users = await this.domainService.getAllUsers(param.domainId);
-      const ownersLeft = users.filter(
-        (u) => u.role === 'Owner' && u.id !== param.userId,
-      ).length;
-      if (ownersLeft < 1) {
-        throw new ForbiddenException('At least one Owner must remain.');
-      }
-    }
+    await ensureAtLeastOneOwnerRemains('At least one Owner must remain.');
 
-    return await this.domainService.changeUserRole(
+    return this.domainService.changeUserRole(
       param.domainId,
       param.userId,
       body.role,

@@ -55,6 +55,7 @@ export default function EditOrganizationPage() {
     const [pendingInvites, setPendingInvites] = useState<{ id: number; email: string; createdAt: string }[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
     const [snackbarOpen, setSnackbarOpen] = useState(false);
+    const [removing, setRemoving] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] =
       useState<'success' | 'warning' | 'error'>('success');
@@ -239,12 +240,12 @@ export default function EditOrganizationPage() {
                 msg = 'You cannot assign a higher role than your own.';
             } else if (err.message.includes('At least one Owner must remain')) {
                 msg = 'At least one Owner must remain in the organization.';
+            } else if (err.message.includes('cannot demote the last remaining Owner')) {
+                msg = 'You cannot change the role of the last remaining Owner.';
             } else {
                 msg = err.message;
             }
         }
-
-        console.error(err);
         setErrors({ form: msg });
     } finally {
       setSaving(false);
@@ -311,13 +312,56 @@ export default function EditOrganizationPage() {
     }
 
     const handleRemoveMember = async () => {
-      if (!removeTarget) return;
-      await authFetch(
-        `${BACKEND_URL}/organizations/${slug}/members/${removeTarget}`,
-        { method: 'DELETE' }
-      );
-      setMembers(ms => ms.filter(m => m.id !== removeTarget));
-      setRemoveTarget(null);
+        if (!removeTarget) return;
+        setRemoving(true);
+
+        try {
+            const res = await authFetch(
+                `${BACKEND_URL}/organizations/${slug}/members/${removeTarget}`,
+                { method: 'DELETE' }
+            );
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const message =
+                    data?.message || `Failed to remove member (HTTP ${res.status}).`;
+
+                setSnackbarMessage(message);
+                setSnackbarSeverity('error');
+                setSnackbarOpen(true);
+                setRemoveTarget(null);
+                return;
+            }
+
+            setMembers((ms) => ms.filter((m) => m.id !== removeTarget));
+            setSnackbarMessage('Member removed successfully.');
+            setSnackbarSeverity('success');
+            setSnackbarOpen(true);
+        } catch (err: any) {
+            let message = 'Network error while removing member.';
+
+            if (err instanceof Error && err.message) {
+                try {
+                    const match = err.message.match(/\{.*\}$/);
+                    if (match) {
+                        const parsed = JSON.parse(match[0]);
+                        if (parsed?.message) {
+                            message = parsed.message;
+                        }
+                    } else if (!err.message.startsWith('Fetch error')) {
+                        message = err.message;
+                    }
+                } catch {
+                    // Ignore parsing errors and keep default message
+                }
+            }
+            setSnackbarMessage(message);
+            setSnackbarSeverity('error');
+            setSnackbarOpen(true);
+        } finally {
+            setRemoving(false);
+            setRemoveTarget(null);
+        }
     };
 
     const handleSendInvites = async () => {
@@ -707,20 +751,24 @@ export default function EditOrganizationPage() {
             </Box>
 
             <Dialog
-              open={Boolean(removeTarget)}
-              onClose={() => setRemoveTarget(null)}
+                open={Boolean(removeTarget)}
+                onClose={() => !removing && setRemoveTarget(null)}
             >
-              <DialogTitle>
-                Remove this member?
-              </DialogTitle>
-              <DialogActions>
-                <Button onClick={() => setRemoveTarget(null)}>
-                  Cancel
-                </Button>
-                <Button color="error" onClick={handleRemoveMember}>
-                  Yes, remove
-                </Button>
-              </DialogActions>
+                <DialogTitle>
+                    Remove this member?
+                </DialogTitle>
+                <DialogActions>
+                    <Button onClick={() => setRemoveTarget(null)} disabled={removing}>
+                        Cancel
+                    </Button>
+                    <Button
+                        color="error"
+                        onClick={handleRemoveMember}
+                        disabled={removing}
+                    >
+                        {removing ? 'Removing…' : 'Yes, remove'}
+                    </Button>
+                </DialogActions>
             </Dialog>
 
             <Dialog
