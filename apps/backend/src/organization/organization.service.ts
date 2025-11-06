@@ -708,6 +708,24 @@ Message: ${requesterMessage}
         continue;
       }
 
+      if (existingUser) {
+        const existingRequest = await this.jrRepo.findOne({
+          where: {
+            user: { id: existingUser.id },
+            organization: { id: org.id },
+            status: JoinRequestStatus.PENDING,
+          },
+        });
+
+        if (existingRequest) {
+          skipped.push({
+            email,
+            reason: 'User already has a pending join request',
+          });
+          continue;
+        }
+      }
+
       const token = randomUUID();
       const invitation = this.inviteRepo.create({
         organization: org,

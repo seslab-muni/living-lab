@@ -717,7 +717,7 @@ export default function EditOrganizationPage() {
                               minRows={2}
                               value={inviteEmails}
                               onChange={(e) => setInviteEmails(e.target.value)}
-                              helperText='Separate emails by ", " (comma and space).'
+                              helperText='Separate emails by "," (comma).'
                               error={!!inviteError}
                               sx={{
                                 mt: 1,
