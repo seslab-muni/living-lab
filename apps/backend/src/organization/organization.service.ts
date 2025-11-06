@@ -177,10 +177,10 @@ export class OrganizationService implements OnModuleInit {
    * If excludeId is provided, that record is ignored (useful for update).
    */
   async generateUniqueSlug(
-    companyName: string,
+    organizationAlias: string,
     excludeId?: number,
   ): Promise<string> {
-    const base = this.toSlugBase(companyName);
+    const base = this.toSlugBase(organizationAlias);
 
     const qb = this.orgRepo
       .createQueryBuilder('org')
@@ -218,14 +218,14 @@ export class OrganizationService implements OnModuleInit {
     userId: string,
     dto: CreateOrganizationDto,
   ): Promise<OrganizationDto> {
-    const slug = await this.generateUniqueSlug(dto.companyName);
+    const slug = await this.generateUniqueSlug(dto.organizationAlias);
     let org = this.orgRepo.create({
       name: dto.name,
       slug,
       description: dto.description ?? '',
       creatorId: userId,
       companyId: dto.companyId.trim(),
-      companyName: dto.companyName,
+      organizationAlias: dto.organizationAlias,
       members: [{ id: userId } as any],
       isPrivate: false,
     });
@@ -375,7 +375,7 @@ export class OrganizationService implements OnModuleInit {
     userId: string,
     name?: string,
     companyId?: number,
-    companyName?: string,
+    organizationAlias?: string,
     excludeId?: number,
   ): Promise<OrganizationDto[]> {
     const qb = this.orgRepo
@@ -393,9 +393,9 @@ export class OrganizationService implements OnModuleInit {
       orConditions.push('org.companyId = :companyId');
       params.companyId = companyId;
     }
-    if (companyName) {
-      orConditions.push('org.companyName ILIKE :companyName');
-      params.companyName = `%${companyName.trim()}%`;
+    if (organizationAlias) {
+      orConditions.push('org.organizationAlias ILIKE :organizationAlias');
+      params.organizationAlias = `%${organizationAlias.trim()}%`;
     }
     if (orConditions.length > 0) {
       qb.where(`(${orConditions.join(' OR ')})`, params);
@@ -424,12 +424,12 @@ export class OrganizationService implements OnModuleInit {
 
     let slugChanged = false;
     if (
-      typeof dto.companyName === 'string' &&
-      dto.companyName.trim() !== '' &&
-      dto.companyName.trim() !== org.companyName
+      typeof dto.organizationAlias === 'string' &&
+      dto.organizationAlias.trim() !== '' &&
+      dto.organizationAlias.trim() !== org.organizationAlias
     ) {
-      org.companyName = dto.companyName;
-      org.slug = await this.generateUniqueSlug(dto.companyName, org.id);
+      org.organizationAlias = dto.organizationAlias;
+      org.slug = await this.generateUniqueSlug(dto.organizationAlias, org.id);
       slugChanged = true;
     }
 
@@ -1005,7 +1005,7 @@ Message: ${requesterMessage}
       creatorId: org.creatorId,
       creatorName: `${org.creator.firstName} ${org.creator.lastName}`,
       companyId: org.companyId,
-      companyName: org.companyName,
+      organizationAlias: org.organizationAlias,
       isPrivate: org.isPrivate,
       createdAt: org.createdAt,
       lastEdit: org.lastEdit,

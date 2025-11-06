@@ -6,7 +6,7 @@ export interface OrganizationDto {
   creatorId: string;
   creatorName: string;
   companyId: string;
-  companyName: string;
+  organizationAlias: string;
   lastEdit: string;
   modifiedBy?: string;
   memberCount: number;

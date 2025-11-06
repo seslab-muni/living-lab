@@ -22,7 +22,7 @@ export class UpdateOrganizationDto {
 
   @IsOptional()
   @IsString()
-  companyName?: string;
+  organizationAlias?: string;
 
   @IsOptional()
   @IsBoolean()

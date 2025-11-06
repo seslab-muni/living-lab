@@ -21,14 +21,14 @@ export default function CreateOrganizationPage() {
     const router = useRouter();
     const [name, setName] = useState('');
     const [companyId, setCompanyId] = useState('');
-    const [companyName, setCompanyName] = useState('');
+    const [organizationAlias, setOrganizationAlias] = useState('');
     const [errors, setErrors] = useState<{[k:string]:string}>({});
     const [submitting, setSubmitting] = useState(false);
     const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
     const [loadingDupes, setLoadingDupes] = useState(false);
 
     useEffect(() => {
-      if (!name && !companyId && !companyName) {
+      if (!name && !companyId && !organizationAlias) {
         setSuggestions([]);
         return;
       }
@@ -39,7 +39,7 @@ export default function CreateOrganizationPage() {
           const params = new URLSearchParams();
           if (name)        params.set('name', name);
           if (companyId)   params.set('companyId', companyId);
-          if (companyName) params.set('companyName', companyName);
+          if (organizationAlias) params.set('organizationAlias', organizationAlias);
 
           const res = await authFetch(
                     `${BACKEND_URL}/organizations/duplicates?${params.toString()}`
@@ -54,7 +54,7 @@ export default function CreateOrganizationPage() {
       }, 300);
 
       return () => clearTimeout(t);
-    }, [name, companyId, companyName]);
+    }, [name, companyId, organizationAlias]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,7 +65,7 @@ export default function CreateOrganizationPage() {
         } else if (!/^\d{8}$/.test(companyId)) {
           fieldErrors.companyId = 'IČO must be exactly 8 digits';
         }
-        if (!companyName) fieldErrors.companyName = 'Required';
+        if (!organizationAlias) fieldErrors.organizationAlias = 'Required';
         setErrors(fieldErrors);
         if (Object.keys(fieldErrors).length) return;
 
@@ -78,7 +78,7 @@ export default function CreateOrganizationPage() {
                 body: JSON.stringify({
                     name,
                     companyId: companyId.trim(),
-                    companyName,
+                    organizationAlias,
                 }),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -120,12 +120,12 @@ export default function CreateOrganizationPage() {
                             required
                         />
                         <TextField
-                            label="Abbreviated Company Name"
-                            placeholder="ABC Inc."
-                            value={companyName}
-                            onChange={e => setCompanyName(e.target.value)}
-                            error={!!errors.companyName}
-                            helperText={errors.companyName}
+                            label="Organization Alias"
+                            placeholder="e.g. SmartLab, BVV, BLL"
+                            helperText="Used as part of the organization URL (must be unique)."
+                            value={organizationAlias}
+                            onChange={(e) => setOrganizationAlias(e.target.value)}
+                            error={!!errors.organizationAlias}
                             required
                         />
                         {errors.form && (
@@ -145,7 +145,7 @@ export default function CreateOrganizationPage() {
                                 <ListItem key={s.id} disableGutters>
                                   <ListItemText
                                     primary={s.name}
-                                    secondary={`IČO: ${s.companyId} — ${s.companyName}`}
+                                    secondary={`IČO: ${s.companyId} — ${s.organizationAlias}`}
                                   />
                                 </ListItem>
                               ))}

@@ -6,7 +6,7 @@ export class OrganizationDto {
   creatorId: string;
   creatorName: string;
   companyId: string;
-  companyName: string;
+  organizationAlias: string;
   isPrivate: boolean;
   createdAt: Date;
   lastEdit: Date;

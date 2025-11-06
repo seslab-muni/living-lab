@@ -38,7 +38,7 @@ export default function EditOrganizationPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [companyId, setCompanyId] = useState('');
-    const [companyName, setCompanyName] = useState('');
+    const [organizationAlias, setorganizationAlias] = useState('');
     const [errors, setErrors] = useState<{[k:string]:string}>({});
     const [fatalError, setFatalError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ export default function EditOrganizationPage() {
           setName(data.name);
           setDescription(data.description?.trim() || '');
           setCompanyId(data.companyId?.toString() ?? '');
-          setCompanyName(data.companyName);
+          setorganizationAlias(data.organizationAlias);
           setIsPrivate(data.isPrivate);
 
           const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null =
@@ -142,7 +142,7 @@ export default function EditOrganizationPage() {
             setSuggestions([]);
             return;
         }
-        if (!name && !companyId && !companyName) {
+        if (!name && !companyId && !organizationAlias) {
             setSuggestions([]);
             return;
         }
@@ -153,7 +153,7 @@ export default function EditOrganizationPage() {
             const params = new URLSearchParams();
             if (name)        params.set('name', name);
             if (companyId)   params.set('companyId', companyId);
-            if (companyName) params.set('companyName', companyName);
+            if (organizationAlias) params.set('organizationAlias', organizationAlias);
             if (org?.id)     params.set('excludeId', String(org.id));
 
             const res = await authFetch(
@@ -169,7 +169,7 @@ export default function EditOrganizationPage() {
         }, 300);
 
         return () => clearTimeout(t);
-    }, [name, companyId, companyName, hasFocused, org?.id]);
+    }, [name, companyId, organizationAlias, hasFocused, org?.id]);
 
     useEffect(() => {
       if (!org) return;
@@ -197,7 +197,7 @@ export default function EditOrganizationPage() {
     } else if (!/^\d{8}$/.test(companyId)) {
       f.companyId = 'IČO must be exactly 8 digits';
     }
-    if (!companyName.trim()) f.companyName = 'Required';
+    if (!organizationAlias.trim()) f.organizationAlias = 'Required';
     setErrors(f);
     if (Object.keys(f).length) return;
 
@@ -210,7 +210,7 @@ export default function EditOrganizationPage() {
           name: name.trim(),
           description: description.trim(),
             companyId: companyId.trim(),
-            companyName: companyName.trim(),
+            organizationAlias: organizationAlias.trim(),
           isPrivate,
         }),
       });
@@ -545,12 +545,12 @@ export default function EditOrganizationPage() {
                             disabled={!canEditInfo}
                         />
                         <TextField
-                            label="Company Name"
-                            value={companyName}
-                            onChange={e => setCompanyName(e.target.value)}
+                            label="organizationAlias"
+                            value={organizationAlias}
+                            onChange={e => setorganizationAlias(e.target.value)}
                             onFocus={() => setHasFocused(true)}
-                            error={!!errors.companyName}
-                            helperText={errors.companyName}
+                            error={!!errors.organizationAlias}
+                            helperText={errors.organizationAlias}
                             required
                             disabled={!canEditInfo}
                         />
@@ -583,7 +583,7 @@ export default function EditOrganizationPage() {
                                         <ListItem key={s.id} disableGutters>
                                             <ListItemText
                                                 primary={s.name}
-                                                secondary={`IČO: ${s.companyId} — ${s.companyName}`}
+                                                secondary={`IČO: ${s.companyId} — ${s.organizationAlias}`}
                                             />
                                         </ListItem>
                                     ))}

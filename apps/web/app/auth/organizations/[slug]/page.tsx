@@ -223,7 +223,7 @@ export default function OrganizationDetailsPage() {
                     </Typography>
                     <Box height={50}></Box>
                     <Typography variant="caption" color="text.secondary">
-                        Company: {org.companyName} (IČO: {org.companyId})
+                        Organization alias and company ID: {org.organizationAlias} (IČO: {org.companyId})
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                         Last updated: {new Date(org.lastEdit).toLocaleString()}

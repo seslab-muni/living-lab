@@ -36,7 +36,7 @@ export class Organization {
   companyId: string;
 
   @Column()
-  companyName: string;
+  organizationAlias: string;
   @Column({ default: false })
   isPrivate: boolean;
   @UpdateDateColumn({ type: 'timestamp' })

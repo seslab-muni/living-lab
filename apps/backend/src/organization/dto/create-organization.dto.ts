@@ -14,5 +14,5 @@ export class CreateOrganizationDto {
   companyId: string;
 
   @IsString()
-  companyName: string;
+  organizationAlias: string;
 }
