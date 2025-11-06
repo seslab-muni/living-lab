@@ -38,7 +38,7 @@ export default function EditOrganizationPage() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [companyId, setCompanyId] = useState('');
-    const [organizationAlias, setorganizationAlias] = useState('');
+    const [organizationAlias, setOrganizationAlias] = useState('');
     const [errors, setErrors] = useState<{[k:string]:string}>({});
     const [fatalError, setFatalError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -66,6 +66,35 @@ export default function EditOrganizationPage() {
     const canManageRoles = userRole === 'Owner' || userRole === 'Manager' || userRole === 'Admin';
     const canInviteMembers = canManageRoles;
     const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
+
+    const validateOrgName = (v: string) => {
+        const s = v.trim();
+        if (!s) return 'Required';
+        if (/^\d/.test(s)) return 'Cannot start with a number';
+        if (s.length < 2) return 'Must be at least 2 characters';
+        if (s.length > 100) return 'Must be at most 100 characters';
+        if (!/^[A-Za-z0-9\s-]+$/.test(s))
+            return 'Only letters, numbers, spaces, and "-" are allowed';
+        return '';
+    };
+
+    const validateOrgAlias = (v: string) => {
+        const s = v.trim();
+        if (!s) return 'Required';
+        if (/^\d/.test(s)) return 'Cannot start with a number';
+        if (s.length < 2) return 'Must be at least 2 characters';
+        if (s.length > 50) return 'Must be at most 50 characters';
+        if (!/^[A-Za-z0-9\s-]+$/.test(s))
+            return 'Only letters, numbers, spaces, and "-" are allowed';
+        return '';
+    };
+
+    const validateICO = (v: string) => {
+      const s = v.trim();
+      if (!s) return 'Required';
+      if (!/^\d{8}$/.test(s)) return 'Must be exactly 8 digits';
+      return '';
+    };
 
     useEffect(() => {
       const loadOrganization = async () => {
@@ -95,7 +124,7 @@ export default function EditOrganizationPage() {
           setName(data.name);
           setDescription(data.description?.trim() || '');
           setCompanyId(data.companyId?.toString() ?? '');
-          setorganizationAlias(data.organizationAlias);
+          setOrganizationAlias(data.organizationAlias);
           setIsPrivate(data.isPrivate);
 
           const role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' | null =
@@ -191,13 +220,13 @@ export default function EditOrganizationPage() {
     e.preventDefault();
 
     const f: { [k: string]: string } = {};
-    if (!name.trim()) f.name = 'Required';
-    if (!companyId) {
-      f.companyId = 'Required';
-    } else if (!/^\d{8}$/.test(companyId)) {
-      f.companyId = 'IČO must be exactly 8 digits';
-    }
-    if (!organizationAlias.trim()) f.organizationAlias = 'Required';
+    const nameErr = validateOrgName(name);
+    if (nameErr) f.name = nameErr;
+
+    const aliasErr = validateOrgAlias(organizationAlias);
+    if (aliasErr) f.organizationAlias = aliasErr;
+    const icoErr = validateICO(companyId);
+    if (icoErr) f.companyId = icoErr;
     setErrors(f);
     if (Object.keys(f).length) return;
 
@@ -515,14 +544,18 @@ export default function EditOrganizationPage() {
                 <Box>
                     <Stack spacing={3}>
                         <TextField
-                            label="Name"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            onFocus={() => setHasFocused(true)}
-                            error={!!errors.name}
-                            helperText={errors.name}
-                            required
-                            disabled={!canEditInfo}
+                          label="Organization name"
+                          value={name}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setName(v);
+                            setErrors((prev) => ({ ...prev, name: validateOrgName(v) }));
+                          }}
+                          error={!!errors.name}
+                          helperText={errors.name}
+                          required
+                          disabled={!canEditInfo}
+                          inputProps={{ maxLength: 100 }}
                         />
                         <TextField
                             label="Description"
@@ -534,25 +567,33 @@ export default function EditOrganizationPage() {
                             disabled={!canEditInfo}
                         />
                         <TextField
-                            label="IČO"
-                            value={companyId}
-                            inputProps={{ inputMode:'numeric' }}
-                            onChange={e => setCompanyId(e.target.value)}
-                            onFocus={() => setHasFocused(true)}
-                            error={!!errors.companyId}
-                            helperText={errors.companyId}
-                            required
-                            disabled={!canEditInfo}
+                          label="IČO"
+                          value={companyId}
+                          inputProps={{ inputMode: 'numeric', maxLength: 8 }}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCompanyId(v);
+                            setErrors((prev) => ({ ...prev, companyId: validateICO(v) }));
+                          }}
+                          error={!!errors.companyId}
+                          helperText={errors.companyId}
+                          required
+                          disabled={!canEditInfo}
                         />
                         <TextField
-                            label="organizationAlias"
-                            value={organizationAlias}
-                            onChange={e => setorganizationAlias(e.target.value)}
-                            onFocus={() => setHasFocused(true)}
-                            error={!!errors.organizationAlias}
-                            helperText={errors.organizationAlias}
-                            required
-                            disabled={!canEditInfo}
+                          label="Organization Alias"
+                          placeholder="e.g. SmartLab, BVV, BLL"
+                          value={organizationAlias}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setOrganizationAlias(v);
+                            setErrors((prev) => ({ ...prev, organizationAlias: validateOrgAlias(v) }));
+                          }}
+                          error={!!errors.organizationAlias}
+                          helperText={errors.organizationAlias || 'Used as part of the organization URL.'}
+                          required
+                          disabled={!canEditInfo}
+                          inputProps={{ maxLength: 50 }}
                         />
                         <FormControlLabel
                           control={

@@ -27,6 +27,35 @@ export default function CreateOrganizationPage() {
     const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
     const [loadingDupes, setLoadingDupes] = useState(false);
 
+    const validateOrgName = (v: string) => {
+      const s = v.trim();
+      if (!s) return 'Required';
+      if (/^\d/.test(s)) return 'Cannot start with a number';
+      if (s.length < 2) return 'Must be at least 2 characters';
+      if (s.length > 100) return 'Must be at most 100 characters';
+      if (!/^[A-Za-z0-9\s-]+$/.test(s))
+        return 'Only letters, numbers, spaces, and "-" are allowed';
+      return '';
+    };
+
+    const validateOrgAlias = (v: string) => {
+      const s = v.trim();
+      if (!s) return 'Required';
+      if (/^\d/.test(s)) return 'Cannot start with a number';
+      if (s.length < 2) return 'Must be at least 2 characters';
+      if (s.length > 50) return 'Must be at most 50 characters';
+      if (!/^[A-Za-z0-9\s-]+$/.test(s))
+        return 'Only letters, numbers, spaces, and "-" are allowed';
+      return '';
+    };
+
+    const validateICO = (v: string) => {
+      const s = v.trim();
+      if (!s) return 'Required';
+      if (!/^\d{8}$/.test(s)) return 'Must be exactly 8 digits';
+      return '';
+    };
+
     useEffect(() => {
       if (!name && !companyId && !organizationAlias) {
         setSuggestions([]);
@@ -59,13 +88,14 @@ export default function CreateOrganizationPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const fieldErrors: {[k:string]:string} = {};
-        if (!name) fieldErrors.name = 'Required';
-        if (!companyId) {
-          fieldErrors.companyId = 'Required';
-        } else if (!/^\d{8}$/.test(companyId)) {
-          fieldErrors.companyId = 'IČO must be exactly 8 digits';
-        }
-        if (!organizationAlias) fieldErrors.organizationAlias = 'Required';
+
+        const nameErr = validateOrgName(name);
+        if (nameErr) fieldErrors.name = nameErr;
+
+        const aliasErr = validateOrgAlias(organizationAlias);
+        if (aliasErr) fieldErrors.organizationAlias = aliasErr;
+        const icoErr = validateICO(companyId);
+        if (icoErr) fieldErrors.companyId = icoErr;
         setErrors(fieldErrors);
         if (Object.keys(fieldErrors).length) return;
 
@@ -103,30 +133,43 @@ export default function CreateOrganizationPage() {
                             label="Organization Name"
                             placeholder="My Organization"
                             value={name}
-                            onChange={e => setName(e.target.value)}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setName(v);
+                              setErrors((prev) => ({ ...prev, name: validateOrgName(v) }));
+                            }}
                             error={!!errors.name}
                             helperText={errors.name}
                             required
+                            inputProps={{ maxLength: 100 }}
                         />
                         <TextField
-                            label="IČO"
-                            placeholder="123456"
-                            value={companyId}
-                            onChange={e => setCompanyId(e.target.value)}
-                            type="text"
-                            inputProps={{ inputMode: 'numeric' }}
-                            error={!!errors.companyId}
-                            helperText={errors.companyId}
-                            required
+                          label="IČO"
+                          placeholder="12345678"
+                          value={companyId}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setCompanyId(v);
+                            setErrors((prev) => ({ ...prev, companyId: validateICO(v) }));
+                          }}
+                          inputProps={{ inputMode: 'numeric', maxLength: 8 }}
+                          error={!!errors.companyId}
+                          helperText={errors.companyId}
+                          required
                         />
                         <TextField
-                            label="Organization Alias"
-                            placeholder="e.g. SmartLab, BVV, BLL"
-                            helperText="Used as part of the organization URL (must be unique)."
-                            value={organizationAlias}
-                            onChange={(e) => setOrganizationAlias(e.target.value)}
-                            error={!!errors.organizationAlias}
-                            required
+                          label="Organization Alias"
+                          placeholder="e.g. SmartLab, BVV, BLL"
+                          helperText={errors.organizationAlias || 'Used as part of the organization URL.'}
+                          value={organizationAlias}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setOrganizationAlias(v);
+                            setErrors((prev) => ({ ...prev, organizationAlias: validateOrgAlias(v) }));
+                          }}
+                          error={!!errors.organizationAlias}
+                          required
+                          inputProps={{ maxLength: 50 }}
                         />
                         {errors.form && (
                             <Typography color="error">{errors.form}</Typography>
