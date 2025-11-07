@@ -116,12 +116,18 @@ export class OrganizationController {
   }
 
   @Get('slug-preview')
-  async getSlugPreview(@Query('alias') alias: string) {
+  async getSlugPreview(
+    @Query('alias') alias: string,
+    @Query('excludeId') excludeId?: number,
+  ) {
     if (!alias || alias.trim() === '') {
       throw new BadRequestException('Alias is required');
     }
 
-    const slug = await this.orgService.generateUniqueSlug(alias.trim());
+    const slug = await this.orgService.generateUniqueSlug(
+      alias.trim(),
+      excludeId,
+    );
     return { alias, slug };
   }
 

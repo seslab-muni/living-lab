@@ -27,7 +27,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
-import { BACKEND_URL } from '../../../../lib/constants';
+import { BACKEND_URL, FRONTEND_URL } from '../../../../lib/constants';
 import type { OrganizationDto } from '../../types';
 
 export default function EditOrganizationPage() {
@@ -232,13 +232,13 @@ export default function EditOrganizationPage() {
       try {
         setSlugLoading(true);
         const res = await authFetch(
-          `${BACKEND_URL}/organizations/slug-preview?alias=${encodeURIComponent(alias)}`,
+          `${BACKEND_URL}/organizations/slug-preview?alias=${encodeURIComponent(alias)}&excludeId=${org?.id ?? ''}`,
           { signal: controller.signal }
         );
         if (res.ok) {
           const data = await res.json();
           setSlugPreview(
-            `${BACKEND_URL.replace(/\/$/, '')}/auth/organizations/${data.slug}`
+            `${FRONTEND_URL.replace(/\/$/, '')}/auth/organizations/${data.slug}`
           );
         } else {
           setSlugPreview('');

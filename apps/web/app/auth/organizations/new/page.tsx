@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { authFetch } from '../../../lib/auth';
-import { BACKEND_URL } from '../../../lib/constants';
+import { BACKEND_URL, FRONTEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 
 export default function CreateOrganizationPage() {
@@ -162,7 +162,7 @@ export default function CreateOrganizationPage() {
                 if (res.ok) {
                     const data = await res.json();
                     setSlugPreview(
-                        `${BACKEND_URL.replace(/\/$/, '')}/auth/organizations/${data.slug}`
+                        `${FRONTEND_URL.replace(/\/$/, '')}/auth/organizations/${data.slug}`
                     );
                 } else {
                     setSlugPreview('');

@@ -182,6 +182,25 @@ export class OrganizationService implements OnModuleInit {
   ): Promise<string> {
     const base = this.toSlugBase(organizationAlias);
 
+    if (excludeId) {
+      const existingSameOrg = await this.orgRepo.findOne({
+        where: { id: excludeId },
+      });
+
+      if (existingSameOrg) {
+        const currentSlug = existingSameOrg.slug;
+
+        if (currentSlug === base) {
+          return currentSlug;
+        }
+
+        const match = currentSlug.match(new RegExp(`^${base}(-\\d+)?$`));
+        if (match) {
+          return currentSlug;
+        }
+      }
+    }
+
     const qb = this.orgRepo
       .createQueryBuilder('org')
       .select('org.slug')
@@ -426,15 +445,24 @@ export class OrganizationService implements OnModuleInit {
     if (
       typeof dto.organizationAlias === 'string' &&
       dto.organizationAlias.trim() !== '' &&
-      dto.organizationAlias.trim() !== org.organizationAlias
+      dto.organizationAlias.trim() !== (org.organizationAlias?.trim() ?? '')
     ) {
-      org.organizationAlias = dto.organizationAlias;
-      org.slug = await this.generateUniqueSlug(dto.organizationAlias, org.id);
+      const newAlias = dto.organizationAlias.trim();
+
+      org.organizationAlias = newAlias;
+      org.slug = await this.generateUniqueSlug(newAlias, org.id);
       slugChanged = true;
+    } else if (
+      typeof dto.organizationAlias === 'string' &&
+      dto.organizationAlias.trim() === (org.organizationAlias?.trim() ?? '')
+    ) {
+      dto.organizationAlias = org.organizationAlias;
     }
 
-    if (typeof dto.name === 'string') org.name = dto.name;
-    if (typeof dto.description === 'string') org.description = dto.description;
+    if (typeof dto.name === 'string') org.name = dto.name.trim();
+    if (typeof dto.description === 'string')
+      org.description = dto.description.trim();
+
     if (typeof dto.companyId === 'string' && /^\d{8}$/.test(dto.companyId)) {
       org.companyId = dto.companyId.trim();
     }
@@ -442,6 +470,7 @@ export class OrganizationService implements OnModuleInit {
     if (typeof dto.isPrivate === 'boolean') {
       org.isPrivate = dto.isPrivate;
     }
+
     org.modifiedBy = userId;
     org.lastEdit = new Date();
     await this.orgRepo.save(org);
