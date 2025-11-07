@@ -10,6 +10,7 @@ import {
   Delete,
   Req,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -112,6 +113,16 @@ export class OrganizationController {
       companyName,
       excludeId,
     );
+  }
+
+  @Get('slug-preview')
+  async getSlugPreview(@Query('alias') alias: string) {
+    if (!alias || alias.trim() === '') {
+      throw new BadRequestException('Alias is required');
+    }
+
+    const slug = await this.orgService.generateUniqueSlug(alias.trim());
+    return { alias, slug };
   }
 
   @Get(':idOrSlug')

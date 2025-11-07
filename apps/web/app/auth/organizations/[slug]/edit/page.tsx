@@ -66,11 +66,13 @@ export default function EditOrganizationPage() {
     const canManageRoles = userRole === 'Owner' || userRole === 'Manager' || userRole === 'Admin';
     const canInviteMembers = canManageRoles;
     const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
+    const [slugPreview, setSlugPreview] = useState('');
+    const [slugLoading, setSlugLoading] = useState(false);
 
     const validateOrgName = (v: string) => {
         const s = v.trim();
         if (!s) return 'Required';
-        if (/^\d/.test(s)) return 'Cannot start with a number';
+        if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
         if (s.length < 2) return 'Must be at least 2 characters';
         if (s.length > 100) return 'Must be at most 100 characters';
         if (!/^[A-Za-z0-9\s-]+$/.test(s))
@@ -81,7 +83,7 @@ export default function EditOrganizationPage() {
     const validateOrgAlias = (v: string) => {
         const s = v.trim();
         if (!s) return 'Required';
-        if (/^\d/.test(s)) return 'Cannot start with a number';
+        if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
         if (s.length < 2) return 'Must be at least 2 characters';
         if (s.length > 50) return 'Must be at most 50 characters';
         if (!/^[A-Za-z0-9\s-]+$/.test(s))
@@ -215,6 +217,44 @@ export default function EditOrganizationPage() {
         setSnackbarOpen(true);
       }
     }, [errors.form]);
+
+  useEffect(() => {
+    const alias = organizationAlias.trim();
+
+    const aliasError = validateOrgAlias(alias);
+    if (!alias || aliasError) {
+      setSlugPreview('');
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        setSlugLoading(true);
+        const res = await authFetch(
+          `${BACKEND_URL}/organizations/slug-preview?alias=${encodeURIComponent(alias)}`,
+          { signal: controller.signal }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSlugPreview(
+            `${BACKEND_URL.replace(/\/$/, '')}/auth/organizations/${data.slug}`
+          );
+        } else {
+          setSlugPreview('');
+        }
+      } catch {
+        setSlugPreview('');
+      } finally {
+        setSlugLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [organizationAlias]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -595,6 +635,24 @@ export default function EditOrganizationPage() {
                           disabled={!canEditInfo}
                           inputProps={{ maxLength: 50 }}
                         />
+                        <Box mt={1}>
+                          {slugLoading ? (
+                            <Typography variant="caption" color="text.secondary">
+                              Checking slug availability…
+                            </Typography>
+                          ) : slugPreview ? (
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              <strong>Final URL:</strong>{' '}
+                              <span style={{ fontWeight: 600, color: '#1976d2' }}>
+                                        {slugPreview}
+                                    </span>
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">
+                              Enter correct organization alias to see final URL
+                            </Typography>
+                          )}
+                        </Box>
                         <FormControlLabel
                           control={
                             <Switch
