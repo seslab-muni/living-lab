@@ -258,10 +258,22 @@ export class OrganizationService implements OnModuleInit {
     return await this.mapToDto(org, org.members, userId);
   }
 
-  async findAllForUser(userId: string): Promise<OrganizationDto[]> {
+  async findAllForUser(
+    userId: string,
+    includeInactive = false,
+  ): Promise<OrganizationDto[]> {
+    const user: User | null = await this.userRepo.findOne({
+      where: { id: userId },
+    });
+
+    const where: Record<string, any> = {};
+    if (!includeInactive || !user?.isAdmin) {
+      where.isActive = true;
+    }
     const orgs = await this.orgRepo.find({
-      where: { isActive: true },
+      where,
       relations: ['members', 'creator'],
+      order: { createdAt: 'DESC' },
     });
     return Promise.all(
       orgs.map((org) => this.mapToDto(org, org.members, userId)),
@@ -272,18 +284,29 @@ export class OrganizationService implements OnModuleInit {
     query?: string,
     sort: 'newest' | 'asc' | 'desc' = 'newest',
     userId?: string,
+    includeInactive = false,
   ): Promise<OrganizationDto[]> {
     const qb = this.orgRepo
       .createQueryBuilder('organization')
       .leftJoinAndSelect('organization.members', 'member')
       .leftJoinAndSelect('organization.creator', 'creator');
 
+    let isAdmin = false;
+    if (userId) {
+      const user: User | null = await this.userRepo.findOne({
+        where: { id: userId },
+      });
+      isAdmin = !!user?.isAdmin;
+    }
+
     if (query && query.trim().length > 0) {
       qb.where('LOWER(organization.name) LIKE :q', {
         q: `%${query.toLowerCase()}%`,
-      }).andWhere('organization.isActive = true');
-    } else {
-      qb.where('organization.isActive = true');
+      });
+    }
+
+    if (!isAdmin || !includeInactive) {
+      qb.andWhere('organization.isActive = true');
     }
 
     switch (sort) {

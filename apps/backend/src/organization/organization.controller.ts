@@ -38,8 +38,11 @@ export class OrganizationController {
   }
 
   @Get()
-  findAll(@GetUser() user: JwtPayload) {
-    return this.orgService.findAllForUser(user.id);
+  findAll(
+    @GetUser() user: JwtPayload,
+    @Query('includeInactive') includeInactive?: string,
+  ) {
+    return this.orgService.findAllForUser(user.id, includeInactive === 'true');
   }
 
   @Get(':idOrSlug/join-requests')
@@ -60,8 +63,14 @@ export class OrganizationController {
     @GetUser() user: JwtPayload,
     @Query('q') q?: string,
     @Query('sort') sort: 'newest' | 'asc' | 'desc' = 'newest',
+    @Query('includeInactive') includeInactive?: string,
   ) {
-    return this.orgService.searchAndSortOrganizations(q, sort, user.id);
+    return this.orgService.searchAndSortOrganizations(
+      q,
+      sort,
+      user.id,
+      includeInactive === 'true',
+    );
   }
 
   @Post(':idOrSlug/join')
