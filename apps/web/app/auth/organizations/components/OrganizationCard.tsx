@@ -1,15 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, Typography, Button, CardActions, Box } from '@mui/material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  CardActions,
+  Box,
+} from '@mui/material';
 import NextLink from 'next/link';
 import type { OrganizationDto } from '../types';
 
-function truncateDescription(text: string | null | undefined, maxLength = 300): string {
+function truncateDescription(
+  text: string | null | undefined,
+  maxLength = 300,
+): string {
   if (!text) return 'No description provided.';
   const trimmed = text.trim();
   if (trimmed.length === 0) return 'No description provided.';
-  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) + '…' : trimmed;
+  return trimmed.length > maxLength
+    ? trimmed.slice(0, maxLength) + '…'
+    : trimmed;
 }
 
 export default function OrganizationCard({

@@ -61,7 +61,7 @@ export default function LoginForm() {
       }
       router.push(target);
     }
-  }
+  };
 
   return (
     <Box

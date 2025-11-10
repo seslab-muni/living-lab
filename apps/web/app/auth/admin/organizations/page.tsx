@@ -32,10 +32,16 @@ type Organization = {
 };
 
 export default function AdminOrganizationsPage() {
-  const [organizations, setOrganizations] = useState<Organization[] | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[] | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState({ filter: '' });
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
     open: false,
     message: '',
     severity: 'success',
@@ -61,8 +67,8 @@ export default function AdminOrganizationsPage() {
 
   const filteredOrgs = organizations
     ? organizations.filter((org) =>
-      org.name.toLowerCase().includes(search.filter.toLowerCase()),
-    )
+        org.name.toLowerCase().includes(search.filter.toLowerCase()),
+      )
     : [];
 
   const handleArchiveOrRestore = async (org: Organization) => {
@@ -73,18 +79,21 @@ export default function AdminOrganizationsPage() {
           method: 'DELETE',
         });
       } else {
-        res = await authFetch(`${BACKEND_URL}/organizations/${org.id}/restore`, {
-          method: 'PATCH',
-        });
+        res = await authFetch(
+          `${BACKEND_URL}/organizations/${org.id}/restore`,
+          {
+            method: 'PATCH',
+          },
+        );
       }
 
       if (!res.ok) {
-          setSnackbar({
-              open: true,
-              message: `Failed to ${org.isActive ? 'archive' : 'restore'} organization (HTTP ${res.status}).`,
-              severity: 'error',
-          });
-          return;
+        setSnackbar({
+          open: true,
+          message: `Failed to ${org.isActive ? 'archive' : 'restore'} organization (HTTP ${res.status}).`,
+          severity: 'error',
+        });
+        return;
       }
 
       setSnackbar({

@@ -9,9 +9,9 @@ interface OrganizationsFilterProps {
 }
 
 export default function OrganizationsFilter({
-                                              showMine,
-                                              onToggle,
-                                            }: OrganizationsFilterProps) {
+  showMine,
+  onToggle,
+}: OrganizationsFilterProps) {
   return (
     <Box>
       <Button
