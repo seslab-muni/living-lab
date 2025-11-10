@@ -78,7 +78,14 @@ export default function AdminOrganizationsPage() {
         });
       }
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+          setSnackbar({
+              open: true,
+              message: `Failed to ${org.isActive ? 'archive' : 'restore'} organization (HTTP ${res.status}).`,
+              severity: 'error',
+          });
+          return;
+      }
 
       setSnackbar({
         open: true,
