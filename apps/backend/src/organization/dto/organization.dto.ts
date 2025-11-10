@@ -8,6 +8,7 @@ export class OrganizationDto {
   companyId: string;
   organizationAlias: string;
   isPrivate: boolean;
+  isActive: boolean;
   createdAt: Date;
   lastEdit: Date;
   modifiedBy?: string;

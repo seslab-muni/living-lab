@@ -259,7 +259,10 @@ export class OrganizationService implements OnModuleInit {
   }
 
   async findAllForUser(userId: string): Promise<OrganizationDto[]> {
-    const orgs = await this.orgRepo.find({ relations: ['members', 'creator'] });
+    const orgs = await this.orgRepo.find({
+      where: { isActive: true },
+      relations: ['members', 'creator'],
+    });
     return Promise.all(
       orgs.map((org) => this.mapToDto(org, org.members, userId)),
     );
@@ -278,19 +281,21 @@ export class OrganizationService implements OnModuleInit {
     if (query && query.trim().length > 0) {
       qb.where('LOWER(organization.name) LIKE :q', {
         q: `%${query.toLowerCase()}%`,
-      });
+      }).andWhere('organization.isActive = true');
+    } else {
+      qb.where('organization.isActive = true');
     }
 
     switch (sort) {
       case 'asc':
-        qb.orderBy('organization.name', 'ASC');
+        qb.orderBy('LOWER(organization.name)', 'ASC');
         break;
       case 'desc':
-        qb.orderBy('organization.name', 'DESC');
+        qb.orderBy('LOWER(organization.name)', 'DESC');
         break;
       default:
         qb.orderBy('organization.createdAt', 'DESC', 'NULLS LAST').addOrderBy(
-          'organization.name',
+          'LOWER(organization.name)',
           'ASC',
         );
         break;
@@ -308,7 +313,8 @@ export class OrganizationService implements OnModuleInit {
       where: { id: orgId },
       relations: ['members'],
     });
-    if (!org) throw new NotFoundException('Organization not found');
+    if (!org || !org.isActive)
+      throw new NotFoundException('Organization not found');
     if (org.members.some((u) => u.id === userId)) {
       throw new BadRequestException(
         'User is already a member of this organization',
@@ -354,7 +360,8 @@ export class OrganizationService implements OnModuleInit {
       where: { slug },
       relations: ['members', 'creator'],
     });
-    if (!org) throw new NotFoundException(`Organization "${slug}" not found`);
+    if (!org || !org.isActive)
+      throw new NotFoundException(`Organization "${slug}" not found`);
     const pendingCount = await this.jrRepo.count({
       where: {
         user: { id: userId },
@@ -376,7 +383,8 @@ export class OrganizationService implements OnModuleInit {
       where: { id: orgId },
       relations: ['members', 'creator'],
     });
-    if (!org) throw new NotFoundException(`Organization ${orgId} not found`);
+    if (!org || !org.isActive)
+      throw new NotFoundException(`Organization ${orgId} not found`);
     const pendingCount = await this.jrRepo.count({
       where: {
         user: { id: userId },
@@ -419,6 +427,9 @@ export class OrganizationService implements OnModuleInit {
     if (orConditions.length > 0) {
       qb.where(`(${orConditions.join(' OR ')})`, params);
     }
+
+    qb.andWhere('org.isActive = true');
+
     if (excludeId) {
       qb.andWhere('org.id != :excludeId', { excludeId });
     }
@@ -488,14 +499,32 @@ export class OrganizationService implements OnModuleInit {
   }
 
   async remove(userId: string, orgId: number): Promise<void> {
-    const org = await this.orgRepo.findOneOrFail({
-      where: { id: orgId },
-      relations: ['members', 'creator'],
-    });
+    const org = await this.orgRepo.findOneOrFail({ where: { id: orgId } });
+
     const ctx = await this.getCallerContext(userId, orgId);
     this.ensureAllowed(['Owner'], ctx);
-    await this.domainService.deleteDomain(String(orgId));
-    await this.orgRepo.remove(org);
+
+    org.isActive = false;
+    org.modifiedBy = userId;
+    org.lastEdit = new Date();
+
+    await this.orgRepo.save(org);
+  }
+
+  async restore(userId: string, orgId: number): Promise<void> {
+    const org = await this.orgRepo.findOneOrFail({ where: { id: orgId } });
+    const ctx = await this.getCallerContext(userId, orgId);
+    if (!ctx.isAdmin) {
+      throw new ForbiddenException(
+        'Only admins can restore archived organizations.',
+      );
+    }
+
+    org.isActive = true;
+    org.modifiedBy = userId;
+    org.lastEdit = new Date();
+
+    await this.orgRepo.save(org);
   }
 
   async removeMember(
@@ -1036,6 +1065,7 @@ Message: ${requesterMessage}
       companyId: org.companyId,
       organizationAlias: org.organizationAlias,
       isPrivate: org.isPrivate,
+      isActive: org.isActive,
       createdAt: org.createdAt,
       lastEdit: org.lastEdit,
       modifiedBy: org.modifiedBy,

@@ -260,6 +260,18 @@ export class OrganizationController {
     return this.orgService.handleJoinRequest(user.id, requestId, false);
   }
 
+  @Patch(':idOrSlug/restore')
+  @UseGuards(JwtAuthGuard)
+  async restore(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<void> {
+    const id = isNaN(+idOrSlug)
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.restore(user.id, id);
+  }
+
   @Delete(':idOrSlug')
   @DefineRoles('Owner', 'Admin')
   @UseGuards(RolesGuard)

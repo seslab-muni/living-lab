@@ -13,6 +13,7 @@ export interface OrganizationDto {
   isMember: boolean;
   hasPendingRequest: boolean;
   isPrivate: boolean;
+  isActive: boolean;
   isOwner: boolean;
   members: Array<{
     id: string;

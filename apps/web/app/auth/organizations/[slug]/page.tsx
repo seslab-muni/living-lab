@@ -114,6 +114,34 @@ export default function OrganizationDetailsPage() {
       );
     }
 
+    if (error) {
+      return (
+        <Box
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          mt={8}
+          gap={2}
+        >
+          <Typography variant="h6" color="error" gutterBottom>
+            {error}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" textAlign="center">
+            The organization you are looking for doesn’t exist or has been archived.
+          </Typography>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => router.push('/auth/organizations')}
+            sx={{ mt: 2 }}
+          >
+            Return to all organizations
+          </Button>
+        </Box>
+      );
+    }
+
     if (org === null) {
         return (
             <Box display="flex" justifyContent="center" mt={4}>

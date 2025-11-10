@@ -24,6 +24,8 @@ import {
   Select,
   InputLabel,
   FormControl,
+  DialogContent,
+  DialogContentText,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
@@ -158,7 +160,11 @@ export default function EditOrganizationPage() {
 
           setErrors({});
         } catch (err) {
-          setFatalError('Unable to connect to server.');
+            if (err instanceof Error && (err.message.includes('Organization not found.') || err.message.includes('Failed to load organization'))) {
+                setFatalError('Organization not found.');
+            } else {
+                setFatalError('There was a problem when loading page.');
+            }
         } finally {
           setLoading(false);
           setAuthChecked(true);
@@ -902,6 +908,13 @@ export default function EditOrganizationPage() {
                 <DialogTitle>
                     Are you sure you want to delete “{org.name}”?
                 </DialogTitle>
+
+                <DialogContent>
+                    <DialogContentText>
+                        This organization will be archived and can be restored later by an administrator.
+                    </DialogContentText>
+                </DialogContent>
+
                 <DialogActions>
                     <Button onClick={() => setConfirmOpen(false)}>
                         Cancel
