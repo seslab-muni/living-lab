@@ -82,8 +82,10 @@ export class OrganizationService implements OnModuleInit {
     'Manager',
     'Owner',
   ] as const;
-  private readonly roleOrder = (r?: string | null) =>
-    r ? this.ROLE_HIERARCHY.indexOf(r as any) : -1;
+  private readonly roleOrder = (r?: string | null): number =>
+    r && this.ROLE_HIERARCHY.includes(r as (typeof this.ROLE_HIERARCHY)[number])
+      ? this.ROLE_HIERARCHY.indexOf(r as (typeof this.ROLE_HIERARCHY)[number])
+      : -1;
 
   private async getCallerContext(userId: string, orgId: number) {
     const user = await this.userRepo.findOne({ where: { id: userId } });

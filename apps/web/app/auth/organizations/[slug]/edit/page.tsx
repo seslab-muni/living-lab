@@ -48,7 +48,7 @@ export default function EditOrganizationPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
   const [loadingDupes, setLoadingDupes] = useState(false);
-  const [hasFocused, setHasFocused] = useState(false);
+  const [hasFocused] = useState(false);
   const [members, setMembers] = useState(org?.members ?? []);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [inviteEmails, setInviteEmails] = useState('');
@@ -159,7 +159,12 @@ export default function EditOrganizationPage() {
           if (rolesRes.ok) {
             const withRoles = await rolesRes.json();
             const merged = data.members.map((m) => {
-              const found = withRoles.find((u: any) => u.id === m.id);
+              const found = withRoles.find(
+                (u: {
+                  id: string;
+                  role?: 'Owner' | 'Manager' | 'Viewer' | 'Moderator';
+                }) => u.id === m.id,
+              );
               return { ...m, role: found?.role ?? 'Viewer' };
             });
             setMembers(merged);
@@ -277,7 +282,7 @@ export default function EditOrganizationPage() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [organizationAlias]);
+  }, [org?.id, organizationAlias]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,7 +313,11 @@ export default function EditOrganizationPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Update failed');
+      if (!res.ok) {
+        setErrors({ form: data.message ?? 'Update failed' });
+        setSaving(false);
+        return;
+      }
 
       if (org?.id && Object.keys(editedRoles).length > 0) {
         await Promise.all(
@@ -362,7 +371,9 @@ export default function EditOrganizationPage() {
         method: 'DELETE',
       });
       router.push('/auth/organizations');
-    } catch {}
+    } catch {
+      // intentionally left blank
+    }
   };
 
   if (fatalError) {
@@ -444,12 +455,12 @@ export default function EditOrganizationPage() {
       setSnackbarMessage('Member removed successfully.');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       let message = 'Network error while removing member.';
 
       if (err instanceof Error && err.message) {
         try {
-          const match = err.message.match(/\{.*\}$/);
+          const match = err.message.match(/\{.*}$/);
           if (match) {
             const parsed = JSON.parse(match[0]);
             if (parsed?.message) {
@@ -514,14 +525,23 @@ export default function EditOrganizationPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to send invitations.');
+        const message = data.message ?? 'Failed to send invitations.';
+        setSnackbarMessage(message);
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        setSendingInvites(false);
+        return;
       }
 
       const sentCount = data.sent?.length || 0;
       const skippedCount = data.skipped?.length || 0;
       const skippedSummary =
-        data.skipped?.map((s: any) => `${s.email} (${s.reason})`).join(', ') ||
-        '';
+        data.skipped
+          ?.map(
+            (s: { email: string; reason: string }) =>
+              `${s.email} (${s.reason})`,
+          )
+          .join(', ') || '';
 
       if (sentCount > 0 && skippedCount === 0) {
         setSnackbarMessage(`${sentCount} invitation(s) sent successfully.`);
@@ -557,8 +577,9 @@ export default function EditOrganizationPage() {
         .catch(() => {});
 
       setInviteEmails('');
-    } catch (err: any) {
-      let message = err.message || 'Unexpected error.';
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      let message = error.message || 'Unexpected error.';
       if (
         message.includes('cannot send invitations') ||
         message.includes('cannot revoke invitations')
@@ -582,8 +603,9 @@ export default function EditOrganizationPage() {
         { method: 'DELETE' },
       );
       setPendingInvites((invites) => invites.filter((i) => i.id !== inviteId));
-    } catch (err: any) {
-      let message = err.message || 'Failed to revoke invitation.';
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      let message = error.message || 'Failed to revoke invitation.';
 
       if (
         message.includes('cannot revoke invitations') ||

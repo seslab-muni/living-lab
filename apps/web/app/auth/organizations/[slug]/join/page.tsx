@@ -50,10 +50,15 @@ export default function JoinRequestPage() {
           body: JSON.stringify({ message: message.trim() || undefined }),
         },
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        setError(`Request failed (HTTP ${res.status})`);
+        setSubmitting(false);
+        return;
+      }
       router.push(`/auth/organizations/${slug}`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error.message);
     } finally {
       setSubmitting(false);
     }

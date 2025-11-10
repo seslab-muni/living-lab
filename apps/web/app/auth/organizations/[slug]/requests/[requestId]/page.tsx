@@ -48,10 +48,11 @@ export default function ReviewJoinRequestPage() {
         }
 
         setReq(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err instanceof Response && err.status === 404) {
           setError('Join request not found.');
         } else if (
+          err instanceof Error &&
           typeof err?.message === 'string' &&
           err.message.includes('404')
         ) {
@@ -59,6 +60,7 @@ export default function ReviewJoinRequestPage() {
         } else if (err instanceof Response && err.status === 403) {
           setError('You are not authorized to view this request.');
         } else if (
+          err instanceof Error &&
           typeof err?.message === 'string' &&
           err.message.includes('403')
         ) {

@@ -11,7 +11,6 @@ import {
   ListItem,
   ListItemText,
   CircularProgress,
-  Divider,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { authFetch } from '../../../lib/auth';
@@ -222,11 +221,17 @@ export default function CreateOrganizationPage() {
           organizationAlias: organizationAlias.trim(),
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrors({ form: data.message ?? `Failed (HTTP ${res.status})` });
+        setSubmitting(false);
+        return;
+      }
       const created: OrganizationDto = await res.json();
       await router.push(`/auth/organizations/${created.slug}`);
-    } catch (err: any) {
-      setErrors({ form: err.message });
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setErrors({ form: error.message });
     } finally {
       setSubmitting(false);
     }

@@ -25,32 +25,38 @@ export default function InvitationHandler() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.message || 'Invalid or expired invitation');
+          setError(true);
+          setMessage(
+            (data as { message?: string }).message ??
+              'Invalid or expired invitation',
+          );
+          return;
         }
 
         const data = await res.json();
         setMessage(data.message);
 
         setTimeout(() => router.push(`/auth/organizations/${data.slug}`), 2200);
-      } catch (err: any) {
-        console.error(err);
+      } catch (err: unknown) {
         setError(true);
         let friendlyMessage = 'An unexpected error occurred.';
-        if (
-          err?.message?.includes('{') &&
-          err?.message?.includes('"message"')
-        ) {
-          try {
-            const parsed = JSON.parse(
-              err.message.split('Fetch error')[1]?.trim() || '{}',
-            );
-            friendlyMessage = parsed.message || friendlyMessage;
-          } catch {
-            const match = err.message.match(/"message":"([^"]+)"/);
-            if (match) friendlyMessage = match[1];
+
+        if (err instanceof Error && err.message) {
+          const msg = err.message ?? '';
+
+          if (msg.includes('{') && msg.includes('"message"')) {
+            try {
+              const parsed = JSON.parse(
+                msg.split('Fetch error')[1]?.trim() || '{}',
+              ) as { message?: string };
+              friendlyMessage = parsed.message ?? friendlyMessage;
+            } catch {
+              const match = msg.match(/"message":"([^"]+)"/);
+              if (match) friendlyMessage = match[1] ?? friendlyMessage;
+            }
+          } else {
+            friendlyMessage = msg ?? friendlyMessage;
           }
-        } else if (err instanceof Error && err.message) {
-          friendlyMessage = err.message;
         }
 
         setMessage(friendlyMessage);

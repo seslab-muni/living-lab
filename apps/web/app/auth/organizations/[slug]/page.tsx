@@ -22,7 +22,7 @@ import NextLink from 'next/link';
 export default function OrganizationDetailsPage() {
   const { slug } = useParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
 
@@ -77,13 +77,10 @@ export default function OrganizationDetailsPage() {
         setIsMember(data.isMember);
         setMemberCount(data.memberCount);
         setUserRole(data.currentUserRole ?? null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err instanceof Response && err.status === 404) {
           setError('Organization not found.');
-        } else if (
-          typeof err?.message === 'string' &&
-          err.message.includes('404')
-        ) {
+        } else if (err instanceof Error && err.message.includes('404')) {
           setError('Organization not found.');
         } else {
           setError('Unable to load request.');
@@ -168,7 +165,7 @@ export default function OrganizationDetailsPage() {
 
         if (typeof msg === 'string' && msg.includes('{')) {
           try {
-            const parsed = JSON.parse(msg.match(/\{.*\}$/)?.[0] || '{}');
+            const parsed = JSON.parse(msg.match(/\{.*}$/)?.[0] || '{}');
             msg = parsed.message || msg;
           } catch {
             // ignore parse errors
@@ -188,7 +185,7 @@ export default function OrganizationDetailsPage() {
     } catch (err: unknown) {
       let msg = 'Network error while leaving organization.';
       if (err instanceof Error && err.message) {
-        const match = err.message.match(/\{.*\}$/);
+        const match = err.message.match(/\{.*}$/);
         if (match) {
           try {
             const parsed = JSON.parse(match[0]);
