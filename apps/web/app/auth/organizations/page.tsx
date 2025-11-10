@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { useDebounce } from 'use-debounce';
 import {
   Box,
   Button,
@@ -27,24 +28,25 @@ export default function OrganizationsPage() {
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState<'newest' | 'asc' | 'desc'>('newest');
     const [loading, setLoading] = useState(false);
+    const [debouncedSearch] = useDebounce(search, 400);
 
     const displayOrgs = orgs?.filter(o => !showMine || o.isMember) ?? null;
 
-    const fetchOrganizations = useCallback(async () => {
+  const fetchOrganizations = useCallback(
+    async (searchTerm: string, sortOrder: 'newest' | 'asc' | 'desc') => {
       try {
         setLoading(true);
         setError(null);
 
         const params = new URLSearchParams();
-        if (search) params.set('q', search);
-        params.set('sort', sort);
+        if (searchTerm) params.set('q', searchTerm);
+        params.set('sort', sortOrder);
 
         const endpoint = `${BACKEND_URL}/organizations/search?${params.toString()}`;
-
         const res = await authFetch(endpoint);
+
         if (!res.ok) {
-          const message = `Failed to fetch organizations (HTTP ${res.status})`;
-          throw new Error(message);
+          throw new Error(`Failed to fetch organizations (HTTP ${res.status})`);
         }
 
         const data: OrganizationDto[] = await res.json();
@@ -55,15 +57,15 @@ export default function OrganizationsPage() {
       } finally {
         setLoading(false);
       }
-    }, [search, sort]);
+    }, []);
 
     useEffect(() => {
-      void fetchOrganizations();
-    }, [fetchOrganizations]);
+      void fetchOrganizations(debouncedSearch, sort);
+    }, [debouncedSearch, sort, fetchOrganizations]);
 
     const handleSearchSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      await fetchOrganizations();
+      await fetchOrganizations(search, sort);
     };
 
     return (
