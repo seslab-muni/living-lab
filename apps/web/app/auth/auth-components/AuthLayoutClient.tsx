@@ -1,8 +1,10 @@
 'use client';
 
+import { Container, Toolbar } from '@mui/material';
+import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import type { ReactNode } from 'react';
-import type { Session } from 'next-auth';
+import TopMenu from './TopMenu';
 
 export default function AuthLayoutClient({
   session,
@@ -11,5 +13,13 @@ export default function AuthLayoutClient({
   session: Session | null;
   children: ReactNode;
 }) {
-  return <SessionProvider session={session}>{children}</SessionProvider>;
+  return (
+    <SessionProvider session={session}>
+      <TopMenu />
+      <Container maxWidth={false}>
+        <Toolbar />
+        {children}
+      </Container>
+    </SessionProvider>
+  );
 }

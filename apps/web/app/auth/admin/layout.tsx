@@ -1,6 +1,8 @@
+'use client';
+
 import { Box } from '@mui/material';
 import { AdminMenu } from '../../components';
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;

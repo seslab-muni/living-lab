@@ -1,3 +1,5 @@
+'use client';
+
 import Divider from '@mui/material/Divider';
 import NextLink from 'next/link';
 import Paper from '@mui/material/Paper';
