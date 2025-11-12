@@ -1,63 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-    Box,
-    TextField,
-    Button,
-    Typography,
-    Stack,
-    List,
-    ListItem,
-    ListItemText,
-    CircularProgress,
-} from '@mui/material';
+import { Box, TextField, Button, Typography, Stack } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL, FRONTEND_URL } from '../../../lib/constants';
-import type { OrganizationDto } from '../types';
+import DuplicateSuggestions from '../components/DuplicateSuggestions';
+import { useDuplicateSuggestions } from '../components/useDuplicateSuggestions';
+import { validateOrgName, validateOrgAlias, validateICO } from '../validation';
+import { OrganizationDto } from '../types';
 
 export default function CreateOrganizationPage() {
     const router = useRouter();
     const [name, setName] = useState('');
     const [companyId, setCompanyId] = useState('');
     const [organizationAlias, setOrganizationAlias] = useState('');
-    const [errors, setErrors] = useState<{ [k: string]: string }>({});
-    const [submitting, setSubmitting] = useState(false);
-    const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
-    const [loadingDupes, setLoadingDupes] = useState(false);
-    const [aliasManuallyEdited, setAliasManuallyEdited] = useState(false);
-    const [slugPreview, setSlugPreview] = useState('');
-    const [slugLoading, setSlugLoading] = useState(false);
-
-    const validateOrgName = (v: string) => {
-        const s = v.trim();
-        if (!s) return 'Required';
-        if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
-        if (s.length < 2) return 'Must be at least 2 characters';
-        if (s.length > 100) return 'Must be at most 100 characters';
-        if (!/^[A-Za-z0-9\s-]+$/.test(s))
-            return 'Only letters, numbers, spaces, and "-" are allowed';
-        return '';
-    };
-
-    const validateOrgAlias = (v: string) => {
-        const s = v.trim();
-        if (!s) return 'Required';
-        if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
-        if (s.length < 2) return 'Must be at least 2 characters';
-        if (s.length > 50) return 'Must be at most 50 characters';
-        if (!/^[A-Za-z0-9\s-]+$/.test(s))
-            return 'Only letters, numbers, spaces, and "-" are allowed';
-        return '';
-    };
-
-    const validateICO = (v: string) => {
-        const s = v.trim();
-        if (!s) return 'Required';
-        if (!/^\d{8}$/.test(s)) return 'Must be exactly 8 digits';
-        return '';
-    };
+  const [errors, setErrors] = useState<{ [k: string]: string }>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [aliasManuallyEdited, setAliasManuallyEdited] = useState(false);
+  const [slugPreview, setSlugPreview] = useState('');
+  const [slugLoading, setSlugLoading] = useState(false);
+  const { suggestions, loading: loadingDupes } = useDuplicateSuggestions({
+    name,
+    companyId,
+    organizationAlias,
+  });
 
     /**
      * Generates an uppercase abbreviation alias from the organization name.
@@ -121,36 +88,6 @@ export default function CreateOrganizationPage() {
 
         return alias;
     }
-
-    useEffect(() => {
-        if (!name && !companyId && !organizationAlias) {
-            setSuggestions([]);
-            return;
-        }
-
-        const t = setTimeout(async () => {
-            setLoadingDupes(true);
-            try {
-                const params = new URLSearchParams();
-                if (name) params.set('name', name);
-                if (companyId) params.set('companyId', companyId);
-                if (organizationAlias)
-                    params.set('organizationAlias', organizationAlias);
-
-                const res = await authFetch(
-                    `${BACKEND_URL}/organizations/duplicates?${params.toString()}`,
-                );
-                const data: OrganizationDto[] = await res.json();
-                setSuggestions(data);
-            } catch {
-                setSuggestions([]);
-            } finally {
-                setLoadingDupes(false);
-            }
-        }, 300);
-
-        return () => clearTimeout(t);
-    }, [name, companyId, organizationAlias]);
 
     useEffect(() => {
         if (!aliasManuallyEdited) {
@@ -333,27 +270,10 @@ export default function CreateOrganizationPage() {
                                 </Typography>
                             )}
                         </Box>
-                        {loadingDupes ? (
-                            <Box display="flex" justifyContent="center" py={2}>
-                                <CircularProgress size={24} />
-                            </Box>
-                        ) : suggestions.length > 0 ? (
-                            <Box py={2}>
-                                <Typography variant="subtitle1" color="error" gutterBottom>
-                                    Possible duplicates found:
-                                </Typography>
-                                <List dense disablePadding>
-                                    {suggestions.map((s) => (
-                                        <ListItem key={s.id} disableGutters>
-                                            <ListItemText
-                                                primary={s.name}
-                                                secondary={`IČO: ${s.companyId} — ${s.organizationAlias}`}
-                                            />
-                                        </ListItem>
-                                    ))}
-                                </List>
-                            </Box>
-                        ) : null}
+            <DuplicateSuggestions
+              suggestions={suggestions}
+              loading={loadingDupes}
+            />
 
                         <Button type="submit" variant="contained" disabled={submitting}>
                             {submitting ? 'Creating…' : 'Create Organization'}

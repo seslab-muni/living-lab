@@ -16,9 +16,6 @@ import {
   Select,
   InputLabel,
   FormControl,
-  List,
-  ListItem,
-  ListItemText,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
@@ -28,6 +25,9 @@ import InvitationForm from '../../components/InvitationForm';
 import PendingInvitesTable from '../../components/PendingInvitesTable';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import SnackbarFeedback from '../../components/SnackbarFeedback';
+import DuplicateSuggestions from '../../components/DuplicateSuggestions';
+import { useDuplicateSuggestions } from '../../components/useDuplicateSuggestions';
+import { validateOrgName, validateOrgAlias, validateICO } from '../../validation';
 
 export default function EditOrganizationPage() {
   const { slug } = useParams();
@@ -43,9 +43,12 @@ export default function EditOrganizationPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<OrganizationDto[]>([]);
-  const [loadingDupes, setLoadingDupes] = useState(false);
-  const [hasFocused] = useState(false);
+  const { suggestions, loading: loadingDupes } = useDuplicateSuggestions({
+    name,
+    companyId,
+    organizationAlias,
+    excludeId: org?.id ?? null,
+  });
   const [members, setMembers] = useState(org?.members ?? []);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [inviteEmails, setInviteEmails] = useState('');
@@ -75,35 +78,6 @@ export default function EditOrganizationPage() {
   const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
   const [slugPreview, setSlugPreview] = useState('');
   const [slugLoading, setSlugLoading] = useState(false);
-
-  const validateOrgName = (v: string) => {
-    const s = v.trim();
-    if (!s) return 'Required';
-    if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
-    if (s.length < 2) return 'Must be at least 2 characters';
-    if (s.length > 100) return 'Must be at most 100 characters';
-    if (!/^[A-Za-z0-9\s-]+$/.test(s))
-      return 'Only letters, numbers, spaces, and "-" are allowed';
-    return '';
-  };
-
-  const validateOrgAlias = (v: string) => {
-    const s = v.trim();
-    if (!s) return 'Required';
-    if (!/^[A-Za-z]/.test(s)) return 'Must start with a letter (A–Z)';
-    if (s.length < 2) return 'Must be at least 2 characters';
-    if (s.length > 50) return 'Must be at most 50 characters';
-    if (!/^[A-Za-z0-9\s-]+$/.test(s))
-      return 'Only letters, numbers, spaces, and "-" are allowed';
-    return '';
-  };
-
-  const validateICO = (v: string) => {
-    const s = v.trim();
-    if (!s) return 'Required';
-    if (!/^\d{8}$/.test(s)) return 'Must be exactly 8 digits';
-    return '';
-  };
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -191,41 +165,6 @@ export default function EditOrganizationPage() {
 
     loadOrganization();
   }, [slug]);
-
-  useEffect(() => {
-    if (!hasFocused) {
-      setSuggestions([]);
-      return;
-    }
-    if (!name && !companyId && !organizationAlias) {
-      setSuggestions([]);
-      return;
-    }
-
-    const t = setTimeout(async () => {
-      setLoadingDupes(true);
-      try {
-        const params = new URLSearchParams();
-        if (name) params.set('name', name);
-        if (companyId) params.set('companyId', companyId);
-        if (organizationAlias)
-          params.set('organizationAlias', organizationAlias);
-        if (org?.id) params.set('excludeId', String(org.id));
-
-        const res = await authFetch(
-          `${BACKEND_URL}/organizations/duplicates?${params.toString()}`,
-        );
-        const data: OrganizationDto[] = await res.json();
-        setSuggestions(data);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setLoadingDupes(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(t);
-  }, [name, companyId, organizationAlias, hasFocused, org?.id]);
 
   useEffect(() => {
     if (!org) return;
@@ -733,27 +672,10 @@ export default function EditOrganizationPage() {
                   : 'Public organization (anyone can request to join)'
               }
             />
-            {loadingDupes ? (
-              <Box display="flex" justifyContent="center" py={2}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : suggestions.length > 0 ? (
-              <Box py={2}>
-                <Typography variant="subtitle1" color="error" gutterBottom>
-                  Possible duplicates found:
-                </Typography>
-                <List dense disablePadding>
-                  {suggestions.map((s) => (
-                    <ListItem key={s.id} disableGutters>
-                      <ListItemText
-                        primary={s.name}
-                        secondary={`IČO: ${s.companyId} — ${s.organizationAlias}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            ) : null}
+            <DuplicateSuggestions
+              suggestions={suggestions}
+              loading={loadingDupes}
+            />
 
             <Box my={4}>
               <Typography variant="h6">Members</Typography>
