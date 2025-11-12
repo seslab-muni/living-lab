@@ -1,6 +1,13 @@
 'use client';
 
-import { Box, CircularProgress, List, ListItem, ListItemText, Typography } from '@mui/material';
+import {
+  Box,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Typography,
+} from '@mui/material';
 import type { OrganizationDto } from '../types';
 
 type Props = {

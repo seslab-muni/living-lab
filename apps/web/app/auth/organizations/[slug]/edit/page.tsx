@@ -27,7 +27,11 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import SnackbarFeedback from '../../components/SnackbarFeedback';
 import DuplicateSuggestions from '../../components/DuplicateSuggestions';
 import { useDuplicateSuggestions } from '../../components/useDuplicateSuggestions';
-import { validateOrgName, validateOrgAlias, validateICO } from '../../validation';
+import {
+  validateOrgName,
+  validateOrgAlias,
+  validateICO,
+} from '../../validation';
 
 export default function EditOrganizationPage() {
   const { slug } = useParams();

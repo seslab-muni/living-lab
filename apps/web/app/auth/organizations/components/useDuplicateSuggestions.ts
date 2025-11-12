@@ -35,7 +35,8 @@ export function useDuplicateSuggestions({
         const params = new URLSearchParams();
         if (name) params.set('name', name);
         if (companyId) params.set('companyId', companyId);
-        if (organizationAlias) params.set('organizationAlias', organizationAlias);
+        if (organizationAlias)
+          params.set('organizationAlias', organizationAlias);
         if (excludeId) params.set('excludeId', String(excludeId));
 
         const res = await authFetch(

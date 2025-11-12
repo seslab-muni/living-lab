@@ -16,7 +16,14 @@ type Props = {
   description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  confirmColor?: 'primary' | 'secondary' | 'error' | 'inherit' | 'success' | 'info' | 'warning';
+  confirmColor?:
+    | 'primary'
+    | 'secondary'
+    | 'error'
+    | 'inherit'
+    | 'success'
+    | 'info'
+    | 'warning';
   loading?: boolean;
   onConfirm: () => void;
   onClose: () => void;
