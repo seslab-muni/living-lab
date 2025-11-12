@@ -491,7 +491,7 @@ export default function EditOrganizationPage() {
     }
 
     const emailsArray = inviteEmails
-      .split(',')
+      .split(/[\s,]+/)
       .map((e) => e.trim().toLowerCase())
       .filter((e) => e.length > 0);
 
@@ -911,7 +911,7 @@ export default function EditOrganizationPage() {
                     minRows={2}
                     value={inviteEmails}
                     onChange={(e) => setInviteEmails(e.target.value)}
-                    helperText='Separate emails by "," (comma).'
+                    helperText='Separate emails by "," (comma) or space.'
                     error={!!inviteError}
                     sx={{
                       mt: 1,
