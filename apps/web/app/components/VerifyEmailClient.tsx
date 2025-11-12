@@ -40,6 +40,22 @@ export default function VerifyEmail({ id }: { id: string }) {
     }
   };
 
+  const getPostAuthRedirect = () => {
+    if (typeof window === 'undefined') return null;
+    const path = sessionStorage.getItem('postAuthRedirect');
+    return path && path.startsWith('/') ? path : null;
+  };
+
+  const clearPostAuthRedirect = () => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.removeItem('postAuthRedirect');
+  };
+
+  const clearPendingInvitationPath = () => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.removeItem('pendingInvitationPath');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -55,6 +71,7 @@ export default function VerifyEmail({ id }: { id: string }) {
 
       if (response.ok) {
         const creds = getPendingCredentials();
+        const redirectPath = getPostAuthRedirect();
         if (creds) {
           const result = await signIn('credentials', {
             redirect: false,
@@ -62,11 +79,24 @@ export default function VerifyEmail({ id }: { id: string }) {
             password: creds.password,
           });
           if (!result?.error) {
-            router.push('/auth');
+            if (redirectPath) {
+              clearPostAuthRedirect();
+              clearPendingInvitationPath();
+              router.push(redirectPath);
+            } else {
+              router.push('/auth');
+            }
             return;
           }
         }
-        router.push('/login');
+
+        if (redirectPath) {
+          router.push(
+            `/login?callbackUrl=${encodeURIComponent(redirectPath)}`,
+          );
+        } else {
+          router.push('/login');
+        }
         return;
       } else {
         setError(data.message || 'Registration failed.');

@@ -17,7 +17,6 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import refreshConfig from 'src/configuration/refresh.config';
 import * as config from '@nestjs/config';
 import { RequestUser } from 'src/common/types/request-user';
-import { OrganizationService } from 'src/organization/organization.service';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +25,6 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly verificationService: VerificationService,
     private readonly emailService: EmailService,
-    private readonly organizationService: OrganizationService,
     @Inject(refreshConfig.KEY)
     private readonly refreshTokenConfig: config.ConfigType<
       typeof refreshConfig
@@ -46,10 +44,6 @@ export class AuthService {
       return user.id;
     }
     const createdUser = await this.userService.createUser(registerForm);
-    await this.organizationService.handlePendingInvitationsForNewUser(
-      createdUser.id,
-      createdUser.email,
-    );
     const verificationCode =
       await this.verificationService.generateVerificationCode(createdUser.id);
     const email: SendEmailDto = {

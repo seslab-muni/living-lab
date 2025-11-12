@@ -63,6 +63,13 @@ export default function LoginForm() {
     }
   };
 
+  const redirectParam =
+    searchParams.get('redirect') ?? searchParams.get('callbackUrl');
+  const signUpHref =
+    redirectParam && redirectParam.startsWith('/')
+      ? `/register?callbackUrl=${encodeURIComponent(redirectParam)}`
+      : '/register';
+
   return (
     <Box
       component="form"
@@ -111,7 +118,7 @@ export default function LoginForm() {
         </Typography>
         <Typography
           component={NextLink}
-          href={`/register`}
+          href={signUpHref}
           sx={{ mr: 2, color: 'primary.main' }}
         >
           Sign up.

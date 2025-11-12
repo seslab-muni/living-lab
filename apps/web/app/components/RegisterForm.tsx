@@ -9,9 +9,11 @@ import { useRouter } from 'next/navigation';
 import { BACKEND_URL } from '../lib/constants';
 import DarkTextField from './DarkTextField';
 import { Typography } from '@mui/material';
+import { useSearchParams } from 'next/navigation';
 
 export default function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = React.useState({
     firstName: '',
     lastName: '',
@@ -22,6 +24,17 @@ export default function RegisterForm() {
   });
 
   const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    const redirect = searchParams.get('callbackUrl');
+    if (
+      typeof window !== 'undefined' &&
+      redirect &&
+      redirect.startsWith('/')
+    ) {
+      sessionStorage.setItem('postAuthRedirect', redirect);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -89,6 +102,10 @@ export default function RegisterForm() {
               password: formData.password,
             }),
           );
+          const redirect = searchParams.get('callbackUrl');
+          if (redirect && redirect.startsWith('/')) {
+            sessionStorage.setItem('postAuthRedirect', redirect);
+          }
         }
         router.push(`/verify-email/${data.id}`);
         return;

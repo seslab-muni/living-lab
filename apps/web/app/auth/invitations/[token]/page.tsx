@@ -1,27 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
+import { getSession } from 'next-auth/react';
 
 export default function InvitationHandler() {
   const router = useRouter();
-  const { token } = useParams();
+  const { token } = useParams<{ token: string }>();
   const [message, setMessage] = useState('Accepting your invitation...');
   const [error, setError] = useState(false);
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
+    if (attemptedRef.current) {
+      return;
+    }
+    if (!token) {
+      setError(true);
+      setMessage('Invalid invitation link.');
+      return;
+    }
+    const invitationPath = `/auth/invitations/${token}`;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pendingInvitationPath', invitationPath);
+      sessionStorage.setItem('postAuthRedirect', invitationPath);
+    }
+
     (async () => {
+      attemptedRef.current = true;
       try {
-        const res = await authFetch(
+        const session = await getSession();
+        const headers = new Headers({ 'Content-Type': 'application/json' });
+        if (session?.accessToken) {
+          headers.set('Authorization', `Bearer ${session.accessToken}`);
+        }
+        const res = await fetch(
           `${BACKEND_URL}/organizations/invitations/accept`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ token }),
           },
         );
+
+        if (res.status === 401) {
+          setMessage('Redirecting to login...');
+          router.push(
+            `/login?callbackUrl=${encodeURIComponent(invitationPath)}`,
+          );
+          return;
+        }
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -34,6 +63,10 @@ export default function InvitationHandler() {
         }
 
         const data = await res.json();
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('pendingInvitationPath');
+          sessionStorage.removeItem('postAuthRedirect');
+        }
         setMessage(data.message);
 
         setTimeout(() => router.push(`/auth/organizations/${data.slug}`), 2200);

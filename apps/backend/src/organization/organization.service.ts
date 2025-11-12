@@ -854,8 +854,6 @@ Message: ${requesterMessage}
       where: {
         token,
         email,
-        revoked: false,
-        expiresAt: MoreThan(new Date()),
       },
       relations: ['organization'],
     });
@@ -870,8 +868,51 @@ Message: ${requesterMessage}
     }
 
     const org = invitation.organization;
+    const now = new Date();
+    const isExpired = invitation.expiresAt <= now;
 
-    await this.join(user.id, org.id);
+    const orgEntity = await this.orgRepo.findOne({
+      where: { id: org.id },
+      relations: ['members'],
+    });
+    const alreadyMember = !!orgEntity?.members.some((m) => m.id === user.id);
+
+    if (alreadyMember) {
+      if (!invitation.revoked) {
+        invitation.revoked = true;
+        await this.inviteRepo.save(invitation);
+      }
+      return {
+        message: `You are already a member of ${org.name}.`,
+        slug: org.slug,
+      };
+    }
+
+    if (invitation.revoked || isExpired) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
+
+    try {
+      await this.join(user.id, org.id);
+    } catch (err) {
+      const driverCode =
+        typeof err === 'object' && err !== null && 'code' in err
+          ? (err as { code?: string }).code
+          : undefined;
+      if (
+        (err instanceof BadRequestException &&
+          err.message?.includes('already a member')) ||
+        driverCode === '23505'
+      ) {
+        invitation.revoked = true;
+        await this.inviteRepo.save(invitation);
+        return {
+          message: `You are already a member of ${org.name}.`,
+          slug: org.slug,
+        };
+      }
+      throw err;
+    }
 
     invitation.revoked = true;
     await this.inviteRepo.save(invitation);
@@ -916,32 +957,6 @@ Message: ${requesterMessage}
     invitation.modifiedBy = creatorId;
     invitation.modifiedAt = new Date();
     await this.inviteRepo.save(invitation);
-  }
-
-  async handlePendingInvitationsForNewUser(
-    userId: string,
-    email: string,
-  ): Promise<void> {
-    const pendingInvites = await this.inviteRepo.find({
-      where: {
-        email,
-        revoked: false,
-        expiresAt: MoreThan(new Date()),
-      },
-      relations: ['organization'],
-    });
-
-    if (pendingInvites.length === 0) return;
-
-    for (const invite of pendingInvites) {
-      await this.join(userId, invite.organization.id);
-      invite.revoked = true;
-      await this.inviteRepo.save(invite);
-
-      this.logger.log(
-        `User ${email} automatically joined ${invite.organization.name} via pending invitation`,
-      );
-    }
   }
 
   async sendPendingJoinRequestReminders(): Promise<void> {
