@@ -9,28 +9,25 @@ import {
   Typography,
   Stack,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogActions,
-  List,
-  ListItem,
-  ListItemText,
   IconButton,
   Switch,
   FormControlLabel,
-  Snackbar,
-  Alert,
   MenuItem,
   Select,
   InputLabel,
   FormControl,
-  DialogContent,
-  DialogContentText,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
 import { BACKEND_URL, FRONTEND_URL } from '../../../../lib/constants';
 import type { OrganizationDto } from '../../types';
+import InvitationForm from '../../components/InvitationForm';
+import PendingInvitesTable from '../../components/PendingInvitesTable';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import SnackbarFeedback from '../../components/SnackbarFeedback';
 
 export default function EditOrganizationPage() {
   const { slug } = useParams();
@@ -866,81 +863,20 @@ export default function EditOrganizationPage() {
             </Box>
 
             <Box my={4}>
-              <Typography variant="h6">Pending Invitations</Typography>
-              {pendingInvites.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No pending invitations.
-                </Typography>
-              ) : (
-                <List dense disablePadding>
-                  {pendingInvites.map((inv) => (
-                    <ListItem
-                      key={inv.id}
-                      secondaryAction={
-                        <IconButton
-                          edge="end"
-                          color="error"
-                          onClick={() => handleRevokeInvite(inv.id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemText
-                        primary={inv.email}
-                        secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+              <PendingInvitesTable
+                invites={pendingInvites}
+                onRevoke={handleRevokeInvite}
+              />
             </Box>
 
             {canInviteMembers && (
-              <Box my={4}>
-                <Typography variant="h6" gutterBottom>
-                  Invite New Members
-                </Typography>
-
-                <Box sx={{ mt: 1, pl: 0 }}>
-                  <TextField
-                    label="Email addresses"
-                    placeholder="example1@email.com, example2@email.com"
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    value={inviteEmails}
-                    onChange={(e) => setInviteEmails(e.target.value)}
-                    helperText='Separate emails by "," (comma) or space.'
-                    error={!!inviteError}
-                    sx={{
-                      mt: 1,
-                      ml: 0,
-                      '& .MuiFormHelperText-root': {
-                        pl: 0,
-                        ml: 0,
-                        textAlign: 'left',
-                      },
-                    }}
-                  />
-                </Box>
-                {inviteError && (
-                  <Typography variant="body2" color="error" sx={{ mt: 0.5 }}>
-                    {inviteError}
-                  </Typography>
-                )}
-
-                <Box display="flex" justifyContent="flex-end" mt={1}>
-                  <Button
-                    variant="contained"
-                    disabled={sendingInvites}
-                    onClick={handleSendInvites}
-                    sx={{ minWidth: 180 }}
-                  >
-                    {sendingInvites ? 'Sending…' : 'Send Invitations'}
-                  </Button>
-                </Box>
-              </Box>
+              <InvitationForm
+                value={inviteEmails}
+                error={inviteError}
+                sending={sendingInvites}
+                onChange={setInviteEmails}
+                onSubmit={handleSendInvites}
+              />
             )}
             <Box display="flex" justifyContent="space-between" mt={2}>
               <Button
@@ -965,63 +901,36 @@ export default function EditOrganizationPage() {
         </Box>
       </Box>
 
-      <Dialog
+      <ConfirmDialog
         open={Boolean(removeTarget)}
-        onClose={() => !removing && setRemoveTarget(null)}
-      >
-        <DialogTitle>Remove this member?</DialogTitle>
-        <DialogActions>
-          <Button onClick={() => setRemoveTarget(null)} disabled={removing}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            onClick={handleRemoveMember}
-            disabled={removing}
-          >
-            {removing ? 'Removing…' : 'Yes, remove'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="Remove this member?"
+        confirmLabel="Yes, remove"
+        loading={removing}
+        onConfirm={handleRemoveMember}
+        onClose={() => {
+          if (!removing) {
+            setRemoveTarget(null);
+          }
+        }}
+      />
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>Are you sure you want to delete “{org.name}”?</DialogTitle>
-
-        <DialogContent>
-          <DialogContentText>
-            This organization will be archived and can be restored later by an
-            administrator.
-          </DialogContentText>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-          <Button color="error" onClick={handleDelete}>
-            Yes, delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Snackbar
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`Are you sure you want to delete “${org.name}”?`}
+        description="This organization will be archived and can be restored later by an administrator."
+        confirmLabel="Yes, delete"
+        onConfirm={handleDelete}
+        onClose={() => setConfirmOpen(false)}
+      />
+      <SnackbarFeedback
         open={snackbarOpen}
-        autoHideDuration={4000}
+        severity={snackbarSeverity}
+        message={snackbarMessage}
         onClose={() => {
           setSnackbarOpen(false);
           setErrors((prev) => ({ ...prev, form: '' }));
         }}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => {
-            setSnackbarOpen(false);
-            setErrors((prev) => ({ ...prev, form: '' }));
-          }}
-          severity={snackbarSeverity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 }

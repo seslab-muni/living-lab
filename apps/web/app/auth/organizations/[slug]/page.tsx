@@ -4,20 +4,15 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import {
-  Box,
-  Typography,
-  Button,
-  CircularProgress,
-  Stack,
-  Snackbar,
-  Alert,
-} from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Stack } from '@mui/material';
 import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 import type { JoinRequestDto } from '../types';
 import NextLink from 'next/link';
+import OrganizationMembershipList from '../components/OrganizationMembershipList';
+import JoinRequestQueue from '../components/JoinRequestQueue';
+import SnackbarFeedback from '../components/SnackbarFeedback';
 
 export default function OrganizationDetailsPage() {
   const { slug } = useParams();
@@ -206,6 +201,13 @@ export default function OrganizationDetailsPage() {
     }
   };
 
+  const canViewMembers =
+    ['Owner', 'Admin', 'Viewer', 'Manager'].includes(userRole ?? '') &&
+    org.members.length > 0;
+  const canManageRequests = ['Owner', 'Manager', 'Admin'].includes(
+    userRole ?? '',
+  );
+
   return (
     <Box display="flex" justifyContent="center" p={{ xs: 4, md: 6 }}>
       <Box width={{ xs: '100%', md: '50%' }}>
@@ -265,80 +267,16 @@ export default function OrganizationDetailsPage() {
             Members: {memberCount}
           </Typography>
 
-          {(userRole === 'Owner' ||
-            userRole === 'Admin' ||
-            userRole === 'Viewer' ||
-            userRole === 'Manager') &&
-            org.members.length > 0 && (
-              <Box mb={4}>
-                <Typography variant="h6" gutterBottom>
-                  Members
-                </Typography>
-                <Box
-                  component="ul"
-                  sx={{
-                    margin: 0,
-                    padding: 0,
-                    listStyleType: 'disc',
-                    pl: 2,
-                  }}
-                >
-                  {org.members.map((m) => (
-                    <Box
-                      component="li"
-                      key={m.id}
-                      sx={{
-                        marginBlockStart: 0,
-                        marginBlockEnd: 0,
-                        mb: 0.2,
-                        '& > *': { margin: 0 },
-                      }}
-                    >
-                      <Typography variant="body2">
-                        {m.firstName} {m.lastName}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
+          <OrganizationMembershipList
+            members={org.members}
+            canView={canViewMembers}
+          />
 
-          {(userRole === 'Owner' ||
-            userRole === 'Admin' ||
-            userRole === 'Manager') && (
-            <Box mb={4}>
-              <Typography variant="h6" gutterBottom>
-                Pending Join Requests
-              </Typography>
-
-              {requests === null ? (
-                <CircularProgress size={24} />
-              ) : requests.length === 0 ? (
-                <Typography>No new requests.</Typography>
-              ) : (
-                <Box component="ul" sx={{ m: 0, p: 0, listStyleType: 'disc' }}>
-                  {requests.map((r) => (
-                    <Box
-                      component="li"
-                      key={r.id}
-                      sx={{ display: 'flex', alignItems: 'center', mb: 1 }}
-                    >
-                      <Typography sx={{ flexGrow: 1 }} variant="body2">
-                        {r.user.firstName} {r.user.lastName}
-                      </Typography>
-                      <Button
-                        size="small"
-                        component={NextLink}
-                        href={`/auth/organizations/${org.slug}/requests/${r.id}`}
-                      >
-                        Review
-                      </Button>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </Box>
-          )}
+          <JoinRequestQueue
+            requests={requests}
+            canManage={canManageRequests}
+            organizationSlug={org.slug}
+          />
 
           <Box display="flex" justifyContent="center" gap={2} mt={2}>
             {isMember ? (
@@ -374,48 +312,25 @@ export default function OrganizationDetailsPage() {
           </Box>
         </Stack>
       </Box>
-      <Snackbar
+      <SnackbarFeedback
         open={showSaved}
+        message="Changes saved successfully"
+        severity="success"
         autoHideDuration={3000}
         onClose={() => setShowSaved(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setShowSaved(false)}
-          severity="success"
-          sx={{ width: '100%' }}
-        >
-          Changes saved successfully
-        </Alert>
-      </Snackbar>
-      <Snackbar
+      />
+      <SnackbarFeedback
         open={!!error}
-        autoHideDuration={4000}
+        message={error ?? ''}
+        severity="error"
         onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setError(null)}
-          severity="error"
-          sx={{ width: '100%' }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-      <Snackbar
+      />
+      <SnackbarFeedback
         open={snackbarOpen}
-        autoHideDuration={4000}
+        message={snackbarMessage}
+        severity="error"
         onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity="error"
-          sx={{ width: '100%' }}
-        >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
+      />
     </Box>
   );
 }

@@ -2,23 +2,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useDebounce } from 'use-debounce';
-import {
-  Box,
-  Button,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import OrganizationCard from './components/OrganizationCard';
-import OrganizationsFilter from './components/OrganizationFilter';
 import CreateOrganizationButton from './components/CreateOrganizationButton';
 import { authFetch } from '../../lib/auth';
 import { BACKEND_URL } from '../../lib/constants';
 import type { OrganizationDto } from './types';
+import OrganizationFiltersPanel from './components/OrganizationFiltersPanel';
 
 export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<OrganizationDto[] | null>(null);
@@ -77,66 +67,31 @@ export default function OrganizationsPage() {
       </Typography>
       <Box
         sx={{
-          display: 'grid',
-          gap: 2,
-          gridTemplateColumns: '1fr',
           mx: { xs: 0, md: '25%' },
-          pb: 4,
+          pb: 2,
           pt: 2,
           width: { xs: '100%', md: '50%' },
         }}
       >
         <CreateOrganizationButton />
-        <OrganizationsFilter
-          showMine={showMine}
-          onToggle={() => setShowMine((s) => !s)}
-        />
       </Box>
       <Box
-        component="form"
-        onSubmit={handleSearchSubmit}
         sx={{
-          display: 'grid',
-          gap: 2,
-          alignItems: 'center',
-          gridTemplateColumns: { xs: '1fr', md: '2fr 1fr auto' },
           mx: { xs: 0, md: '25%' },
           pb: 4,
           pt: 2,
           width: { xs: '100%', md: '50%' },
         }}
       >
-        <TextField
-          label="Search organizations"
-          variant="outlined"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          size="small"
-          sx={{
-            flexGrow: 1,
-            ml: -0.1,
-          }}
+        <OrganizationFiltersPanel
+          search={search}
+          sort={sort}
+          showMine={showMine}
+          onSearchChange={setSearch}
+          onSortChange={(value) => setSort(value)}
+          onToggleMine={() => setShowMine((s) => !s)}
+          onSubmit={handleSearchSubmit}
         />
-
-        <FormControl size="small">
-          <InputLabel id="sort-label">Sort</InputLabel>
-          <Select
-            labelId="sort-label"
-            value={sort}
-            label="Sort"
-            onChange={(e) =>
-              setSort(e.target.value as 'newest' | 'asc' | 'desc')
-            }
-          >
-            <MenuItem value="newest">Newest</MenuItem>
-            <MenuItem value="asc">A–Z</MenuItem>
-            <MenuItem value="desc">Z–A</MenuItem>
-          </Select>
-        </FormControl>
-
-        <Button type="submit" variant="contained">
-          Search
-        </Button>
       </Box>
       {error ? (
         <Box sx={{ textAlign: 'center' }}>
