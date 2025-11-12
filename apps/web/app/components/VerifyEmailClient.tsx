@@ -7,6 +7,7 @@ import { BACKEND_URL } from '../lib/constants';
 import { useRouter } from 'next/navigation';
 import { Button } from '@mui/material';
 import DarkTextField from './DarkTextField';
+import { signIn } from 'next-auth/react';
 
 export default function VerifyEmail({ id }: { id: string }) {
   const router = useRouter();
@@ -23,6 +24,22 @@ export default function VerifyEmail({ id }: { id: string }) {
     });
   };
 
+  const getPendingCredentials = () => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const raw = sessionStorage.getItem('pendingRegistration');
+    if (!raw) {
+      return null;
+    }
+    sessionStorage.removeItem('pendingRegistration');
+    try {
+      return JSON.parse(raw) as { email: string; password: string };
+    } catch {
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -37,6 +54,18 @@ export default function VerifyEmail({ id }: { id: string }) {
       const data = await response.json();
 
       if (response.ok) {
+        const creds = getPendingCredentials();
+        if (creds) {
+          const result = await signIn('credentials', {
+            redirect: false,
+            email: creds.email,
+            password: creds.password,
+          });
+          if (!result?.error) {
+            router.push('/auth');
+            return;
+          }
+        }
         router.push('/login');
         return;
       } else {

@@ -81,6 +81,15 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (response.ok) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(
+            'pendingRegistration',
+            JSON.stringify({
+              email: formData.email,
+              password: formData.password,
+            }),
+          );
+        }
         router.push(`/verify-email/${data.id}`);
         return;
       } else {
