@@ -91,9 +91,7 @@ export default function VerifyEmail({ id }: { id: string }) {
         }
 
         if (redirectPath) {
-          router.push(
-            `/login?callbackUrl=${encodeURIComponent(redirectPath)}`,
-          );
+          router.push(`/login?callbackUrl=${encodeURIComponent(redirectPath)}`);
         } else {
           router.push('/login');
         }

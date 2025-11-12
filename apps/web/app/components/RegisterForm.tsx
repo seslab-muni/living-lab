@@ -27,11 +27,7 @@ export default function RegisterForm() {
 
   React.useEffect(() => {
     const redirect = searchParams.get('callbackUrl');
-    if (
-      typeof window !== 'undefined' &&
-      redirect &&
-      redirect.startsWith('/')
-    ) {
+    if (typeof window !== 'undefined' && redirect && redirect.startsWith('/')) {
       sessionStorage.setItem('postAuthRedirect', redirect);
     }
   }, [searchParams]);
