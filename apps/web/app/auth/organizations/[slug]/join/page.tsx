@@ -42,23 +42,31 @@ export default function JoinRequestPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await authFetch(
-        `${BACKEND_URL}/organizations/${slug}/join-requests`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: message.trim() || undefined }),
-        },
-      );
+      const res = await authFetch(`${BACKEND_URL}/organizations/${slug}/join-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message.trim() || undefined }),
+      });
       if (!res.ok) {
-        setError(`Request failed (HTTP ${res.status})`);
-        setSubmitting(false);
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        setError(data.message ?? `Request failed (HTTP ${res.status})`);
         return;
       }
       router.push(`/auth/organizations/${slug}`);
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error.message);
+      if (err instanceof Error && err.message.startsWith('Fetch error')) {
+        try {
+          const match = err.message.match(/\{.*\}$/);
+          if (match) {
+            const parsed = JSON.parse(match[0]) as { message?: string };
+            setError(parsed.message ?? 'Unable to send request.');
+            return;
+          }
+        } catch {
+          // ignore parse issues and fall back to generic message
+        }
+      }
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSubmitting(false);
     }

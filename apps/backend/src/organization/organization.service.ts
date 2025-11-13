@@ -621,8 +621,44 @@ export class OrganizationService implements OnModuleInit {
       throw new ForbiddenException('This organization is private');
 
     const role = await this.domainService.getRole(userId, String(org.id));
-    if (role === 'Owner' || role === 'Manager' || role === 'Viewer')
+    if (
+      role === 'Owner' ||
+      role === 'Manager' ||
+      role === 'Viewer' ||
+      role === 'Moderator'
+    )
       throw new ForbiddenException('Member cannot request to join.');
+
+    // Prevent join requests if an invitation exists for this user
+    const userRecord = await this.userRepo.findOne({ where: { id: userId } });
+    if (userRecord?.email) {
+      const pendingInvite = await this.inviteRepo.findOne({
+        where: {
+          email: userRecord.email,
+          organization: { id: orgId },
+          revoked: false,
+          expiresAt: MoreThan(new Date()),
+        },
+      });
+      if (pendingInvite) {
+        throw new ForbiddenException(
+          'You already have an invitation to this organization. Please check your email.',
+        );
+      }
+    }
+
+    const existingRequest = await this.jrRepo.findOne({
+      where: {
+        user: { id: userId },
+        organization: { id: orgId },
+        status: JoinRequestStatus.PENDING,
+      },
+    });
+    if (existingRequest) {
+      throw new ForbiddenException(
+        'You already have a pending join request for this organization.',
+      );
+    }
 
     const user = this.userRepo.create({ id: userId });
     const organization = this.orgRepo.create({ id: orgId });
