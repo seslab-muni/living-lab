@@ -24,7 +24,15 @@ export function useDuplicateSuggestions({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!enabled || (!name && !companyId && !organizationAlias)) {
+    const normalizedName = name.trim();
+    const normalizedAlias = organizationAlias.trim();
+
+    if (
+      !enabled ||
+      (!normalizedName && !companyId && !normalizedAlias) ||
+      (normalizedName && normalizedName.length < 2) ||
+      (normalizedAlias && normalizedAlias.length < 2)
+    ) {
       setSuggestions([]);
       return;
     }
@@ -33,17 +41,19 @@ export function useDuplicateSuggestions({
       setLoading(true);
       try {
         const params = new URLSearchParams();
-        if (name) params.set('name', name);
+        if (normalizedName) params.set('name', normalizedName);
         if (companyId) params.set('companyId', companyId);
-        if (organizationAlias)
-          params.set('organizationAlias', organizationAlias);
+        if (normalizedAlias) params.set('organizationAlias', normalizedAlias);
         if (excludeId) params.set('excludeId', String(excludeId));
 
         const res = await authFetch(
           `${BACKEND_URL}/organizations/duplicates?${params.toString()}`,
         );
         const data: OrganizationDto[] = await res.json();
-        setSuggestions(data);
+        const filtered = data.filter(
+          (org) => org.isActive && (!excludeId || Number(org.id) !== excludeId),
+        );
+        setSuggestions(filtered);
       } catch {
         setSuggestions([]);
       } finally {

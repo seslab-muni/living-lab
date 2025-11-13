@@ -434,30 +434,54 @@ export class OrganizationService implements OnModuleInit {
       .createQueryBuilder('org')
       .leftJoinAndSelect('org.members', 'members')
       .leftJoinAndSelect('org.creator', 'creator');
-    const orConditions: string[] = [];
-    const params: Record<string, any> = {};
 
-    if (name) {
-      orConditions.push('org.name ILIKE :name');
-      params.name = `%${name.trim()}%`;
-    }
-    if (companyId != null) {
-      orConditions.push('org.companyId = :companyId');
-      params.companyId = companyId;
-    }
-    if (organizationAlias) {
-      orConditions.push('org.organizationAlias ILIKE :organizationAlias');
-      params.organizationAlias = `%${organizationAlias.trim()}%`;
-    }
-    if (orConditions.length > 0) {
-      qb.where(`(${orConditions.join(' OR ')})`, params);
-    }
-
-    qb.andWhere('org.isActive = true');
+    qb.where('org.isActive = :active', { active: true });
 
     if (excludeId) {
       qb.andWhere('org.id != :excludeId', { excludeId });
     }
+
+    type DuplicateParams = {
+      companyId?: number;
+      organizationAlias?: string;
+      name?: string;
+      active?: boolean;
+      excludeId?: number;
+    };
+    const filters: string[] = [];
+    const params: DuplicateParams = {};
+
+    if (companyId != null) {
+      filters.push('org.companyId = :companyId');
+      params.companyId = companyId;
+    }
+
+    if (organizationAlias?.trim() && organizationAlias.trim().length >= 2) {
+      filters.push('org.organizationAlias ILIKE :organizationAlias');
+      params.organizationAlias = `%${organizationAlias.trim()}%`;
+    }
+
+    if (name?.trim() && name.trim().length >= 2) {
+      filters.push('org.name ILIKE :name');
+      params.name = `%${name.trim()}%`;
+    }
+
+    if (filters.length === 0) {
+      return [];
+    }
+
+    qb.andWhere(filters.map((f) => `(${f})`).join(' OR '), params)
+      .orderBy('org.companyId = :companyId', 'DESC')
+      .addOrderBy('org.organizationAlias ILIKE :organizationAlias', 'DESC')
+      .addOrderBy('org.name ILIKE :name', 'DESC')
+      .setParameters({
+        companyId: params.companyId ?? null,
+        organizationAlias: params.organizationAlias ?? '',
+        name: params.name ?? '',
+        active: true,
+        excludeId: excludeId ?? null,
+      })
+      .limit(10);
 
     const orgs = await qb.getMany();
 
