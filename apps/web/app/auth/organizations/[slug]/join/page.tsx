@@ -42,13 +42,18 @@ export default function JoinRequestPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await authFetch(`${BACKEND_URL}/organizations/${slug}/join-requests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message.trim() || undefined }),
-      });
+      const res = await authFetch(
+        `${BACKEND_URL}/organizations/${slug}/join-requests`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: message.trim() || undefined }),
+        },
+      );
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          message?: string;
+        };
         setError(data.message ?? `Request failed (HTTP ${res.status})`);
         return;
       }
@@ -56,7 +61,7 @@ export default function JoinRequestPage() {
     } catch (err: unknown) {
       if (err instanceof Error && err.message.startsWith('Fetch error')) {
         try {
-          const match = err.message.match(/\{.*\}$/);
+          const match = err.message.match(/\{.*}$/);
           if (match) {
             const parsed = JSON.parse(match[0]) as { message?: string };
             setError(parsed.message ?? 'Unable to send request.');
