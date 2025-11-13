@@ -216,14 +216,18 @@ export class OrganizationService implements OnModuleInit {
     }
 
     const existing = await qb.getMany();
+    const pattern = new RegExp(`^${base}-(\\d+)$`);
+    const matching = existing
+      .map((o) => o.slug)
+      .filter((slug) => slug === base || pattern.test(slug));
 
-    if (existing.length === 0) {
+    if (matching.length === 0) {
       return base;
     }
 
-    const nums = existing
+    const nums = matching
       .map((o) => {
-        const match = o.slug.match(new RegExp(`^${base}-(\\d+)$`));
+        const match = o.match(pattern);
         if (match && typeof match[1] === 'string') {
           return parseInt(match[1], 10);
         }
