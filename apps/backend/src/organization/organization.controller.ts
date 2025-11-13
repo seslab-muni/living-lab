@@ -110,7 +110,7 @@ export class OrganizationController {
     @Req() req: Request,
     @Query('name') name?: string,
     @Query('companyId') companyId?: number,
-    @Query('companyName') companyName?: string,
+    @Query('organizationAlias') organizationAlias?: string,
     @Query('excludeId') excludeId?: number,
   ) {
     const userId = (req.user as { id: string }).id;
@@ -119,7 +119,7 @@ export class OrganizationController {
       userId,
       name,
       companyId,
-      companyName,
+      organizationAlias,
       excludeId,
     );
   }
