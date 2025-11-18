@@ -220,6 +220,21 @@ export class OrganizationController {
     return this.orgService.getInvitationSummary(token, user.email);
   }
 
+  @Get(':idOrSlug/my-invitation')
+  @UseGuards(JwtAuthGuard)
+  async getMyInvitation(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ) {
+    if (!user.email) {
+      throw new ForbiddenException('Authenticated user has no email in token');
+    }
+    const id = isNaN(Number(idOrSlug))
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.findInvitationForUser(user.id, user.email, id);
+  }
+
   @Get(':idOrSlug/invitations/history')
   @DefineRoles('Owner', 'Manager', 'Admin')
   @UseGuards(RolesGuard)

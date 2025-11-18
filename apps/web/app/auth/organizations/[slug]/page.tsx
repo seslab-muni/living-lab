@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useParams, useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, getSession } from 'next-auth/react';
 import {
   Box,
   Typography,
@@ -15,7 +15,6 @@ import { authFetch } from '../../../lib/auth';
 import { BACKEND_URL } from '../../../lib/constants';
 import type { OrganizationDto } from '../types';
 import type { JoinRequestDto } from '../types';
-import NextLink from 'next/link';
 import OrganizationMembershipList from '../components/OrganizationMembershipList';
 import JoinRequestQueue from '../components/JoinRequestQueue';
 import SnackbarFeedback from '../components/SnackbarFeedback';
@@ -38,6 +37,7 @@ export default function OrganizationDetailsPage() {
   const [userRole, setUserRole] = useState<
     'Viewer' | 'Manager' | 'Owner' | 'Admin' | 'Moderator' | null
   >(null);
+  const [requestingJoin, setRequestingJoin] = useState(false);
 
   useEffect(() => {
     if (!savedParam) return;
@@ -207,6 +207,62 @@ export default function OrganizationDetailsPage() {
     }
   };
 
+  const handleRequestJoin = async () => {
+    if (!slug || requestingJoin) return;
+    setRequestingJoin(true);
+    let handled = false;
+    try {
+      const session = await getSession();
+      if (!session?.accessToken) {
+        router.push(
+          `/login?callbackUrl=${encodeURIComponent(`/auth/organizations/${slug}`)}`,
+        );
+        return;
+      }
+      const headers = new Headers({ 'Content-Type': 'application/json' });
+      headers.set('Authorization', `Bearer ${session.accessToken}`);
+      const res = await fetch(
+        `${BACKEND_URL}/organizations/${slug}/my-invitation`,
+        { headers },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { token: string };
+        handled = true;
+        router.push(`/auth/invitations/${data.token}`);
+      } else if (res.status === 404) {
+        handled = true;
+        router.push(`/auth/organizations/${slug}/join`);
+      } else {
+        const raw = await res.text();
+        let message = 'Unable to process your invitation.';
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw) as { message?: string };
+            if (parsed.message) message = parsed.message;
+          } catch {
+            message = raw;
+          }
+        }
+        setSnackbarMessage(message);
+        setSnackbarOpen(true);
+        handled = true;
+      }
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Unable to check your invitations.';
+      setSnackbarMessage(message);
+      setSnackbarOpen(true);
+      handled = true;
+    } finally {
+      setRequestingJoin(false);
+      if (!handled) {
+        router.push(`/auth/organizations/${slug}/join`);
+      }
+    }
+  };
+
   const canViewMembers =
     ['Owner', 'Admin', 'Viewer', 'Manager'].includes(userRole ?? '') &&
     org.members.length > 0;
@@ -298,11 +354,8 @@ export default function OrganizationDetailsPage() {
                 Private Organization
               </Button>
             ) : (
-              <Button
-                component={NextLink}
-                href={`/auth/organizations/${slug}/join`}
-              >
-                Request to Join
+              <Button onClick={handleRequestJoin} disabled={requestingJoin}>
+                {requestingJoin ? 'Checking…' : 'Request to Join'}
               </Button>
             )}
             {(userRole === 'Owner' ||

@@ -32,6 +32,20 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { OnModuleInit } from '@nestjs/common';
 
+type InvitationSummaryResponse = {
+  organization: { name: string; slug: string };
+  status: InvitationStatus;
+  expiresAt: Date;
+  isExpired: boolean;
+  alreadyMember: boolean;
+};
+
+type MyInvitationResponse = {
+  token: string;
+  status: InvitationStatus;
+  organization: { name: string; slug: string };
+};
+
 @Injectable()
 export class OrganizationService implements OnModuleInit {
   constructor(
@@ -1030,7 +1044,10 @@ Message: ${requesterMessage}
     });
   }
 
-  async getInvitationSummary(token: string, email: string) {
+  async getInvitationSummary(
+    token: string,
+    email: string,
+  ): Promise<InvitationSummaryResponse> {
     const { invitation, user, organization } = await this.getInvitationContext(
       token,
       email,
@@ -1089,6 +1106,38 @@ Message: ${requesterMessage}
     );
 
     return { message: `Invitation rejected for ${organization.name}.` };
+  }
+
+  async findInvitationForUser(
+    userId: string,
+    email: string,
+    orgId: number,
+  ): Promise<MyInvitationResponse> {
+    const org = await this.orgRepo.findOne({ where: { id: orgId } });
+    if (!org) throw new NotFoundException('Organization not found');
+    const invitation = await this.inviteRepo.findOne({
+      where: {
+        email,
+        organization: { id: orgId },
+        status: InvitationStatus.PENDING,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('No pending invitation found');
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      token: invitation.token,
+      status: invitation.status,
+      organization: { name: org.name, slug: org.slug },
+    };
   }
 
   async findAllInvitations(creatorId: string, orgId: number) {
