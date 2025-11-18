@@ -49,6 +49,8 @@ const mockDomainService = {
   getAllUsers: jest.fn(),
   getRole: jest.fn(),
   create: jest.fn(),
+  changeUserRole: jest.fn(),
+  deleteRole: jest.fn(),
 };
 
 const mockEmailService = {
@@ -74,8 +76,12 @@ const mockQueryBuilder = {
 
 mockOrgRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
-describe('OrganizationService - Creation & Invitations', () => {
+describe('OrganizationService - Creation & Edit & Invitations & Remove', () => {
   let service: OrganizationService;
+  const roleAssignments = new Map<
+    string,
+    { role: 'Owner' | 'Manager' | 'Viewer'; isAdmin: boolean }
+  >();
 
   const future = () => new Date(Date.now() + 60 * 60 * 1000);
   const past = () => new Date(Date.now() - 60 * 60 * 1000);
@@ -97,6 +103,71 @@ describe('OrganizationService - Creation & Invitations', () => {
     ...extras,
   });
 
+  const setupRoleContext = (
+    role: 'Owner' | 'Manager' | 'Viewer' | 'Admin' = 'Owner',
+    opts: { userId?: string; isAdmin?: boolean } = {},
+  ) => {
+    roleAssignments.clear();
+    const { userId = 'user-1', isAdmin = role === 'Admin' } = opts;
+    roleAssignments.set(userId, {
+      role: role === 'Admin' ? 'Owner' : role,
+      isAdmin,
+    });
+    mockUserRepo.findOne.mockImplementation(
+      ({ where }: { where?: { id?: unknown } }) => {
+        if (where?.id) {
+          const entry = roleAssignments.get(where.id as string);
+          return {
+            id: where.id as string,
+            isAdmin: entry?.isAdmin ?? false,
+          } as User;
+        }
+        return null;
+      },
+    );
+    mockDomainService.getRole.mockImplementation((id: string) => {
+      return roleAssignments.get(id)?.role ?? 'Viewer';
+    });
+  };
+
+  describe('membership join/leave', () => {
+    it('joins active organization and assigns Viewer role', async () => {
+      const org = orgFixture({ members: [] });
+      mockOrgRepo.findOne.mockResolvedValue(org);
+      mockOrgRepo.save.mockResolvedValue(org);
+      const roleSpy = jest
+        .spyOn(mockDomainService, 'changeUserRole')
+        .mockResolvedValue(undefined as never);
+
+      await service.join('user-2', org.id);
+
+      expect(roleSpy).toHaveBeenCalledWith(String(org.id), 'user-2', 'Viewer');
+      roleSpy.mockRestore();
+    });
+
+    it('throws when joining inactive org', async () => {
+      mockOrgRepo.findOne.mockResolvedValue(orgFixture({ isActive: false }));
+
+      await expect(service.join('user-2', 1)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('prevents owners from leaving if they are the only owner', async () => {
+      setupRoleContext('Owner', { userId: 'owner' });
+      mockOrgRepo.findOne.mockResolvedValue(
+        orgFixture({ members: [{ id: 'owner' } as User] }),
+      );
+      mockDomainService.getAllUsers.mockResolvedValue([
+        { id: 'owner', role: 'Owner' },
+      ] as any);
+
+      await expect(service.leave('owner', 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   const invitationFixture = (
     extras: Partial<OrganizationInvitation> = {},
   ): OrganizationInvitation => {
@@ -114,7 +185,9 @@ describe('OrganizationService - Creation & Invitations', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    roleAssignments.clear();
     mockQueryBuilder.getMany.mockReset();
+    mockDomainService.getAllUsers.mockResolvedValue([]);
     mockQueryBuilder.getMany.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -139,7 +212,6 @@ describe('OrganizationService - Creation & Invitations', () => {
 
     service = module.get(OrganizationService);
   });
-
   describe('create organization & slug normalization', () => {
     const baseDto = {
       name: 'Org Name',
@@ -270,6 +342,181 @@ describe('OrganizationService - Creation & Invitations', () => {
       await expect(service.create('user-1', baseDto)).rejects.toThrow(
         'domain failed',
       );
+    });
+  });
+
+  describe('update organization', () => {
+    const updateDto = {
+      name: 'Updated Org',
+      description: ' Updated description ',
+      organizationAlias: 'new-alias',
+      companyId: '87654321',
+      isPrivate: true,
+    };
+
+    it('updates alias and returns new slug', async () => {
+      const existingOrg = orgFixture({
+        organizationAlias: 'old-alias',
+        slug: 'old-alias',
+      });
+      mockOrgRepo.findOneOrFail.mockResolvedValue(existingOrg);
+      mockOrgRepo.save.mockImplementation((org: Organization) => ({
+        ...org,
+      }));
+      setupRoleContext();
+      const slugSpy = jest
+        .spyOn(service, 'generateUniqueSlug')
+        .mockResolvedValue('new-alias-1');
+      const mapSpy = jest.spyOn(service as any, 'mapToDto').mockResolvedValue({
+        id: existingOrg.id,
+        slug: 'new-alias-1',
+        organizationAlias: 'new-alias',
+      } as any);
+
+      const result = await service.update('user-1', existingOrg.id, updateDto);
+
+      expect(slugSpy).toHaveBeenCalledWith('new-alias', existingOrg.id);
+      expect(result.newSlug).toBe('new-alias-1');
+      expect(mapSpy).toHaveBeenCalled();
+      slugSpy.mockRestore();
+      mapSpy.mockRestore();
+    });
+
+    it('does not generate slug when alias unchanged', async () => {
+      const existingOrg = orgFixture({
+        organizationAlias: 'alias',
+        slug: 'alias',
+      });
+      mockOrgRepo.findOneOrFail.mockResolvedValue(existingOrg);
+      mockOrgRepo.save.mockResolvedValue(existingOrg);
+      setupRoleContext();
+      const slugSpy = jest.spyOn(service, 'generateUniqueSlug');
+      const mapSpy = jest
+        .spyOn(service as any, 'mapToDto')
+        .mockResolvedValue({ id: existingOrg.id, slug: 'alias' } as any);
+
+      await service.update('user-1', existingOrg.id, {
+        ...updateDto,
+        organizationAlias: 'alias',
+      });
+
+      expect(slugSpy).not.toHaveBeenCalled();
+      mapSpy.mockRestore();
+      slugSpy.mockRestore();
+    });
+
+    it('throws when caller lacks permissions', async () => {
+      const existingOrg = orgFixture();
+      mockOrgRepo.findOneOrFail.mockResolvedValue(existingOrg);
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        isAdmin: false,
+      } as User);
+      mockDomainService.getRole.mockResolvedValue('Viewer');
+
+      await expect(
+        service.update('user-1', existingOrg.id, updateDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('remove & restore organization', () => {
+    it('archives organization when caller is owner', async () => {
+      const org = orgFixture();
+      mockOrgRepo.findOneOrFail.mockResolvedValue(org);
+      mockOrgRepo.save.mockResolvedValue(org);
+      setupRoleContext();
+
+      await service.remove('user-1', org.id);
+
+      expect(mockOrgRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isActive: false, modifiedBy: 'user-1' }),
+      );
+    });
+
+    it('throws when non-owner tries to remove', async () => {
+      mockOrgRepo.findOneOrFail.mockResolvedValue(orgFixture());
+      setupRoleContext('Viewer', { userId: 'user-2', isAdmin: false });
+
+      await expect(service.remove('user-2', 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('restores organization when caller is admin', async () => {
+      const org = orgFixture({ isActive: false });
+      mockOrgRepo.findOneOrFail.mockResolvedValue(org);
+      setupRoleContext('Viewer', { userId: 'admin', isAdmin: true });
+      mockOrgRepo.save.mockResolvedValue(org);
+
+      await service.restore('admin', org.id);
+
+      expect(mockOrgRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isActive: true, modifiedBy: 'admin' }),
+      );
+    });
+
+    it('throws when non-admin tries to restore', async () => {
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ isActive: false }),
+      );
+      setupRoleContext('Owner', { userId: 'user', isAdmin: false });
+
+      await expect(service.restore('user', 1)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('remove member', () => {
+    it('removes a lower-role member and deletes role', async () => {
+      const org = orgFixture();
+      mockOrgRepo.findOneOrFail.mockResolvedValue(org);
+      mockOrgRepo.createQueryBuilder.mockReturnValueOnce({
+        relation: () => ({ of: () => ({ remove: jest.fn() }) }),
+      } as any);
+      setupRoleContext('Owner', { userId: 'owner' });
+      mockDomainService.getRole.mockImplementation((id: string) => {
+        if (id === 'owner') return 'Owner';
+        if (id === 'member') return 'Viewer';
+        return 'Viewer';
+      });
+      const deleteRoleSpy = jest.spyOn(mockDomainService, 'deleteRole');
+
+      await service.removeMember('owner', org.id, 'member');
+
+      expect(deleteRoleSpy).toHaveBeenCalledWith(String(org.id), 'member');
+      deleteRoleSpy.mockRestore();
+    });
+
+    it('throws when removing higher-role member', async () => {
+      setupRoleContext('Manager', { userId: 'manager' });
+      roleAssignments.set('owner', { role: 'Owner', isAdmin: false });
+
+      await expect(service.removeMember('manager', 1, 'owner')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('ensures at least one owner remains when removing owner', async () => {
+      setupRoleContext('Owner', { userId: 'owner' });
+      mockDomainService.getRole.mockImplementation((id: string) => {
+        if (id === 'owner' || id === 'owner-2') return 'Owner';
+        return 'Viewer';
+      });
+      mockDomainService.getAllUsers.mockResolvedValue([
+        { id: 'owner', role: 'Owner' },
+        { id: 'owner-2', role: 'Owner' },
+      ] as any);
+      mockOrgRepo.createQueryBuilder.mockReturnValueOnce({
+        relation: () => ({ of: () => ({ remove: jest.fn() }) }),
+      } as any);
+      const ensureSpy = jest.spyOn(service as any, 'ensureAtLeastOneOwnerLeft');
+
+      await service.removeMember('owner', 1, 'owner-2');
+
+      expect(ensureSpy).toHaveBeenCalledWith(1, 'owner-2');
+      ensureSpy.mockRestore();
     });
   });
 
