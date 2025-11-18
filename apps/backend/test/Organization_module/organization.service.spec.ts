@@ -413,6 +413,134 @@ describe('OrganizationService - Join & Creation & Edit & Invitations & Remove', 
         ).rejects.toThrow(BadRequestException);
       });
     });
+
+    describe('join request listings', () => {
+      it('returns pending requests for owners/managers', async () => {
+        const org = orgFixture({ id: 10 });
+        mockOrgRepo.findOne.mockResolvedValue(org);
+        setupRoleContext('Owner', { userId: 'owner' });
+        const jrEntities: JoinRequest[] = [
+          {
+            id: 1,
+            status: JoinRequestStatus.PENDING,
+            message: 'First',
+            organization: org,
+            user: {
+              id: 'user-1',
+              firstName: 'A',
+              lastName: 'User',
+            } as User,
+            createdAt: new Date('2024-01-01T10:00:00Z'),
+            modifiedAt: new Date('2024-01-01T11:00:00Z'),
+            modifiedBy: 'owner',
+          },
+          {
+            id: 2,
+            status: JoinRequestStatus.PENDING,
+            message: 'Second',
+            organization: org,
+            user: {
+              id: 'user-2',
+              firstName: 'B',
+              lastName: 'User',
+            } as User,
+            createdAt: new Date('2024-01-02T10:00:00Z'),
+            modifiedAt: new Date('2024-01-02T11:00:00Z'),
+            modifiedBy: 'owner',
+          },
+        ];
+        mockJoinRequestRepo.find.mockResolvedValue(jrEntities);
+
+        const result = await service.findPendingRequestsForOrg('owner', org.id);
+
+        expect(result).toHaveLength(2);
+        expect(result.map((r) => r.id)).toEqual([1, 2]);
+        expect(mockJoinRequestRepo.find).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              organization: { id: org.id },
+              status: JoinRequestStatus.PENDING,
+            },
+            order: { createdAt: 'ASC' },
+          }),
+        );
+      });
+
+      it('throws NotFound when organization missing', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.findPendingRequestsForOrg('owner', 999),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('throws Forbidden when caller lacks role', async () => {
+        const org = orgFixture({ id: 10 });
+        mockOrgRepo.findOne.mockResolvedValue(org);
+        setupRoleContext('Viewer', { userId: 'viewer' });
+
+        await expect(
+          service.findPendingRequestsForOrg('viewer', org.id),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('returns join request details for owner', async () => {
+        const jr: JoinRequest = {
+          id: 11,
+          status: JoinRequestStatus.PENDING,
+          message: 'Let me in',
+          organization: orgFixture({ id: 20 }),
+          user: {
+            id: 'user-1',
+            firstName: 'Test',
+            lastName: 'User',
+          } as User,
+          createdAt: new Date('2024-02-01T10:00:00Z'),
+          modifiedAt: new Date('2024-02-01T10:00:00Z'),
+          modifiedBy: 'owner',
+        };
+        mockJoinRequestRepo.findOne.mockResolvedValue(jr);
+        setupRoleContext('Owner', { userId: 'owner' });
+
+        const dto = await service.findJoinRequestByIdForOwner('owner', jr.id);
+
+        expect(dto.id).toBe(jr.id);
+        expect(dto.user.firstName).toBe('Test');
+        expect(dto.message).toBe('Let me in');
+      });
+
+      it('throws NotFound when join request missing', async () => {
+        mockJoinRequestRepo.findOne.mockResolvedValue(null);
+        setupRoleContext('Owner', { userId: 'owner' });
+
+        await expect(
+          service.findJoinRequestByIdForOwner('owner', 123),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('throws Forbidden when caller lacks permissions for details', async () => {
+        const jr = {
+          id: 11,
+          status: JoinRequestStatus.PENDING,
+          message: 'Let me in',
+          organization: orgFixture({ id: 20 }),
+          user: {
+            id: 'user-1',
+            firstName: 'Test',
+            lastName: 'User',
+          } as User,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          modifiedBy: 'owner',
+        } as JoinRequest;
+        mockJoinRequestRepo.findOne.mockResolvedValue(jr);
+        setupRoleContext('Viewer', { userId: 'viewer' });
+
+        await expect(
+          service.findJoinRequestByIdForOwner('viewer', jr.id),
+        ).rejects.toThrow(ForbiddenException);
+      });
+    });
   });
 
   const invitationFixture = (
