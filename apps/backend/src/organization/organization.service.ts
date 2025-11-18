@@ -90,6 +90,24 @@ export class OrganizationService implements OnModuleInit {
       ? this.ROLE_HIERARCHY.indexOf(r as (typeof this.ROLE_HIERARCHY)[number])
       : -1;
 
+  private async getInvitationContext(token: string, email: string) {
+    const invitation = await this.inviteRepo.findOne({
+      where: { token, email },
+      relations: ['organization'],
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
+
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      throw new ForbiddenException('User must register with this email first');
+    }
+
+    return { invitation, user, organization: invitation.organization };
+  }
+
   private async getCallerContext(userId: string, orgId: number) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     const isAdmin = !!user?.isAdmin;
@@ -918,24 +936,12 @@ Message: ${requesterMessage}
     token: string,
     email: string,
   ): Promise<{ message: string; slug: string }> {
-    const invitation = await this.inviteRepo.findOne({
-      where: {
-        token,
-        email,
-      },
-      relations: ['organization'],
-    });
+    const {
+      invitation,
+      user,
+      organization: org,
+    } = await this.getInvitationContext(token, email);
 
-    if (!invitation) {
-      throw new NotFoundException('Invitation not found or expired');
-    }
-
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (!user) {
-      throw new ForbiddenException('User must register with this email first');
-    }
-
-    const org = invitation.organization;
     const now = new Date();
     const isExpired = invitation.expiresAt <= now;
 
@@ -1022,6 +1028,67 @@ Message: ${requesterMessage}
       },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async getInvitationSummary(token: string, email: string) {
+    const { invitation, user, organization } = await this.getInvitationContext(
+      token,
+      email,
+    );
+    const now = new Date();
+    const isExpired = invitation.expiresAt <= now;
+
+    const orgEntity = await this.orgRepo.findOne({
+      where: { id: organization.id },
+      relations: ['members'],
+    });
+    const alreadyMember = !!orgEntity?.members.some((m) => m.id === user.id);
+
+    return {
+      organization: {
+        name: organization.name,
+        slug: organization.slug,
+      },
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+      isExpired,
+      alreadyMember,
+    };
+  }
+
+  async rejectInvitation(token: string, email: string) {
+    const { invitation, user, organization } = await this.getInvitationContext(
+      token,
+      email,
+    );
+    const now = new Date();
+    const isExpired = invitation.expiresAt <= now;
+
+    if (isExpired || invitation.status === InvitationStatus.REVOKED) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
+
+    if (invitation.status === InvitationStatus.ACCEPTED) {
+      return {
+        message: `You already joined ${organization.name}.`,
+        slug: organization.slug,
+      };
+    }
+
+    if (invitation.status === InvitationStatus.REJECTED) {
+      return { message: 'This invitation was already rejected.' };
+    }
+
+    invitation.status = InvitationStatus.REJECTED;
+    invitation.modifiedBy = user.id;
+    invitation.modifiedAt = new Date();
+    await this.inviteRepo.save(invitation);
+
+    this.logger.log(
+      `User ${email} rejected invitation ${token} for organization ${organization.name}`,
+    );
+
+    return { message: `Invitation rejected for ${organization.name}.` };
   }
 
   async findAllInvitations(creatorId: string, orgId: number) {

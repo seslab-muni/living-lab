@@ -22,7 +22,7 @@ import { OrganizationDto } from './dto/organization.dto';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
 import type { Request } from 'express';
-import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { InvitationTokenDto } from './dto/invitation-token.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
@@ -208,6 +208,18 @@ export class OrganizationController {
     return this.orgService.findPendingInvitations(user.id, id);
   }
 
+  @Get('invitations/:token')
+  @UseGuards(JwtAuthGuard)
+  async getInvitation(
+    @GetUser() user: JwtPayload,
+    @Param('token') token: string,
+  ) {
+    if (!user.email) {
+      throw new ForbiddenException('Authenticated user has no email in token');
+    }
+    return this.orgService.getInvitationSummary(token, user.email);
+  }
+
   @Get(':idOrSlug/invitations/history')
   @DefineRoles('Owner', 'Manager', 'Admin')
   @UseGuards(RolesGuard)
@@ -249,13 +261,25 @@ export class OrganizationController {
   @UseGuards(JwtAuthGuard)
   async acceptInvitation(
     @GetUser() user: JwtPayload,
-    @Body() dto: AcceptInvitationDto,
+    @Body() dto: InvitationTokenDto,
   ) {
     if (!user.email) {
       throw new ForbiddenException('Authenticated user has no email in token');
     }
 
     return this.orgService.acceptInvitation(dto.token, user.email);
+  }
+
+  @Post('invitations/reject')
+  @UseGuards(JwtAuthGuard)
+  async rejectInvitation(
+    @GetUser() user: JwtPayload,
+    @Body() dto: InvitationTokenDto,
+  ) {
+    if (!user.email) {
+      throw new ForbiddenException('Authenticated user has no email in token');
+    }
+    return this.orgService.rejectInvitation(dto.token, user.email);
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/approve')
