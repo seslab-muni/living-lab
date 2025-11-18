@@ -20,6 +20,7 @@ import { DomainService } from '../../src/domain-role/domain.service';
 import { EmailService } from '../../src/email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
 
 const mockInvitationRepo = {
   findOne: jest.fn(),
@@ -31,6 +32,9 @@ const mockInvitationRepo = {
 const mockOrgRepo = {
   findOne: jest.fn(),
   findOneOrFail: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  createQueryBuilder: jest.fn(),
 };
 
 const mockUserRepo = {
@@ -44,6 +48,7 @@ const mockJoinRequestRepo = {
 const mockDomainService = {
   getAllUsers: jest.fn(),
   getRole: jest.fn(),
+  create: jest.fn(),
 };
 
 const mockEmailService = {
@@ -58,7 +63,18 @@ const mockSchedulerRegistry = {
   addCronJob: jest.fn(),
 };
 
-describe('OrganizationService - Invitations', () => {
+const mockQueryBuilder = {
+  select: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  orWhere: jest.fn().mockReturnThis(),
+  leftJoinAndSelect: jest.fn().mockReturnThis(),
+  getMany: jest.fn(),
+};
+
+mockOrgRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+
+describe('OrganizationService - Creation & Invitations', () => {
   let service: OrganizationService;
 
   const future = () => new Date(Date.now() + 60 * 60 * 1000);
@@ -98,6 +114,8 @@ describe('OrganizationService - Invitations', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockQueryBuilder.getMany.mockReset();
+    mockQueryBuilder.getMany.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -120,6 +138,139 @@ describe('OrganizationService - Invitations', () => {
     }).compile();
 
     service = module.get(OrganizationService);
+  });
+
+  describe('create organization & slug normalization', () => {
+    const baseDto = {
+      name: 'Org Name',
+      companyName: 'Test Company',
+      companyId: '12345678',
+      organizationAlias: 'test-alias',
+      description: undefined,
+      isPrivate: false,
+    } as CreateOrganizationDto;
+
+    it('creates organization with generated slug and assigns owner role', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockOrgRepo.create.mockImplementation((dto) => dto as Organization);
+      mockOrgRepo.save.mockImplementation((dto: Organization) => ({
+        ...dto,
+        id: dto.id ?? 1,
+      }));
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ slug: 'test-alias' }),
+      );
+      mockDomainService.create.mockResolvedValue(undefined as never);
+
+      const result = await service.create('user-1', baseDto);
+
+      expect(mockOrgRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ slug: 'test-alias', companyId: '12345678' }),
+      );
+      const [[savedOrg]] = mockOrgRepo.save.mock.calls as [[Organization]];
+      expect(mockDomainService.create).toHaveBeenCalledWith(
+        String(savedOrg.id),
+        'Organization',
+        'user-1',
+      );
+      expect(result.slug).toBe('test-alias');
+    });
+
+    it('appends numeric suffix when slug already exists', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([
+        { slug: 'test-alias' },
+        { slug: 'test-alias-1' },
+      ]);
+      mockOrgRepo.create.mockImplementation((dto) => dto as Organization);
+      mockOrgRepo.save.mockResolvedValue({ id: 2 });
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ slug: 'test-alias-2' }),
+      );
+
+      const result = await service.create('user-1', baseDto);
+
+      expect(result.slug).toBe('test-alias-2');
+    });
+
+    it('normalizes diacritics, whitespace, and punctuation in alias', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockOrgRepo.create.mockImplementation((dto) => dto as Organization);
+      mockOrgRepo.save.mockResolvedValue({ id: 3 });
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ slug: 'ceska-firma' }),
+      );
+
+      const result = await service.create('user-1', {
+        ...baseDto,
+        organizationAlias: '  Čéská   Firma!!!  ',
+      });
+
+      expect(result.slug).toBe('ceska-firma');
+    });
+
+    it('generateUniqueSlug preserves existing slug when excluding id', async () => {
+      mockOrgRepo.findOne.mockResolvedValue(
+        orgFixture({ id: 42, slug: 'custom-alias' }),
+      );
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+
+      const slug = await service.generateUniqueSlug('Custom Alias', 42);
+
+      expect(slug).toBe('custom-alias');
+    });
+
+    it('generateUniqueSlug fills numbering gaps', async () => {
+      mockOrgRepo.findOne.mockResolvedValue(null);
+      mockQueryBuilder.getMany.mockResolvedValue([
+        { slug: 'm' },
+        { slug: 'm-1' },
+        { slug: 'm-6' },
+      ]);
+
+      const slug = await service.generateUniqueSlug('M');
+
+      expect(slug).toBe('m-7');
+    });
+
+    it('trims companyId before saving', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockOrgRepo.create.mockImplementation((dto) => dto as Organization);
+      mockOrgRepo.save.mockImplementation((dto: Organization) => ({
+        ...dto,
+        id: dto.id ?? 1,
+      }));
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ slug: 'trimmed-alias', companyId: '12345678' }),
+      );
+      mockDomainService.create.mockResolvedValue(undefined as never);
+
+      await service.create('user-1', {
+        ...baseDto,
+        companyId: ' 12345678 ',
+        organizationAlias: 'trimmed-alias',
+      });
+
+      expect(mockOrgRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: '12345678' }),
+      );
+    });
+
+    it('propagates domain service errors', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockOrgRepo.create.mockImplementation((dto) => dto as Organization);
+      mockOrgRepo.save.mockImplementation((dto: Organization) => ({
+        ...dto,
+        id: dto.id ?? 1,
+      }));
+      mockOrgRepo.findOneOrFail.mockResolvedValue(
+        orgFixture({ slug: 'domain-error' }),
+      );
+      mockDomainService.create.mockRejectedValue(new Error('domain failed'));
+
+      await expect(service.create('user-1', baseDto)).rejects.toThrow(
+        'domain failed',
+      );
+    });
   });
 
   describe('sendInvitations', () => {
