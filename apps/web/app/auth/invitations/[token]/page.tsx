@@ -254,7 +254,9 @@ export default function InvitationHandler() {
             </p>
           )}
           {canRespond ? (
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <div
+              style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}
+            >
               <button
                 type="button"
                 onClick={handleAccept}
@@ -303,7 +305,9 @@ export default function InvitationHandler() {
               <button
                 type="button"
                 onClick={() =>
-                  router.push(`/auth/organizations/${invitation.organization.slug}`)
+                  router.push(
+                    `/auth/organizations/${invitation.organization.slug}`,
+                  )
                 }
               >
                 Go to organization

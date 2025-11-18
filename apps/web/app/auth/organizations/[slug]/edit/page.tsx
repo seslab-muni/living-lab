@@ -20,10 +20,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
 import { BACKEND_URL, FRONTEND_URL } from '../../../../lib/constants';
-import type {
-  OrganizationDto,
-  OrganizationInvitationDto,
-} from '../../types';
+import type { OrganizationDto, OrganizationInvitationDto } from '../../types';
 import InvitationForm from '../../components/InvitationForm';
 import PendingInvitesTable from '../../components/PendingInvitesTable';
 import InvitationHistoryDialog from '../../components/InvitationHistoryDialog';
@@ -129,7 +126,9 @@ export default function EditOrganizationPage() {
       setHistoryInvites(data);
     } catch {
       setHistoryInvites([]);
-      setSnackbarMessage('Unable to load invitation history. Please try again.');
+      setSnackbarMessage(
+        'Unable to load invitation history. Please try again.',
+      );
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     } finally {
