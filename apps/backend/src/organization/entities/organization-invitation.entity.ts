@@ -8,6 +8,13 @@ import {
 } from 'typeorm';
 import { Organization } from './organization.entity';
 
+export enum InvitationStatus {
+  PENDING = 'Pending',
+  ACCEPTED = 'Accepted',
+  REJECTED = 'Rejected',
+  REVOKED = 'Revoked',
+}
+
 @Entity({ name: 'organization_invitations' })
 export class OrganizationInvitation {
   @PrimaryGeneratedColumn('increment')
@@ -22,8 +29,12 @@ export class OrganizationInvitation {
   @Column({ unique: true })
   token: string;
 
-  @Column({ default: false })
-  revoked: boolean;
+  @Column({
+    type: 'enum',
+    enum: InvitationStatus,
+    default: InvitationStatus.PENDING,
+  })
+  status: InvitationStatus;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

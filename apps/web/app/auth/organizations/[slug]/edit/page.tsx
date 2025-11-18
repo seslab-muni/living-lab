@@ -59,7 +59,12 @@ export default function EditOrganizationPage() {
   const [inviteError, setInviteError] = useState('');
   const [sendingInvites, setSendingInvites] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<
-    { id: number; email: string; createdAt: string }[]
+    {
+      id: number;
+      email: string;
+      createdAt: string;
+      status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
+    }[]
   >([]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);

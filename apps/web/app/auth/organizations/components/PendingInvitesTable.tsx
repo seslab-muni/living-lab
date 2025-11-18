@@ -9,7 +9,12 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-type PendingInvite = { id: number; email: string; createdAt: string };
+type PendingInvite = {
+  id: number;
+  email: string;
+  createdAt: string;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
+};
 
 type Props = {
   invites: PendingInvite[];
@@ -41,7 +46,7 @@ export default function PendingInvitesTable({ invites, onRevoke }: Props) {
             >
               <ListItemText
                 primary={inv.email}
-                secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()}`}
+                secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()} • ${inv.status}`}
               />
             </ListItem>
           ))}

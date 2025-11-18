@@ -21,7 +21,10 @@ import { CronExpression } from '@nestjs/schedule';
 import { LessThan } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { OrganizationInvitation } from './entities/organization-invitation.entity';
+import {
+  InvitationStatus,
+  OrganizationInvitation,
+} from './entities/organization-invitation.entity';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { MoreThan } from 'typeorm';
 import { DomainService } from '../domain-role/domain.service';
@@ -636,7 +639,7 @@ export class OrganizationService implements OnModuleInit {
         where: {
           email: userRecord.email,
           organization: { id: orgId },
-          revoked: false,
+          status: InvitationStatus.PENDING,
           expiresAt: MoreThan(new Date()),
         },
       });
@@ -840,7 +843,7 @@ Message: ${requesterMessage}
         where: {
           organization: { id: org.id },
           email,
-          revoked: false,
+          status: InvitationStatus.PENDING,
           expiresAt: MoreThan(new Date()),
         },
       });
@@ -881,6 +884,7 @@ Message: ${requesterMessage}
         expiresAt: sevenDays,
         createdBy: creatorId,
         modifiedBy: creatorId,
+        status: InvitationStatus.PENDING,
       });
       await this.inviteRepo.save(invitation);
 
@@ -935,15 +939,25 @@ Message: ${requesterMessage}
     const now = new Date();
     const isExpired = invitation.expiresAt <= now;
 
+    if (
+      invitation.status === InvitationStatus.REVOKED ||
+      invitation.status === InvitationStatus.REJECTED ||
+      isExpired
+    ) {
+      throw new NotFoundException('Invitation not found or expired');
+    }
+
     const orgEntity = await this.orgRepo.findOne({
       where: { id: org.id },
       relations: ['members'],
     });
     const alreadyMember = !!orgEntity?.members.some((m) => m.id === user.id);
 
-    if (alreadyMember) {
-      if (!invitation.revoked) {
-        invitation.revoked = true;
+    if (alreadyMember || invitation.status === InvitationStatus.ACCEPTED) {
+      if (invitation.status !== InvitationStatus.ACCEPTED) {
+        invitation.status = InvitationStatus.ACCEPTED;
+        invitation.modifiedBy = user.id;
+        invitation.modifiedAt = new Date();
         await this.inviteRepo.save(invitation);
       }
       return {
@@ -952,7 +966,7 @@ Message: ${requesterMessage}
       };
     }
 
-    if (invitation.revoked || isExpired) {
+    if (invitation.status !== InvitationStatus.PENDING) {
       throw new NotFoundException('Invitation not found or expired');
     }
 
@@ -968,7 +982,9 @@ Message: ${requesterMessage}
           err.message?.includes('already a member')) ||
         driverCode === '23505'
       ) {
-        invitation.revoked = true;
+        invitation.status = InvitationStatus.ACCEPTED;
+        invitation.modifiedBy = user.id;
+        invitation.modifiedAt = new Date();
         await this.inviteRepo.save(invitation);
         return {
           message: `You are already a member of ${org.name}.`,
@@ -978,7 +994,9 @@ Message: ${requesterMessage}
       throw err;
     }
 
-    invitation.revoked = true;
+    invitation.status = InvitationStatus.ACCEPTED;
+    invitation.modifiedBy = user.id;
+    invitation.modifiedAt = new Date();
     await this.inviteRepo.save(invitation);
 
     this.logger.log(
@@ -998,7 +1016,10 @@ Message: ${requesterMessage}
     this.ensureAllowed('OwnerOrManager', ctx);
 
     return this.inviteRepo.find({
-      where: { organization: { id: orgId }, revoked: false },
+      where: {
+        organization: { id: orgId },
+        status: InvitationStatus.PENDING,
+      },
       order: { createdAt: 'DESC' },
     });
   }
@@ -1017,7 +1038,11 @@ Message: ${requesterMessage}
     this.ensureAdminHasDomainRights(ctx, 'send invitations');
     this.ensureAllowed('OwnerOrManager', ctx);
 
-    invitation.revoked = true;
+    if (invitation.status !== InvitationStatus.PENDING) {
+      throw new BadRequestException('Only pending invitations can be revoked');
+    }
+
+    invitation.status = InvitationStatus.REVOKED;
     invitation.modifiedBy = creatorId;
     invitation.modifiedAt = new Date();
     await this.inviteRepo.save(invitation);
