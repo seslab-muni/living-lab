@@ -39,10 +39,15 @@ const mockOrgRepo = {
 
 const mockUserRepo = {
   findOne: jest.fn(),
+  create: jest.fn((data) => data as User),
 };
 
 const mockJoinRequestRepo = {
   findOne: jest.fn(),
+  findOneOrFail: jest.fn(),
+  create: jest.fn((data) => data as JoinRequest),
+  save: jest.fn(),
+  find: jest.fn(),
 };
 
 const mockDomainService = {
@@ -76,7 +81,7 @@ const mockQueryBuilder = {
 
 mockOrgRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
-describe('OrganizationService - Creation & Edit & Invitations & Remove', () => {
+describe('OrganizationService - Join & Creation & Edit & Invitations & Remove', () => {
   let service: OrganizationService;
   const roleAssignments = new Map<
     string,
@@ -165,6 +170,248 @@ describe('OrganizationService - Creation & Edit & Invitations & Remove', () => {
       await expect(service.leave('owner', 1)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('join request lifecycle', () => {
+    describe('createJoinRequest', () => {
+      it('creates join request and notifies owners/managers', async () => {
+        const org = orgFixture({ slug: 'org-slug', name: 'Org' });
+        mockOrgRepo.findOne.mockResolvedValue(org);
+        mockDomainService.getRole.mockResolvedValue(null);
+        mockInvitationRepo.findOne.mockResolvedValue(null);
+        mockJoinRequestRepo.findOne.mockResolvedValue(null);
+        mockJoinRequestRepo.save.mockImplementation(
+          (jr: JoinRequest): JoinRequest => ({
+            ...jr,
+            id: 55,
+          }),
+        );
+        mockDomainService.getAllUsers.mockResolvedValue([
+          { id: 'owner-1', role: 'Owner' },
+          { id: 'viewer-1', role: 'Viewer' },
+        ] as any);
+        mockUserRepo.findOne.mockImplementation(
+          ({ where }: { where?: { id?: string } }) => {
+            const id = where?.id;
+            if (id === 'requester') {
+              return {
+                id,
+                email: 'requester@example.com',
+                firstName: 'Req',
+                lastName: 'User',
+              } as User;
+            }
+            if (id === 'owner-1') {
+              return {
+                id,
+                email: 'owner@example.com',
+                firstName: 'Owner',
+                lastName: 'One',
+              } as User;
+            }
+            if (id === 'viewer-1') {
+              return {
+                id,
+                email: 'viewer@example.com',
+                firstName: 'Viewer',
+                lastName: 'One',
+              } as User;
+            }
+            return null;
+          },
+        );
+        mockConfigService.get.mockReturnValue('https://front.app');
+
+        const result = await service.createJoinRequest('requester', org.id, {
+          message: ' Please add me ',
+        });
+
+        expect(mockJoinRequestRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: ' Please add me ',
+            status: JoinRequestStatus.PENDING,
+          }),
+        );
+        expect(mockEmailService.sendEmail).toHaveBeenCalledTimes(1);
+        const [[emailPayload]] = mockEmailService.sendEmail.mock.calls as [
+          [{ recipient: string; html: string }],
+        ];
+        expect(emailPayload.recipient).toBe('owner@example.com');
+        expect(emailPayload.html).toContain('Please add me');
+        expect(result.id).toBe(55);
+      });
+
+      it('throws when organization not found', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.createJoinRequest('user', 999, { message: 'hi' }),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('throws when organization is private', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(orgFixture({ isPrivate: true }));
+
+        await expect(
+          service.createJoinRequest('user', 1, { message: 'hi' }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('throws when user already a member', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(orgFixture());
+        mockDomainService.getRole.mockResolvedValue('Viewer');
+
+        await expect(
+          service.createJoinRequest('user', 1, { message: 'hi' }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('throws when pending invitation exists', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(orgFixture());
+        mockDomainService.getRole.mockResolvedValue(null);
+        mockUserRepo.findOne.mockResolvedValue({
+          id: 'user',
+          email: 'user@example.com',
+        } as User);
+        mockInvitationRepo.findOne.mockResolvedValue({
+          id: 1,
+        } as OrganizationInvitation);
+
+        await expect(
+          service.createJoinRequest('user', 1, { message: 'hi' }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('throws when join request already pending', async () => {
+        mockOrgRepo.findOne.mockResolvedValue(orgFixture());
+        mockDomainService.getRole.mockResolvedValue(null);
+        mockJoinRequestRepo.findOne.mockResolvedValue({ id: 1 } as JoinRequest);
+
+        await expect(
+          service.createJoinRequest('user', 1, { message: 'hi' }),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('falls back to default message when blank', async () => {
+        const org = orgFixture({ slug: 'org', name: 'Org' });
+        mockOrgRepo.findOne.mockResolvedValue(org);
+        mockDomainService.getRole.mockResolvedValue(null);
+        mockInvitationRepo.findOne.mockResolvedValue(null);
+        mockJoinRequestRepo.findOne.mockResolvedValue(null);
+        mockJoinRequestRepo.save.mockImplementation(
+          (jr: JoinRequest): JoinRequest => ({
+            ...jr,
+            id: 77,
+          }),
+        );
+        mockDomainService.getAllUsers.mockResolvedValue([
+          { id: 'owner-1', role: 'Owner' },
+        ] as any);
+        mockUserRepo.findOne.mockImplementation(
+          ({ where }: { where?: { id?: string } }) => {
+            const id = where?.id;
+            if (id === 'user') {
+              return {
+                id,
+                email: 'member@example.com',
+                firstName: 'Request',
+                lastName: 'User',
+              } as User;
+            }
+            if (id === 'owner-1') {
+              return {
+                id,
+                email: 'owner@example.com',
+                firstName: 'Owner',
+                lastName: 'One',
+              } as User;
+            }
+            return null;
+          },
+        );
+        mockConfigService.get.mockReturnValue('https://front.app');
+
+        await service.createJoinRequest('user', org.id, { message: '   ' });
+
+        const [[emailPayload]] = mockEmailService.sendEmail.mock.calls as [
+          [{ html: string }],
+        ];
+        expect(emailPayload.html).toContain('no message provided');
+      });
+    });
+
+    describe('handleJoinRequest', () => {
+      const jrEntity = (overrides: Partial<JoinRequest> = {}): JoinRequest => ({
+        id: 99,
+        status: JoinRequestStatus.PENDING,
+        message: 'hello',
+        organization: orgFixture({ id: 50 }),
+        user: { id: 'applicant' } as User,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        modifiedBy: 'owner',
+        ...overrides,
+      });
+
+      it('approves join request and calls join', async () => {
+        const entity = jrEntity();
+        mockJoinRequestRepo.findOneOrFail.mockResolvedValue(entity);
+        mockJoinRequestRepo.save.mockResolvedValue(entity);
+        setupRoleContext('Owner', { userId: 'owner' });
+        const joinSpy = jest
+          .spyOn(service, 'join')
+          .mockResolvedValue(undefined as never);
+
+        await service.handleJoinRequest('owner', entity.id, true);
+
+        expect(mockJoinRequestRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ status: JoinRequestStatus.APPROVED }),
+        );
+        expect(joinSpy).toHaveBeenCalledWith(
+          'applicant',
+          entity.organization.id,
+        );
+        joinSpy.mockRestore();
+      });
+
+      it('rejects join request without calling join', async () => {
+        const entity = jrEntity();
+        mockJoinRequestRepo.findOneOrFail.mockResolvedValue(entity);
+        mockJoinRequestRepo.save.mockResolvedValue(entity);
+        setupRoleContext('Owner', { userId: 'owner' });
+        const joinSpy = jest
+          .spyOn(service, 'join')
+          .mockResolvedValue(undefined as never);
+
+        await service.handleJoinRequest('owner', entity.id, false);
+
+        expect(mockJoinRequestRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ status: JoinRequestStatus.REJECTED }),
+        );
+        expect(joinSpy).not.toHaveBeenCalled();
+        joinSpy.mockRestore();
+      });
+
+      it('throws when caller lacks permissions', async () => {
+        const entity = jrEntity();
+        mockJoinRequestRepo.findOneOrFail.mockResolvedValue(entity);
+        setupRoleContext('Viewer', { userId: 'viewer' });
+
+        await expect(
+          service.handleJoinRequest('viewer', entity.id, true),
+        ).rejects.toThrow(ForbiddenException);
+      });
+
+      it('throws when request already processed', async () => {
+        const entity = jrEntity({ status: JoinRequestStatus.APPROVED });
+        mockJoinRequestRepo.findOneOrFail.mockResolvedValue(entity);
+        setupRoleContext('Owner', { userId: 'owner' });
+
+        await expect(
+          service.handleJoinRequest('owner', entity.id, true),
+        ).rejects.toThrow(BadRequestException);
+      });
     });
   });
 
