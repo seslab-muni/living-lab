@@ -39,3 +39,10 @@ export interface JoinRequestDto {
     lastName: string;
   };
 }
+
+export interface OrganizationInvitationDto {
+  id: number;
+  email: string;
+  createdAt: string;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
+}

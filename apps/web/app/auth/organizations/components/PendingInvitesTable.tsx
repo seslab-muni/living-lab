@@ -8,16 +8,10 @@ import {
   Typography,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-
-type PendingInvite = {
-  id: number;
-  email: string;
-  createdAt: string;
-  status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
-};
+import type { OrganizationInvitationDto } from '../types';
 
 type Props = {
-  invites: PendingInvite[];
+  invites: OrganizationInvitationDto[];
   onRevoke: (id: number) => void;
 };
 

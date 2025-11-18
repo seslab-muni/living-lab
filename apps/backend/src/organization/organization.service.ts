@@ -1024,6 +1024,21 @@ Message: ${requesterMessage}
     });
   }
 
+  async findAllInvitations(creatorId: string, orgId: number) {
+    const org = await this.orgRepo.findOne({
+      where: { id: orgId },
+      relations: ['creator'],
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    const ctx = await this.getCallerContext(creatorId, org.id);
+    this.ensureAllowed('OwnerOrManager', ctx);
+
+    return this.inviteRepo.find({
+      where: { organization: { id: orgId } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async revokeInvitation(creatorId: string, inviteId: number): Promise<void> {
     const invitation = await this.inviteRepo.findOne({
       where: { id: inviteId },

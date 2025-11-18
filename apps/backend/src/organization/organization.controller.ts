@@ -208,6 +208,19 @@ export class OrganizationController {
     return this.orgService.findPendingInvitations(user.id, id);
   }
 
+  @Get(':idOrSlug/invitations/history')
+  @DefineRoles('Owner', 'Manager', 'Admin')
+  @UseGuards(RolesGuard)
+  async listInvitationHistory(
+    @GetUser() user: JwtPayload,
+    @Param('idOrSlug') idOrSlug: string,
+  ) {
+    const id = isNaN(Number(idOrSlug))
+      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
+      : +idOrSlug;
+    return this.orgService.findAllInvitations(user.id, id);
+  }
+
   @Post(':idOrSlug/invitations')
   @DefineRoles('Owner', 'Manager', 'Admin')
   @UseGuards(RolesGuard)

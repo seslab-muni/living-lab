@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
@@ -20,9 +20,13 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import { authFetch } from '../../../../lib/auth';
 import { BACKEND_URL, FRONTEND_URL } from '../../../../lib/constants';
-import type { OrganizationDto } from '../../types';
+import type {
+  OrganizationDto,
+  OrganizationInvitationDto,
+} from '../../types';
 import InvitationForm from '../../components/InvitationForm';
 import PendingInvitesTable from '../../components/PendingInvitesTable';
+import InvitationHistoryDialog from '../../components/InvitationHistoryDialog';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import SnackbarFeedback from '../../components/SnackbarFeedback';
 import DuplicateSuggestions from '../../components/DuplicateSuggestions';
@@ -59,13 +63,13 @@ export default function EditOrganizationPage() {
   const [inviteError, setInviteError] = useState('');
   const [sendingInvites, setSendingInvites] = useState(false);
   const [pendingInvites, setPendingInvites] = useState<
-    {
-      id: number;
-      email: string;
-      createdAt: string;
-      status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
-    }[]
+    OrganizationInvitationDto[]
   >([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyInvites, setHistoryInvites] = useState<
+    OrganizationInvitationDto[]
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -87,6 +91,51 @@ export default function EditOrganizationPage() {
   const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
   const [slugPreview, setSlugPreview] = useState('');
   const [slugLoading, setSlugLoading] = useState(false);
+
+  const refreshPendingInvites = useCallback(async () => {
+    if (!slug) return;
+    try {
+      const res = await authFetch(
+        `${BACKEND_URL}/organizations/${slug}/invitations`,
+      );
+      if (!res.ok) {
+        setPendingInvites([]);
+        return;
+      }
+      const data = (await res.json()) as OrganizationInvitationDto[];
+      setPendingInvites(data);
+    } catch {
+      setPendingInvites([]);
+    }
+  }, [slug]);
+
+  const fetchInvitationHistory = useCallback(async () => {
+    if (!slug) return;
+    setHistoryLoading(true);
+    try {
+      const res = await authFetch(
+        `${BACKEND_URL}/organizations/${slug}/invitations/history`,
+      );
+      if (!res.ok) {
+        setHistoryInvites([]);
+        setSnackbarMessage(
+          'Unable to load invitation history. Please try again.',
+        );
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
+        return;
+      }
+      const data = (await res.json()) as OrganizationInvitationDto[];
+      setHistoryInvites(data);
+    } catch {
+      setHistoryInvites([]);
+      setSnackbarMessage('Unable to load invitation history. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [slug]);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -177,11 +226,8 @@ export default function EditOrganizationPage() {
 
   useEffect(() => {
     if (!org) return;
-    authFetch(`${BACKEND_URL}/organizations/${slug}/invitations`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setPendingInvites)
-      .catch(() => setPendingInvites([]));
-  }, [org, slug]);
+    void refreshPendingInvites();
+  }, [org, refreshPendingInvites]);
 
   useEffect(() => {
     if (errors.form) {
@@ -516,11 +562,10 @@ export default function EditOrganizationPage() {
         return;
       }
 
-      await authFetch(`${BACKEND_URL}/organizations/${slug}/invitations`)
-        .then((r) => (r.ok ? r.json() : []))
-        .then(setPendingInvites)
-        .catch(() => {});
-
+      await refreshPendingInvites();
+      if (historyOpen) {
+        void fetchInvitationHistory();
+      }
       setInviteEmails('');
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -548,6 +593,9 @@ export default function EditOrganizationPage() {
         { method: 'DELETE' },
       );
       setPendingInvites((invites) => invites.filter((i) => i.id !== inviteId));
+      if (historyOpen) {
+        void fetchInvitationHistory();
+      }
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       let message = error.message || 'Failed to revoke invitation.';
@@ -563,6 +611,15 @@ export default function EditOrganizationPage() {
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
+  };
+
+  const handleOpenHistory = () => {
+    setHistoryOpen(true);
+    void fetchInvitationHistory();
+  };
+
+  const handleCloseHistory = () => {
+    setHistoryOpen(false);
   };
 
   if (loading || !org) {
@@ -798,6 +855,15 @@ export default function EditOrganizationPage() {
                 invites={pendingInvites}
                 onRevoke={handleRevokeInvite}
               />
+              <Box mt={2} textAlign="right">
+                <Button
+                  variant="text"
+                  onClick={handleOpenHistory}
+                  disabled={!canManageRoles}
+                >
+                  View invitation history
+                </Button>
+              </Box>
             </Box>
 
             {canInviteMembers && (
@@ -861,6 +927,13 @@ export default function EditOrganizationPage() {
           setSnackbarOpen(false);
           setErrors((prev) => ({ ...prev, form: '' }));
         }}
+      />
+      <InvitationHistoryDialog
+        open={historyOpen}
+        invites={historyInvites}
+        loading={historyLoading}
+        closeAction={handleCloseHistory}
+        retryAction={fetchInvitationHistory}
       />
     </Box>
   );
