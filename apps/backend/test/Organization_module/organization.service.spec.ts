@@ -18,9 +18,35 @@ import {
 import { User } from '../../src/user/entities/user.entity';
 import { DomainService } from '../../src/domain-role/domain.service';
 import { EmailService } from '../../src/email/email.service';
+import { SendEmailDto } from '../../src/email/dto/email.dto';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
+
+jest.mock('cron', () => {
+  return {
+    CronJob: class {
+      cronTime: string;
+      onTick: () => void;
+      start = jest.fn();
+      constructor(cronTime: string, onTick: () => void) {
+        this.cronTime = cronTime;
+        this.onTick = onTick;
+      }
+    },
+  };
+});
+
+const consoleSpy = jest
+  .spyOn(global.console, 'log')
+  .mockImplementation(() => undefined);
+
+afterAll(() => {
+  consoleSpy.mockRestore();
+});
+
+type RoleUser = { id: string; role: 'Owner' | 'Manager' | 'Viewer' };
 
 const mockInvitationRepo = {
   findOne: jest.fn(),
@@ -81,7 +107,7 @@ const mockQueryBuilder = {
 
 mockOrgRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
-describe('OrganizationService - Join & Creation & Edit & Invitations & Remove', () => {
+describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations & Remove', () => {
   let service: OrganizationService;
   const roleAssignments = new Map<
     string,
@@ -1023,6 +1049,195 @@ describe('OrganizationService - Join & Creation & Edit & Invitations & Remove', 
       await expect(
         service.sendInvitations('creator', 999, { emails: 'user@example.com' }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('reminder scheduling & cron', () => {
+    it('registers cron job with configured expression on module init', () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'ORG_REMINDER_CRON') return '0 12 * * *';
+        if (key === 'ORG_REMINDER_DAYS') return '5';
+        return undefined;
+      });
+      const jobMap = new Map<string, CronJob>();
+      mockSchedulerRegistry.addCronJob.mockImplementation(
+        (name: string, job: CronJob) => {
+          jobMap.set(name, job);
+        },
+      );
+
+      service.onModuleInit();
+
+      expect(mockSchedulerRegistry.addCronJob).toHaveBeenCalled();
+      const job = jobMap.get('organizationReminders');
+      expect(job).toBeTruthy();
+      const jobMock = job as unknown as { start: jest.Mock };
+      expect(jobMock.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to defaults when env missing', () => {
+      mockConfigService.get.mockImplementation(() => undefined);
+      mockSchedulerRegistry.addCronJob.mockImplementation(() => undefined);
+      const logSpy = jest.spyOn(service['logger'], 'log');
+
+      service.onModuleInit();
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Scheduling reminder job'),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('sends grouped reminder emails per recipient', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'ORG_REMINDER_DAYS') return '5';
+        if (key === 'FRONTEND_URL') return 'https://front';
+        return undefined;
+      });
+      const requestAge = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      const jrEntities: JoinRequest[] = [
+        {
+          id: 1,
+          status: JoinRequestStatus.PENDING,
+          message: 'First request',
+          organization: orgFixture({
+            id: 1,
+            name: 'OrgOne',
+            slug: 'org-one',
+          }),
+          user: {
+            id: 'requester-1',
+            firstName: 'First',
+            lastName: 'Requester',
+          } as User,
+          createdAt: requestAge,
+          modifiedAt: requestAge,
+          modifiedBy: 'owner',
+        },
+        {
+          id: 2,
+          status: JoinRequestStatus.PENDING,
+          message: '',
+          organization: orgFixture({
+            id: 2,
+            name: 'OrgTwo',
+            slug: 'org-two',
+          }),
+          user: {
+            id: 'requester-2',
+            firstName: 'Second',
+            lastName: 'Requester',
+          } as User,
+          createdAt: requestAge,
+          modifiedAt: requestAge,
+          modifiedBy: 'owner',
+        },
+      ];
+      mockJoinRequestRepo.find.mockResolvedValue(jrEntities);
+      mockDomainService.getAllUsers.mockImplementation(
+        (orgId: string): RoleUser[] => {
+          if (orgId === '1')
+            return [
+              { id: 'owner-1', role: 'Owner' },
+              { id: 'manager-1', role: 'Manager' },
+            ];
+          if (orgId === '2')
+            return [
+              { id: 'owner-1', role: 'Owner' },
+              { id: 'viewer-1', role: 'Viewer' },
+            ];
+          return [];
+        },
+      );
+      mockUserRepo.findOne.mockImplementation(
+        ({ where }: { where?: { id?: string } }) => {
+          const id = where?.id;
+          if (id === 'owner-1')
+            return {
+              id,
+              email: 'owner@example.com',
+              firstName: 'Owner',
+              lastName: 'One',
+            } as User;
+          if (id === 'manager-1')
+            return {
+              id,
+              email: 'manager@example.com',
+              firstName: 'Manager',
+              lastName: 'One',
+            } as User;
+          if (id === 'viewer-1')
+            return {
+              id,
+              email: 'viewer@example.com',
+              firstName: 'Viewer',
+              lastName: 'One',
+            } as User;
+          return null;
+        },
+      );
+
+      await service.sendPendingJoinRequestReminders();
+
+      const firstFindCall = mockJoinRequestRepo.find.mock.calls[0] as
+        | [{ where: { status: JoinRequestStatus } }]
+        | undefined;
+      const findArgs = firstFindCall?.[0];
+      expect(findArgs?.where.status).toBe(JoinRequestStatus.PENDING);
+      expect(mockEmailService.sendEmail).toHaveBeenCalledTimes(2);
+      const sendEmailCalls = mockEmailService.sendEmail.mock.calls as Array<
+        [SendEmailDto]
+      >;
+      const payloads = sendEmailCalls.map(([payload]) => payload);
+      const ownerEmail = payloads.find(
+        (payload) => payload.recipient === 'owner@example.com',
+      );
+      expect(ownerEmail).toBeTruthy();
+      expect(ownerEmail?.html).toContain('OrgOne');
+      expect(ownerEmail?.html).toContain('OrgTwo');
+      const managerEmail = payloads.find(
+        (payload) => payload.recipient === 'manager@example.com',
+      );
+      expect(managerEmail?.html).toContain('OrgOne');
+      const viewerEmail = payloads.find(
+        (payload) => payload.recipient === 'viewer@example.com',
+      );
+      expect(viewerEmail).toBeUndefined();
+    });
+
+    it('does nothing when no pending requests meet threshold', async () => {
+      mockJoinRequestRepo.find.mockResolvedValue([]);
+
+      await service.sendPendingJoinRequestReminders();
+
+      expect(mockEmailService.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('logs an error when reminder execution fails', async () => {
+      const jobMap = new Map<string, CronJob>();
+      mockSchedulerRegistry.addCronJob.mockImplementation(
+        (name: string, job: CronJob) => {
+          jobMap.set(name, job);
+        },
+      );
+      jest
+        .spyOn(service, 'sendPendingJoinRequestReminders')
+        .mockRejectedValue(new Error('boom'));
+      const errorSpy = jest.spyOn(service['logger'], 'error');
+
+      service.onModuleInit();
+      const job = jobMap.get('organizationReminders');
+      if (job) {
+        await (
+          job as unknown as { onTick: () => Promise<void> | void }
+        ).onTick();
+      }
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Error running reminder job',
+        expect.any(Error),
+      );
+      errorSpy.mockRestore();
     });
   });
 
