@@ -23,6 +23,7 @@ import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
+import { OrganizationDto } from '../../src/organization/dto/organization.dto';
 
 jest.mock('cron', () => {
   return {
@@ -1486,6 +1487,90 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
       const result = await service.findAllInvitations('creator', org.id);
 
       expect(result).toEqual(history);
+    });
+  });
+
+  describe('mapToDto', () => {
+    const invokeMapToDto = async (
+      org: Organization,
+      members: User[],
+      currentUserId?: string,
+    ) => {
+      const mapper = service as unknown as {
+        mapToDto: (
+          organization: Organization,
+          list: User[],
+          userId?: string,
+        ) => Promise<OrganizationDto>;
+      };
+      return mapper.mapToDto(org, members, currentUserId);
+    };
+
+    it('maps base organization fields without current user', async () => {
+      const org = orgFixture({
+        creator: {
+          id: 'creator',
+          firstName: 'Alice',
+          lastName: 'Owner',
+        } as User,
+      });
+      const members = [
+        { id: 'm1', firstName: 'Bob', lastName: 'Member' } as User,
+        { id: 'm2', firstName: 'Cara', lastName: 'Member' } as User,
+      ];
+
+      const dto = await invokeMapToDto(org, members);
+
+      expect(dto).toMatchObject({
+        id: org.id,
+        creatorName: 'Alice Owner',
+        memberCount: 2,
+        members: [
+          { id: 'm1', firstName: 'Bob', lastName: 'Member' },
+          { id: 'm2', firstName: 'Cara', lastName: 'Member' },
+        ],
+        isMember: false,
+        isOwner: false,
+        currentUserRole: null,
+        isAdmin: false,
+      });
+    });
+
+    it('reflects membership and owner role for current user', async () => {
+      const org = orgFixture({ id: 5 });
+      const members = [
+        { id: 'user-1', firstName: 'User', lastName: 'One' } as User,
+      ];
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'user-1',
+        isAdmin: false,
+      } as User);
+      mockDomainService.getRole.mockResolvedValue('Owner');
+
+      const dto = await invokeMapToDto(org, members, 'user-1');
+
+      expect(dto.isMember).toBe(true);
+      expect(dto.isOwner).toBe(true);
+      expect(dto.currentUserRole).toBe('Owner');
+      expect(dto.currentUserId).toBe('user-1');
+      expect(dto.isAdmin).toBe(false);
+    });
+
+    it('overrides role to Admin for platform admins', async () => {
+      const org = orgFixture({ id: 6 });
+      const members = [
+        { id: 'user-2', firstName: 'User', lastName: 'Two' } as User,
+      ];
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'user-2',
+        isAdmin: true,
+      } as User);
+      mockDomainService.getRole.mockResolvedValue('Viewer');
+
+      const dto = await invokeMapToDto(org, members, 'user-2');
+
+      expect(dto.isAdmin).toBe(true);
+      expect(dto.currentUserRole).toBe('Admin');
     });
   });
 });
