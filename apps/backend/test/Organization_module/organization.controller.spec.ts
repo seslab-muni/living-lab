@@ -233,6 +233,59 @@ describe('OrganizationController - creation & update', () => {
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(historyMock).toHaveBeenCalledWith('user-1', 99);
     });
+
+    it('lists pending invitations for slug', async () => {
+      const slugOrg = organizationResponse({ id: 91, slug: 'pending-slug' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const pendingMock = getServiceMock('findPendingInvitations');
+      pendingMock.mockResolvedValue([]);
+
+      await controller.listInvitations(user, 'pending-slug');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'pending-slug');
+      expect(pendingMock).toHaveBeenCalledWith('user-1', 91);
+    });
+
+    it('lists pending invitations for numeric id', async () => {
+      const pendingMock = getServiceMock('findPendingInvitations');
+      pendingMock.mockResolvedValue([]);
+
+      await controller.listInvitations(user, '93');
+
+      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
+      expect(pendingMock).toHaveBeenCalledWith('user-1', 93);
+    });
+
+    it('revokes invitation', async () => {
+      const revokeMock = getServiceMock('revokeInvitation');
+      revokeMock.mockResolvedValue(undefined);
+
+      await controller.revokeInvitation(user, '123');
+
+      expect(revokeMock).toHaveBeenCalledWith('user-1', 123);
+    });
+
+    it('throws when my-invitation uses numeric id without email', async () => {
+      await expect(
+        controller.getMyInvitation({ id: 'user-2' } as JwtPayload, '15'),
+      ).rejects.toThrow('Authenticated user has no email in token');
+    });
+
+    it('fetches my invitation for numeric id', async () => {
+      const findInviteMock = getServiceMock('findInvitationForUser');
+      findInviteMock.mockResolvedValue({ token: '123' });
+
+      const result = await controller.getMyInvitation(user, '15');
+
+      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
+      expect(findInviteMock).toHaveBeenCalledWith(
+        'user-1',
+        'user@example.com',
+        15,
+      );
+      expect(result).toEqual({ token: '123' });
+    });
   });
 
   describe('join requests', () => {
@@ -488,6 +541,24 @@ describe('OrganizationController - creation & update', () => {
       await controller.findDuplicates(req, 'Org', 123, 'alias', 2);
 
       expect(dupMock).toHaveBeenCalledWith('user-1', 'Org', 123, 'alias', 2);
+    });
+
+    it('lists organizations excluding inactive by default', async () => {
+      const listMock = getServiceMock('findAllForUser');
+      listMock.mockResolvedValue([]);
+
+      await controller.findAll(user);
+
+      expect(listMock).toHaveBeenCalledWith('user-1', false);
+    });
+
+    it('lists organizations including inactive when requested', async () => {
+      const listMock = getServiceMock('findAllForUser');
+      listMock.mockResolvedValue([]);
+
+      await controller.findAll(user, 'true');
+
+      expect(listMock).toHaveBeenCalledWith('user-1', true);
     });
   });
 });
