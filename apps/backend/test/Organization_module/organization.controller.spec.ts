@@ -4,6 +4,7 @@ import type { JwtPayload } from '../../src/auth/types/jwt-payload.interface';
 import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
 import { UpdateOrganizationDto } from '../../src/organization/dto/update-organization.dto';
 import { OrganizationDto } from '../../src/organization/dto/organization.dto';
+import type { Request } from 'express';
 
 const mockOrganizationService: jest.Mocked<OrganizationService> = {
   create: jest.fn(),
@@ -231,6 +232,262 @@ describe('OrganizationController - creation & update', () => {
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(historyMock).toHaveBeenCalledWith('user-1', 99);
+    });
+  });
+
+  describe('join requests', () => {
+    const joinDto = { message: 'please join' };
+
+    it('creates join request by numeric id', async () => {
+      const createJoinMock = getServiceMock('createJoinRequest');
+      createJoinMock.mockResolvedValue({ id: 1 });
+
+      await controller.joinRequest(user, '12', joinDto);
+
+      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
+      expect(createJoinMock).toHaveBeenCalledWith('user-1', 12, joinDto);
+    });
+
+    it('creates join request by slug', async () => {
+      const slugOrg = organizationResponse({ id: 99, slug: 'org-slug' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const createJoinMock = getServiceMock('createJoinRequest');
+      createJoinMock.mockResolvedValue({ id: 1 });
+
+      await controller.joinRequest(user, 'org-slug', joinDto);
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
+      expect(createJoinMock).toHaveBeenCalledWith('user-1', 99, joinDto);
+    });
+
+    it('lists pending join requests using slug', async () => {
+      const slugOrg = organizationResponse({ id: 33, slug: 'org-slug' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const listMock = getServiceMock('findPendingRequestsForOrg');
+      listMock.mockResolvedValue([]);
+
+      await controller.listRequests(user, 'org-slug');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
+      expect(listMock).toHaveBeenCalledWith('user-1', 33);
+    });
+
+    it('lists pending join requests using numeric id', async () => {
+      const listMock = getServiceMock('findPendingRequestsForOrg');
+      listMock.mockResolvedValue([]);
+
+      await controller.listRequests(user, '44');
+
+      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
+      expect(listMock).toHaveBeenCalledWith('user-1', 44);
+    });
+
+    it('fetches join request detail', async () => {
+      const detailMock = getServiceMock('findJoinRequestByIdForOwner');
+      detailMock.mockResolvedValue({
+        id: 5,
+        message: 'msg',
+        status: 'PENDING',
+        createdAt: new Date(),
+        user: { id: 'user-2', firstName: 'A', lastName: 'B' },
+      });
+
+      await controller.getRequest(user, 'org-slug', '5');
+
+      expect(detailMock).toHaveBeenCalledWith('user-1', 5);
+    });
+
+    it('approves join request', async () => {
+      const handleMock = getServiceMock('handleJoinRequest');
+      handleMock.mockResolvedValue(undefined);
+
+      await controller.approve(user, 'org-slug', '7');
+
+      expect(handleMock).toHaveBeenCalledWith('user-1', 7, true);
+    });
+
+    it('rejects join request', async () => {
+      const handleMock = getServiceMock('handleJoinRequest');
+      handleMock.mockResolvedValue(undefined);
+
+      await controller.reject(user, 'org-slug', '8');
+
+      expect(handleMock).toHaveBeenCalledWith('user-1', 8, false);
+    });
+  });
+
+  describe('membership & lifecycle', () => {
+    it('joins organization by slug', async () => {
+      const slugOrg = organizationResponse({ id: 21, slug: 'org-slug' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const joinMock = getServiceMock('join');
+      joinMock.mockResolvedValue(undefined);
+
+      await controller.join(user, 'org-slug');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
+      expect(joinMock).toHaveBeenCalledWith('user-1', 21);
+    });
+
+    it('joins organization by numeric id', async () => {
+      const joinMock = getServiceMock('join');
+      joinMock.mockResolvedValue(undefined);
+
+      await controller.join(user, '22');
+
+      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
+      expect(joinMock).toHaveBeenCalledWith('user-1', 22);
+    });
+
+    it('leaves organization resolving slug', async () => {
+      const slugOrg = organizationResponse({ id: 30, slug: 'slug-org' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const leaveMock = getServiceMock('leave');
+      leaveMock.mockResolvedValue(undefined);
+
+      await controller.leave(user, 'slug-org');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-org');
+      expect(leaveMock).toHaveBeenCalledWith('user-1', 30);
+    });
+
+    it('restores organization by slug', async () => {
+      const slugOrg = organizationResponse({ id: 41, slug: 'slug-restore' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const restoreMock = getServiceMock('restore');
+      restoreMock.mockResolvedValue(undefined);
+
+      await controller.restore(user, 'slug-restore');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-restore');
+      expect(restoreMock).toHaveBeenCalledWith('user-1', 41);
+    });
+
+    it('removes organization by numeric id', async () => {
+      const removeMock = getServiceMock('remove');
+      removeMock.mockResolvedValue(undefined);
+
+      await controller.remove(user, '55');
+
+      expect(removeMock).toHaveBeenCalledWith('user-1', 55);
+    });
+
+    it('removes organization by slug', async () => {
+      const slugOrg = organizationResponse({ id: 72, slug: 'slug-remove' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const removeMock = getServiceMock('remove');
+      removeMock.mockResolvedValue(undefined);
+
+      await controller.remove(user, 'slug-remove');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-remove');
+      expect(removeMock).toHaveBeenCalledWith('user-1', 72);
+    });
+
+    it('removes member using slug resolution', async () => {
+      const slugOrg = organizationResponse({ id: 81, slug: 'slug-member' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const removeMemberMock = getServiceMock('removeMember');
+      removeMemberMock.mockResolvedValue(undefined);
+
+      await controller.removeMember(user, 'slug-member', 'member-1');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-member');
+      expect(removeMemberMock).toHaveBeenCalledWith('user-1', 81, 'member-1');
+    });
+  });
+
+  describe('lookup endpoints', () => {
+    it('finds organization by numeric id', async () => {
+      const orgDto = organizationResponse({ id: 5 });
+      const findMock = getServiceMock('findOneForUser');
+      findMock.mockResolvedValue(orgDto);
+
+      const result = await controller.findOne(user, '5');
+
+      expect(findMock).toHaveBeenCalledWith('user-1', 5);
+      expect(result).toBe(orgDto);
+    });
+
+    it('finds organization by slug', async () => {
+      const orgDto = organizationResponse({ id: 6, slug: 'slug-org' });
+      const findSlugMock = getServiceMock('findOneBySlugForUser');
+      findSlugMock.mockResolvedValue(orgDto);
+
+      const result = await controller.findOne(user, 'slug-org');
+
+      expect(findSlugMock).toHaveBeenCalledWith('user-1', 'slug-org');
+      expect(result).toBe(orgDto);
+    });
+
+    it('searches organizations with filters', async () => {
+      const searchMock = getServiceMock('searchAndSortOrganizations');
+      searchMock.mockResolvedValue([]);
+
+      await controller.searchOrganizations(user, 'test', 'asc', 'true');
+
+      expect(searchMock).toHaveBeenCalledWith('test', 'asc', 'user-1', true);
+    });
+
+    it('fetches slug preview requiring alias', async () => {
+      const slugMock = getServiceMock('generateUniqueSlug');
+      slugMock.mockResolvedValue('slug-preview');
+
+      const result = await controller.getSlugPreview('  alias  ');
+
+      expect(slugMock).toHaveBeenCalledWith('alias', undefined);
+      expect(result).toEqual({ alias: '  alias  ', slug: 'slug-preview' });
+    });
+
+    it('throws when slug preview alias missing', async () => {
+      await expect(controller.getSlugPreview('')).rejects.toThrow(
+        'Alias is required',
+      );
+    });
+
+    it('fetches invitation summary for token', async () => {
+      const summaryMock = getServiceMock('getInvitationSummary');
+      summaryMock.mockResolvedValue({ organization: { slug: 'org' } });
+
+      const result = await controller.getInvitation(user, 'token123');
+
+      expect(summaryMock).toHaveBeenCalledWith('token123', 'user@example.com');
+      expect(result).toEqual({ organization: { slug: 'org' } });
+    });
+
+    it('fetches pending invitation for current user by slug', async () => {
+      const slugOrg = organizationResponse({ id: 77, slug: 'slug-org' });
+      const slugLookup = getServiceMock('findOneBySlugForUser');
+      slugLookup.mockResolvedValue(slugOrg);
+      const findInviteMock = getServiceMock('findInvitationForUser');
+      findInviteMock.mockResolvedValue({ token: 'abc' });
+
+      const result = await controller.getMyInvitation(user, 'slug-org');
+
+      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-org');
+      expect(findInviteMock).toHaveBeenCalledWith(
+        'user-1',
+        'user@example.com',
+        77,
+      );
+      expect(result).toEqual({ token: 'abc' });
+    });
+
+    it('finds duplicates with query params', async () => {
+      const dupMock = getServiceMock('findDuplicates');
+      dupMock.mockResolvedValue([]);
+      const req = { user } as unknown as Request;
+
+      await controller.findDuplicates(req, 'Org', 123, 'alias', 2);
+
+      expect(dupMock).toHaveBeenCalledWith('user-1', 'Org', 123, 'alias', 2);
     });
   });
 });
