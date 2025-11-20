@@ -81,11 +81,12 @@ export default function EditOrganizationPage() {
     'Owner' | 'Manager' | 'Viewer' | 'Admin' | null
   >(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const canEditInfo = userRole === 'Owner' || userRole === 'Admin';
-  const canManageRoles =
-    userRole === 'Owner' || userRole === 'Manager' || userRole === 'Admin';
-  const canInviteMembers = canManageRoles;
-  const canDeleteOrganization = userRole === 'Owner' || userRole === 'Admin';
+  const isPlatformAdmin = org?.isAdmin ?? false;
+  const canEditInfo = userRole === 'Owner' || isPlatformAdmin;
+  const canManageRoles = userRole === 'Owner' || userRole === 'Manager';
+  const canManageInvites =
+    userRole === 'Owner' || userRole === 'Manager' || isPlatformAdmin;
+  const canDeleteOrganization = userRole === 'Owner' || isPlatformAdmin;
   const [slugPreview, setSlugPreview] = useState('');
   const [slugLoading, setSlugLoading] = useState(false);
 
@@ -815,7 +816,7 @@ export default function EditOrganizationPage() {
                     })()}
 
                     <Box sx={{ width: 36, textAlign: 'center' }}>
-                      {canManageRoles &&
+                    {canManageRoles &&
                         org.currentUserId &&
                         (() => {
                           const hierarchy = [
@@ -858,14 +859,14 @@ export default function EditOrganizationPage() {
                 <Button
                   variant="text"
                   onClick={handleOpenHistory}
-                  disabled={!canManageRoles}
+                  disabled={!canManageInvites}
                 >
                   View invitation history
                 </Button>
               </Box>
             </Box>
 
-            {canInviteMembers && (
+            {canManageInvites && (
               <InvitationForm
                 value={inviteEmails}
                 error={inviteError}
