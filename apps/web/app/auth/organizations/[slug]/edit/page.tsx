@@ -816,7 +816,7 @@ export default function EditOrganizationPage() {
                     })()}
 
                     <Box sx={{ width: 36, textAlign: 'center' }}>
-                    {canManageRoles &&
+                      {canManageRoles &&
                         org.currentUserId &&
                         (() => {
                           const hierarchy = [
