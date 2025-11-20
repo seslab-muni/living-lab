@@ -289,6 +289,7 @@ export class OrganizationService implements OnModuleInit {
       members: [{ id: userId } as any],
       isPrivate: false,
     });
+    org.lastEdit = new Date();
     await this.orgRepo.save(org);
     await this.domainService.create(String(org.id), 'Organization', userId);
     org = await this.orgRepo.findOneOrFail({
