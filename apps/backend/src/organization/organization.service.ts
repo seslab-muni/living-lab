@@ -919,6 +919,7 @@ Message: ${requesterMessage}
         createdBy: creatorId,
         modifiedBy: creatorId,
         status: InvitationStatus.PENDING,
+        createdAt: new Date(),
       });
       await this.inviteRepo.save(invitation);
 
