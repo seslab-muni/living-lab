@@ -703,6 +703,7 @@ export class OrganizationService implements OnModuleInit {
       user,
       organization,
       status: JoinRequestStatus.PENDING,
+      createdAt: new Date(),
     });
     const saved = await this.jrRepo.save(jr);
 

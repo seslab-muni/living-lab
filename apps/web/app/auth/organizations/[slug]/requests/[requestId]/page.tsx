@@ -20,6 +20,9 @@ export default function ReviewJoinRequestPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<
+    'approve' | 'reject' | null
+  >(null);
 
   useEffect(() => {
     const loadRequest = async () => {
@@ -102,11 +105,16 @@ export default function ReviewJoinRequestPage() {
   }
 
   const handle = async (action: 'approve' | 'reject') => {
-    await authFetch(
-      `${BACKEND_URL}/organizations/${slug}/join-requests/${requestId}/${action}`,
-      { method: 'PATCH' },
-    );
-    router.push(`/auth/organizations/${slug}`);
+    setActionLoading(action);
+    try {
+      await authFetch(
+        `${BACKEND_URL}/organizations/${slug}/join-requests/${requestId}/${action}`,
+        { method: 'PATCH' },
+      );
+      router.push(`/auth/organizations/${slug}`);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (!req) {
@@ -159,12 +167,17 @@ export default function ReviewJoinRequestPage() {
           </Box>
         ) : (
           <Stack direction="row" spacing={2} justifyContent="center" mt={4}>
-            <Button variant="contained" onClick={() => handle('approve')}>
+            <Button
+              variant="contained"
+              disabled={!!actionLoading}
+              onClick={() => handle('approve')}
+            >
               Approve
             </Button>
             <Button
               variant="contained"
               color="error"
+              disabled={!!actionLoading}
               onClick={() => handle('reject')}
             >
               Reject
