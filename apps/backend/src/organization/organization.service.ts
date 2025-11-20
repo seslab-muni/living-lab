@@ -1310,13 +1310,15 @@ Message: ${requesterMessage}
       : null;
 
     const isAdmin = !!currentUser?.isAdmin;
-    let currentUserRole = currentUserId
-      ? await this.domainService.getRole(currentUserId, String(org.id))
+    const orgRole = currentUserId
+      ? ((await this.domainService.getRole(currentUserId, String(org.id))) as
+          | 'Viewer'
+          | 'Manager'
+          | 'Owner'
+          | 'Moderator'
+          | null)
       : null;
-
-    if (isAdmin) {
-      currentUserRole = 'Admin';
-    }
+    const currentUserRole = orgRole ?? (isAdmin ? 'Admin' : null);
 
     return {
       id: org.id,
