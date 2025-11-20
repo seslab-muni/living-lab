@@ -20,6 +20,7 @@ export default function CreateOrganizationPage() {
   const [aliasManuallyEdited, setAliasManuallyEdited] = useState(false);
   const [slugPreview, setSlugPreview] = useState('');
   const [slugLoading, setSlugLoading] = useState(false);
+  const [aliasTouched, setAliasTouched] = useState(false);
   const { suggestions, loading: loadingDupes } = useDuplicateSuggestions({
     name,
     companyId,
@@ -99,7 +100,7 @@ export default function CreateOrganizationPage() {
     const aliasError = validateOrgAlias(alias);
     setErrors((prev) => ({
       ...prev,
-      organizationAlias: aliasError,
+      organizationAlias: aliasTouched ? aliasError : '',
     }));
 
     if (!alias || aliasError) {
@@ -134,7 +135,7 @@ export default function CreateOrganizationPage() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [name, organizationAlias, aliasManuallyEdited]);
+  }, [name, organizationAlias, aliasManuallyEdited, aliasTouched]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +146,7 @@ export default function CreateOrganizationPage() {
 
     const aliasErr = validateOrgAlias(organizationAlias);
     if (aliasErr) fieldErrors.organizationAlias = aliasErr;
+    if (aliasErr) setAliasTouched(true);
     const icoErr = validateICO(companyId);
     if (icoErr) fieldErrors.companyId = icoErr;
     setErrors(fieldErrors);
@@ -226,6 +228,7 @@ export default function CreateOrganizationPage() {
                 const v = e.target.value;
                 setOrganizationAlias(v);
                 setAliasManuallyEdited(true);
+                setAliasTouched(true);
                 const err = validateOrgAlias(v);
                 setErrors((prev) => ({ ...prev, organizationAlias: err }));
               }}
@@ -243,6 +246,7 @@ export default function CreateOrganizationPage() {
                     const newAlias = generateAliasFromName(name);
                     setOrganizationAlias(newAlias);
                     setAliasManuallyEdited(false);
+                    setAliasTouched(false);
                     const err = validateOrgAlias(newAlias);
                     setErrors((prev) => ({
                       ...prev,
