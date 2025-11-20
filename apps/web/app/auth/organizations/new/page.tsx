@@ -36,7 +36,7 @@ export default function CreateOrganizationPage() {
     const s = name.trim();
 
     if (/^\d/.test(s)) return '';
-    if (!/^[A-Za-z0-9\s-]+$/.test(s)) return '';
+    if (!/^[\p{L}0-9\s-]+$/u.test(s)) return '';
     if (s.length < 2) return '';
 
     const words = s
@@ -97,6 +97,10 @@ export default function CreateOrganizationPage() {
 
     const alias = organizationAlias.trim();
     const aliasError = validateOrgAlias(alias);
+    setErrors((prev) => ({
+      ...prev,
+      organizationAlias: aliasError,
+    }));
 
     if (!alias || aliasError) {
       setSlugPreview('');
@@ -239,6 +243,11 @@ export default function CreateOrganizationPage() {
                     const newAlias = generateAliasFromName(name);
                     setOrganizationAlias(newAlias);
                     setAliasManuallyEdited(false);
+                    const err = validateOrgAlias(newAlias);
+                    setErrors((prev) => ({
+                      ...prev,
+                      organizationAlias: err,
+                    }));
                   }}
                 >
                   Regenerate from name
@@ -266,7 +275,7 @@ export default function CreateOrganizationPage() {
                 </Typography>
               ) : (
                 <Typography variant="caption" color="text.secondary">
-                  Enter correct organization name or alias to see final URL
+                  Enter a valid organization alias to see final URL
                 </Typography>
               )}
             </Box>

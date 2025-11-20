@@ -12,9 +12,9 @@ export class CreateOrganizationDto {
   @MaxLength(100, {
     message: 'Organization name must be at most 100 characters',
   })
-  @Matches(/^[A-Za-z0-9\s-]+$/, {
+  @Matches(/^[\p{L}0-9\s-]+$/u, {
     message:
-      'Organization name may contain only letters, numbers, spaces, and "-"',
+      'Organization name may contain only letters (including diacritics), numbers, spaces, and "-"',
   })
   @Matches(/^[^\d].*$/, {
     message: 'Organization name cannot start with a number',
@@ -35,9 +35,9 @@ export class CreateOrganizationDto {
   @MaxLength(50, {
     message: 'Organization alias must be at most 50 characters',
   })
-  @Matches(/^[A-Za-z0-9\s-]+$/, {
+  @Matches(/^[\p{L}0-9\s-]+$/u, {
     message:
-      'Organization alias may contain only letters, numbers, spaces, and "-"',
+      'Organization alias may contain only letters (including diacritics), numbers, spaces, and "-"',
   })
   @Matches(/^[^\d].*$/, {
     message: 'Organization alias cannot start with a number',
