@@ -1556,7 +1556,7 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
       expect(dto.isAdmin).toBe(false);
     });
 
-    it('overrides role to Admin for platform admins', async () => {
+    it('retains organization role while flagging platform admin', async () => {
       const org = orgFixture({ id: 6 });
       const members = [
         { id: 'user-2', firstName: 'User', lastName: 'Two' } as User,
@@ -1570,7 +1570,7 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
       const dto = await invokeMapToDto(org, members, 'user-2');
 
       expect(dto.isAdmin).toBe(true);
-      expect(dto.currentUserRole).toBe('Admin');
+      expect(dto.currentUserRole).toBe('Viewer');
     });
   });
 });
