@@ -278,26 +278,46 @@ export class OrganizationService implements OnModuleInit {
     userId: string,
     dto: CreateOrganizationDto,
   ): Promise<OrganizationDto> {
-    const slug = await this.generateUniqueSlug(dto.organizationAlias);
-    let org = this.orgRepo.create({
-      name: dto.name,
-      slug,
-      description: dto.description ?? '',
-      creatorId: userId,
-      companyId: dto.companyId.trim(),
-      organizationAlias: dto.organizationAlias,
-      members: [{ id: userId } as any],
-      isPrivate: false,
-    });
-    org.lastEdit = new Date();
-    await this.orgRepo.save(org);
-    await this.domainService.create(String(org.id), 'Organization', userId);
-    org = await this.orgRepo.findOneOrFail({
-      where: { id: org.id },
-      relations: ['members', 'creator'],
-    });
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const slug = await this.generateUniqueSlug(dto.organizationAlias);
+        let org = this.orgRepo.create({
+          name: dto.name,
+          slug,
+          description: dto.description ?? '',
+          creatorId: userId,
+          companyId: dto.companyId.trim(),
+          organizationAlias: dto.organizationAlias,
+          members: [{ id: userId } as any],
+          isPrivate: false,
+        });
+        org.lastEdit = new Date();
+        await this.orgRepo.save(org);
+        await this.domainService.create(String(org.id), 'Organization', userId);
+        org = await this.orgRepo.findOneOrFail({
+          where: { id: org.id },
+          relations: ['members', 'creator'],
+        });
 
-    return await this.mapToDto(org, org.members, userId);
+        return await this.mapToDto(org, org.members, userId);
+      } catch (err: unknown) {
+        const pgErr = err as { code?: unknown; detail?: unknown };
+        if (
+          pgErr &&
+          pgErr.code === '23505' &&
+          typeof pgErr.detail === 'string' &&
+          pgErr.detail.includes('slug')
+        ) {
+          retries--;
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new BadRequestException(
+      'Failed to generate unique slug after multiple attempts',
+    );
   }
 
   async findAllForUser(
@@ -547,58 +567,81 @@ export class OrganizationService implements OnModuleInit {
     orgId: number,
     dto: UpdateOrganizationDto,
   ): Promise<OrganizationDto & { newSlug?: string }> {
-    const org = await this.orgRepo.findOneOrFail({
-      where: { id: orgId },
-      relations: ['members', 'creator'],
-    });
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const org = await this.orgRepo.findOneOrFail({
+          where: { id: orgId },
+          relations: ['members', 'creator'],
+        });
 
-    const ctx = await this.getCallerContext(userId, orgId);
-    this.ensureAllowed('OwnerOrManager', ctx);
+        const ctx = await this.getCallerContext(userId, orgId);
+        this.ensureAllowed('OwnerOrManager', ctx);
 
-    let slugChanged = false;
-    if (
-      typeof dto.organizationAlias === 'string' &&
-      dto.organizationAlias.trim() !== '' &&
-      dto.organizationAlias.trim() !== (org.organizationAlias?.trim() ?? '')
-    ) {
-      const newAlias = dto.organizationAlias.trim();
+        let slugChanged = false;
+        if (
+          typeof dto.organizationAlias === 'string' &&
+          dto.organizationAlias.trim() !== '' &&
+          dto.organizationAlias.trim() !== (org.organizationAlias?.trim() ?? '')
+        ) {
+          const newAlias = dto.organizationAlias.trim();
 
-      org.organizationAlias = newAlias;
-      org.slug = await this.generateUniqueSlug(newAlias, org.id);
-      slugChanged = true;
-    } else if (
-      typeof dto.organizationAlias === 'string' &&
-      dto.organizationAlias.trim() === (org.organizationAlias?.trim() ?? '')
-    ) {
-      dto.organizationAlias = org.organizationAlias;
+          org.organizationAlias = newAlias;
+          org.slug = await this.generateUniqueSlug(newAlias, org.id);
+          slugChanged = true;
+        } else if (
+          typeof dto.organizationAlias === 'string' &&
+          dto.organizationAlias.trim() === (org.organizationAlias?.trim() ?? '')
+        ) {
+          dto.organizationAlias = org.organizationAlias;
+        }
+
+        if (typeof dto.name === 'string') org.name = dto.name.trim();
+        if (typeof dto.description === 'string')
+          org.description = dto.description.trim();
+
+        if (
+          typeof dto.companyId === 'string' &&
+          /^\d{8}$/.test(dto.companyId)
+        ) {
+          org.companyId = dto.companyId.trim();
+        }
+
+        if (typeof dto.isPrivate === 'boolean') {
+          org.isPrivate = dto.isPrivate;
+        }
+
+        org.modifiedBy = userId;
+        org.lastEdit = new Date();
+        await this.orgRepo.save(org);
+
+        const updatedDto = await this.mapToDto(org, org.members, userId);
+
+        if (slugChanged) {
+          return {
+            ...updatedDto,
+            newSlug: org.slug,
+          };
+        }
+
+        return updatedDto;
+      } catch (err: unknown) {
+        const pgErr = err as { code?: unknown; detail?: unknown };
+        if (
+          pgErr &&
+          pgErr.code === '23505' &&
+          typeof pgErr.detail === 'string' &&
+          pgErr.detail.includes('slug')
+        ) {
+          retries--;
+          continue;
+        }
+        throw err;
+      }
     }
-
-    if (typeof dto.name === 'string') org.name = dto.name.trim();
-    if (typeof dto.description === 'string')
-      org.description = dto.description.trim();
-
-    if (typeof dto.companyId === 'string' && /^\d{8}$/.test(dto.companyId)) {
-      org.companyId = dto.companyId.trim();
-    }
-
-    if (typeof dto.isPrivate === 'boolean') {
-      org.isPrivate = dto.isPrivate;
-    }
-
-    org.modifiedBy = userId;
-    org.lastEdit = new Date();
-    await this.orgRepo.save(org);
-
-    const updatedDto = await this.mapToDto(org, org.members, userId);
-
-    if (slugChanged) {
-      return {
-        ...updatedDto,
-        newSlug: org.slug,
-      };
-    }
-
-    return updatedDto;
+    throw new BadRequestException(
+      'Failed to generate unique slug after multiple attempts',
+    );
   }
 
   async remove(userId: string, orgId: number): Promise<void> {
