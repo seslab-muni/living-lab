@@ -103,6 +103,12 @@ const mockQueryBuilder = {
   andWhere: jest.fn().mockReturnThis(),
   orWhere: jest.fn().mockReturnThis(),
   leftJoinAndSelect: jest.fn().mockReturnThis(),
+  leftJoin: jest.fn().mockReturnThis(),
+  relation: jest.fn().mockReturnThis(),
+  of: jest.fn().mockReturnThis(),
+  add: jest.fn().mockResolvedValue(undefined),
+  remove: jest.fn().mockResolvedValue(undefined),
+  getCount: jest.fn(),
   getMany: jest.fn(),
 };
 
