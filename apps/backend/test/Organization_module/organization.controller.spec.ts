@@ -127,7 +127,7 @@ describe('OrganizationController - creation & update', () => {
       const updateMock = getServiceMock('update');
       updateMock.mockResolvedValue(updated);
 
-      const result = await controller.update(user, '25', updateDto);
+      const result = await controller.update(user, 25, updateDto);
 
       const slugLookupMock = getServiceMock('findOneBySlugForUser');
       expect(slugLookupMock).not.toHaveBeenCalled();
@@ -159,11 +159,7 @@ describe('OrganizationController - creation & update', () => {
       const sendMock = getServiceMock('sendInvitations');
       sendMock.mockResolvedValue(resultPayload);
 
-      const result = await controller.sendInvitations(
-        user,
-        '42',
-        invitationDto,
-      );
+      const result = await controller.sendInvitations(user, 42, invitationDto);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(sendMock).toHaveBeenCalledWith('user-1', 42, invitationDto);
@@ -228,7 +224,7 @@ describe('OrganizationController - creation & update', () => {
       const historyMock = getServiceMock('findAllInvitations');
       historyMock.mockResolvedValue([]);
 
-      await controller.listInvitationHistory(user, '99');
+      await controller.listInvitationHistory(user, 99);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(historyMock).toHaveBeenCalledWith('user-1', 99);
@@ -251,7 +247,7 @@ describe('OrganizationController - creation & update', () => {
       const pendingMock = getServiceMock('findPendingInvitations');
       pendingMock.mockResolvedValue([]);
 
-      await controller.listInvitations(user, '93');
+      await controller.listInvitations(user, 93);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(pendingMock).toHaveBeenCalledWith('user-1', 93);
@@ -276,7 +272,7 @@ describe('OrganizationController - creation & update', () => {
       const findInviteMock = getServiceMock('findInvitationForUser');
       findInviteMock.mockResolvedValue({ token: '123' });
 
-      const result = await controller.getMyInvitation(user, '15');
+      const result = await controller.getMyInvitation(user, 15);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(findInviteMock).toHaveBeenCalledWith(
@@ -295,7 +291,7 @@ describe('OrganizationController - creation & update', () => {
       const createJoinMock = getServiceMock('createJoinRequest');
       createJoinMock.mockResolvedValue({ id: 1 });
 
-      await controller.joinRequest(user, '12', joinDto);
+      await controller.joinRequest(user, 12, joinDto);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(createJoinMock).toHaveBeenCalledWith('user-1', 12, joinDto);
@@ -331,7 +327,7 @@ describe('OrganizationController - creation & update', () => {
       const listMock = getServiceMock('findPendingRequestsForOrg');
       listMock.mockResolvedValue([]);
 
-      await controller.listRequests(user, '44');
+      await controller.listRequests(user, 44);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(listMock).toHaveBeenCalledWith('user-1', 44);
@@ -389,7 +385,7 @@ describe('OrganizationController - creation & update', () => {
       const joinMock = getServiceMock('join');
       joinMock.mockResolvedValue(undefined);
 
-      await controller.join(user, '22');
+      await controller.join(user, 22);
 
       expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(joinMock).toHaveBeenCalledWith('user-1', 22);
@@ -425,7 +421,7 @@ describe('OrganizationController - creation & update', () => {
       const removeMock = getServiceMock('remove');
       removeMock.mockResolvedValue(undefined);
 
-      await controller.remove(user, '55');
+      await controller.remove(user, 55);
 
       expect(removeMock).toHaveBeenCalledWith('user-1', 55);
     });

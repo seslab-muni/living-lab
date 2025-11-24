@@ -26,6 +26,7 @@ import { InvitationTokenDto } from './dto/invitation-token.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
+import { ParseOrgIdPipe } from './pipes/parse-org-id.pipe';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -50,11 +51,12 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async listRequests(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ) {
-    const orgId = isNaN(+idOrSlug)
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.findPendingRequestsForOrg(user.id, orgId);
   }
 
@@ -76,32 +78,24 @@ export class OrganizationController {
   @Post(':idOrSlug/join')
   async join(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ): Promise<void> {
-    let orgId: number;
-    if (isNaN(Number(idOrSlug))) {
-      // treat as slug
-      const dto = await this.orgService.findOneBySlugForUser(user.id, idOrSlug);
-      orgId = dto.id;
-    } else {
-      // numeric ID
-      orgId = +idOrSlug;
-    }
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.join(user.id, orgId);
   }
 
   @Post(':idOrSlug/leave')
   async leave(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ): Promise<void> {
-    let orgId: number;
-    if (isNaN(Number(idOrSlug))) {
-      const dto = await this.orgService.findOneBySlugForUser(user.id, idOrSlug);
-      orgId = dto.id;
-    } else {
-      orgId = +idOrSlug;
-    }
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.leave(user.id, orgId);
   }
 
@@ -156,14 +150,14 @@ export class OrganizationController {
   @Post(':idOrSlug/join-requests')
   async joinRequest(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
     @Body() dto: CreateJoinRequestDto,
   ) {
-    const id = isNaN(Number(idOrSlug))
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-
-    return this.orgService.createJoinRequest(user.id, id, dto);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.createJoinRequest(user.id, orgId, dto);
   }
 
   @Patch(':idOrSlug')
@@ -171,16 +165,14 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async update(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
     @Body() dto: UpdateOrganizationDto,
   ): Promise<OrganizationDto> {
-    // decide whether idOrSlug is a number or a slug
-    const isNum = !isNaN(Number(idOrSlug));
-    const id = isNum
-      ? Number(idOrSlug)
-      : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
-
-    return this.orgService.update(user.id, id, dto);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.update(user.id, orgId, dto);
   }
 
   @Get(':idOrSlug/join-requests/:reqId')
@@ -188,7 +180,7 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async getRequest(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
     @Param('reqId') reqId: string,
   ): Promise<JoinRequestDto> {
     const requestId = Number(reqId);
@@ -200,12 +192,13 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async listInvitations(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ) {
-    const id = isNaN(Number(idOrSlug))
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-    return this.orgService.findPendingInvitations(user.id, id);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.findPendingInvitations(user.id, orgId);
   }
 
   @Get('invitations/:token')
@@ -224,15 +217,16 @@ export class OrganizationController {
   @UseGuards(JwtAuthGuard)
   async getMyInvitation(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ) {
     if (!user.email) {
       throw new ForbiddenException('Authenticated user has no email in token');
     }
-    const id = isNaN(Number(idOrSlug))
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-    return this.orgService.findInvitationForUser(user.id, user.email, id);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.findInvitationForUser(user.id, user.email, orgId);
   }
 
   @Get(':idOrSlug/invitations/history')
@@ -240,12 +234,13 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async listInvitationHistory(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ) {
-    const id = isNaN(Number(idOrSlug))
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-    return this.orgService.findAllInvitations(user.id, id);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.findAllInvitations(user.id, orgId);
   }
 
   @Post(':idOrSlug/invitations')
@@ -253,13 +248,14 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async sendInvitations(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
     @Body() dto: CreateInvitationDto,
   ) {
-    const id = isNaN(Number(idOrSlug))
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-    return this.orgService.sendInvitations(user.id, id, dto);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.sendInvitations(user.id, orgId, dto);
   }
 
   @Delete(':idOrSlug/invitations/:inviteId')
@@ -302,7 +298,7 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async approve(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
     @Param('reqId') reqId: string,
   ) {
     const requestId = Number(reqId);
@@ -314,7 +310,7 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async reject(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
     @Param('reqId') reqId: string,
   ) {
     const requestId = Number(reqId);
@@ -325,12 +321,13 @@ export class OrganizationController {
   @UseGuards(JwtAuthGuard)
   async restore(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ): Promise<void> {
-    const id = isNaN(+idOrSlug)
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-    return this.orgService.restore(user.id, id);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.restore(user.id, orgId);
   }
 
   @Delete(':idOrSlug')
@@ -338,17 +335,13 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async remove(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
   ): Promise<void> {
-    const id = +idOrSlug;
-    if (isNaN(id)) {
-      const found = await this.orgService.findOneBySlugForUser(
-        user.id,
-        idOrSlug,
-      );
-      return await this.orgService.remove(user.id, found.id);
-    }
-    return this.orgService.remove(user.id, id);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.remove(user.id, orgId);
   }
 
   @Delete(':idOrSlug/members/:memberId')
@@ -356,13 +349,13 @@ export class OrganizationController {
   @UseGuards(RolesGuard)
   async removeMember(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
     @Param('memberId') memberId: string,
   ): Promise<void> {
-    const id = isNaN(+idOrSlug)
-      ? (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id
-      : +idOrSlug;
-
-    return this.orgService.removeMember(user.id, id, memberId);
+    const orgId =
+      typeof idOrSlug === 'number'
+        ? idOrSlug
+        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+    return this.orgService.removeMember(user.id, orgId, memberId);
   }
 }
