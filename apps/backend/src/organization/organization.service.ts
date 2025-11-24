@@ -16,7 +16,6 @@ import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
 import { OrganizationMailService } from './organization-mail.service';
 import { ConfigService } from '@nestjs/config';
-import { CronExpression } from '@nestjs/schedule';
 import { LessThan } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -27,9 +26,6 @@ import {
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { MoreThan } from 'typeorm';
 import { DomainService } from '../domain-role/domain.service';
-import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
-import { OnModuleInit } from '@nestjs/common';
 
 type InvitationSummaryResponse = {
   organization: { name: string; slug: string };
@@ -46,7 +42,7 @@ type MyInvitationResponse = {
 };
 
 @Injectable()
-export class OrganizationService implements OnModuleInit {
+export class OrganizationService {
   constructor(
     @InjectRepository(Organization)
     private readonly orgRepo: Repository<Organization>,
@@ -59,36 +55,11 @@ export class OrganizationService implements OnModuleInit {
     private readonly mailService: OrganizationMailService,
     private readonly configService: ConfigService,
     private readonly domainService: DomainService,
-    private readonly schedulerRegistry: SchedulerRegistry,
   ) {
     const cronValue = this.configService.get<string>('ORG_REMINDER_CRON');
     const daysValue = this.configService.get<string>('ORG_REMINDER_DAYS');
     console.log('ORG_REMINDER_CRON from env:', cronValue);
     console.log('ORG_REMINDER_DAYS from env:', daysValue);
-  }
-
-  onModuleInit(): void {
-    const cron = this.configService.get<string>('ORG_REMINDER_CRON');
-    const days = this.configService.get<string>('ORG_REMINDER_DAYS');
-
-    const cronExpression =
-      cron && cron.trim() !== '' ? cron : CronExpression.EVERY_DAY_AT_9AM;
-    const thresholdDays = Number(days ?? 7);
-
-    this.logger.log(
-      `Scheduling reminder job with expression "${cronExpression}" and threshold ${thresholdDays} days.`,
-    );
-
-    const job = new CronJob(cronExpression, async () => {
-      try {
-        await this.sendPendingJoinRequestReminders();
-      } catch (error) {
-        this.logger.error('Error running reminder job', error);
-      }
-    });
-
-    this.schedulerRegistry.addCronJob('organizationReminders', job);
-    job.start();
   }
 
   private readonly logger = new Logger(OrganizationService.name);

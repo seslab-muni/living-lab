@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
 import { OrganizationService } from './organization.service';
 import { OrganizationMailService } from './organization-mail.service';
+import { OrganizationSchedulerService } from './organization.scheduler';
 import { OrganizationController } from './organization.controller';
 import { JoinRequest } from './entities/join-request.entity';
 import { User } from '../user/entities/user.entity';
@@ -38,6 +39,7 @@ import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
     UserService,
     RolesGuard,
     OrganizationMailService,
+    OrganizationSchedulerService,
   ],
   exports: [OrganizationService],
 })

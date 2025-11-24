@@ -19,28 +19,13 @@ import { User } from '../../src/user/entities/user.entity';
 import { DomainService } from '../../src/domain-role/domain.service';
 import { OrganizationMailService } from '../../src/organization/organization-mail.service';
 import { ConfigService } from '@nestjs/config';
-import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
+
 import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
 import { OrganizationDto } from '../../src/organization/dto/organization.dto';
 
 jest.mock('crypto', () => ({
   randomUUID: () => 'token-123',
 }));
-
-jest.mock('cron', () => {
-  return {
-    CronJob: class {
-      cronTime: string;
-      onTick: () => void;
-      start = jest.fn();
-      constructor(cronTime: string, onTick: () => void) {
-        this.cronTime = cronTime;
-        this.onTick = onTick;
-      }
-    },
-  };
-});
 
 const consoleSpy = jest
   .spyOn(global.console, 'log')
@@ -96,10 +81,6 @@ const mockMailService = {
 
 const mockConfigService = {
   get: jest.fn(),
-};
-
-const mockSchedulerRegistry = {
-  addCronJob: jest.fn(),
 };
 
 const mockQueryBuilder = {
@@ -626,7 +607,6 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
         { provide: DomainService, useValue: mockDomainService },
         { provide: OrganizationMailService, useValue: mockMailService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: SchedulerRegistry, useValue: mockSchedulerRegistry },
       ],
     }).compile();
 
@@ -1076,41 +1056,6 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
   });
 
   describe('reminder scheduling & cron', () => {
-    it('registers cron job with configured expression on module init', () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'ORG_REMINDER_CRON') return '0 12 * * *';
-        if (key === 'ORG_REMINDER_DAYS') return '5';
-        return undefined;
-      });
-      const jobMap = new Map<string, CronJob>();
-      mockSchedulerRegistry.addCronJob.mockImplementation(
-        (name: string, job: CronJob) => {
-          jobMap.set(name, job);
-        },
-      );
-
-      service.onModuleInit();
-
-      expect(mockSchedulerRegistry.addCronJob).toHaveBeenCalled();
-      const job = jobMap.get('organizationReminders');
-      expect(job).toBeTruthy();
-      const jobMock = job as unknown as { start: jest.Mock };
-      expect(jobMock.start).toHaveBeenCalledTimes(1);
-    });
-
-    it('falls back to defaults when env missing', () => {
-      mockConfigService.get.mockImplementation(() => undefined);
-      mockSchedulerRegistry.addCronJob.mockImplementation(() => undefined);
-      const logSpy = jest.spyOn(service['logger'], 'log');
-
-      service.onModuleInit();
-
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Scheduling reminder job'),
-      );
-      logSpy.mockRestore();
-    });
-
     it('sends grouped reminder emails per recipient', async () => {
       mockConfigService.get.mockImplementation((key: string) => {
         if (key === 'ORG_REMINDER_DAYS') return '5';
@@ -1235,33 +1180,6 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
       expect(
         mockMailService.sendJoinRequestReminderEmail,
       ).not.toHaveBeenCalled();
-    });
-
-    it('logs an error when reminder execution fails', async () => {
-      const jobMap = new Map<string, CronJob>();
-      mockSchedulerRegistry.addCronJob.mockImplementation(
-        (name: string, job: CronJob) => {
-          jobMap.set(name, job);
-        },
-      );
-      jest
-        .spyOn(service, 'sendPendingJoinRequestReminders')
-        .mockRejectedValue(new Error('boom'));
-      const errorSpy = jest.spyOn(service['logger'], 'error');
-
-      service.onModuleInit();
-      const job = jobMap.get('organizationReminders');
-      if (job) {
-        await (
-          job as unknown as { onTick: () => Promise<void> | void }
-        ).onTick();
-      }
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        'Error running reminder job',
-        expect.any(Error),
-      );
-      errorSpy.mockRestore();
     });
   });
 
