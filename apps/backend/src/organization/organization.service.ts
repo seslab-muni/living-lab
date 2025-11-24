@@ -376,21 +376,30 @@ export class OrganizationService implements OnModuleInit {
   async join(userId: string, orgId: number): Promise<void> {
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
-      relations: ['members'],
+      select: ['id', 'name', 'isActive'],
     });
     if (!org || !org.isActive)
       throw new NotFoundException('Organization not found');
-    if (org.members.some((u) => u.id === userId)) {
+
+    const isMemberCount = await this.orgRepo
+      .createQueryBuilder('org')
+      .leftJoin('org.members', 'member')
+      .where('org.id = :orgId', { orgId })
+      .andWhere('member.id = :userId', { userId })
+      .getCount();
+
+    if (isMemberCount > 0) {
       throw new BadRequestException(
         'User is already a member of this organization',
       );
     }
 
-    const userRef = new User();
-    userRef.id = userId;
+    await this.orgRepo
+      .createQueryBuilder()
+      .relation(Organization, 'members')
+      .of(orgId)
+      .add(userId);
 
-    org.members.push(userRef);
-    await this.orgRepo.save(org);
     await this.domainService.changeUserRole(String(orgId), userId, 'Viewer');
 
     this.logger.log(`User ${userId} joined organization ${org.name}`);
@@ -409,11 +418,16 @@ export class OrganizationService implements OnModuleInit {
 
     const org = await this.orgRepo.findOne({
       where: { id: orgId },
-      relations: ['members'],
+      select: ['id'],
     });
     if (!org) throw new NotFoundException('Organization not found');
-    org.members = org.members.filter((u) => u.id !== userId);
-    await this.orgRepo.save(org);
+
+    await this.orgRepo
+      .createQueryBuilder()
+      .relation(Organization, 'members')
+      .of(orgId)
+      .remove(userId);
+
     await this.domainService.deleteRole(String(orgId), userId);
   }
 
