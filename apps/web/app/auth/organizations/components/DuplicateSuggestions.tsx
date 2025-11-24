@@ -5,9 +5,11 @@ import {
   CircularProgress,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Typography,
 } from '@mui/material';
+import Link from 'next/link';
 import type { OrganizationDto } from '../types';
 
 type Props = {
@@ -35,11 +37,18 @@ export default function DuplicateSuggestions({ suggestions, loading }: Props) {
       </Typography>
       <List dense disablePadding>
         {suggestions.map((suggestion) => (
-          <ListItem key={suggestion.id} disableGutters>
-            <ListItemText
-              primary={suggestion.name}
-              secondary={`IČO: ${suggestion.companyId} — ${suggestion.organizationAlias}`}
-            />
+          <ListItem key={suggestion.id} disablePadding>
+            <ListItemButton
+              component={Link}
+              href={`/auth/organizations/${suggestion.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ListItemText
+                primary={suggestion.name}
+                secondary={`IČO: ${suggestion.companyId} — ${suggestion.organizationAlias}`}
+              />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>
