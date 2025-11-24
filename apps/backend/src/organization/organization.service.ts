@@ -779,11 +779,11 @@ export class OrganizationService implements OnModuleInit {
       this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
     const link = `${frontendUrl}/auth/organizations/${org.slug}/requests/${saved.id}`;
 
-    for (const user of notifyUsers) {
+    const emailPromises = notifyUsers.map(async (roleUser) => {
       const dbUser = await this.userRepo.findOne({
-        where: { id: user.id },
+        where: { id: roleUser.id },
       });
-      if (!dbUser?.email) continue;
+      if (!dbUser?.email) return;
 
       const email: SendEmailDto = {
         recipient: dbUser.email,
@@ -803,7 +803,9 @@ Message: ${requesterMessage}
       this.logger.log(
         `Sent join request notification to ${dbUser.email} for organization ${org.name} from ${requesterName}`,
       );
-    }
+    });
+
+    await Promise.all(emailPromises);
 
     return saved;
   }
@@ -1310,47 +1312,51 @@ Message: ${requesterMessage}
       }
     }
 
-    for (const [email, { user, requests }] of recipientMap.entries()) {
-      const requestListHtml = requests
-        .map(
-          (r) => `
+    await Promise.all(
+      Array.from(recipientMap.entries()).map(
+        async ([email, { user, requests }]) => {
+          const requestListHtml = requests
+            .map(
+              (r) => `
           <li>
             <strong>${r.requester}</strong> requested to join
             <strong>${r.orgName}</strong><br/>
             <em>${r.message}</em><br/>
             <a href="${r.link}">Review request</a>
           </li>`,
-        )
-        .join('');
+            )
+            .join('');
 
-      const emailHtml = `
+          const emailHtml = `
       <p>Hello ${user.firstName},</p>
       <p>You have ${requests.length} pending join request(s) awaiting review:</p>
       <ul>${requestListHtml}</ul>
       <p>— BVV Living Lab System</p>
     `;
 
-      const emailText =
-        `Hello ${user.firstName}, you have ${requests.length} pending join request(s):\n\n` +
-        requests
-          .map(
-            (r) =>
-              `- ${r.requester} → ${r.orgName}\n  Message: ${r.message}\n  Review: ${r.link}`,
-          )
-          .join('\n\n');
+          const emailText =
+            `Hello ${user.firstName}, you have ${requests.length} pending join request(s):\n\n` +
+            requests
+              .map(
+                (r) =>
+                  `- ${r.requester} → ${r.orgName}\n  Message: ${r.message}\n  Review: ${r.link}`,
+              )
+              .join('\n\n');
 
-      const emailDto: SendEmailDto = {
-        recipient: email,
-        subject: `BVV LL Platform: You have ${requests.length} pending join request(s)`,
-        html: emailHtml,
-        text: emailText,
-      };
+          const emailDto: SendEmailDto = {
+            recipient: email,
+            subject: `BVV LL Platform: You have ${requests.length} pending join request(s)`,
+            html: emailHtml,
+            text: emailText,
+          };
 
-      await this.emailService.sendEmail(emailDto);
-      this.logger.log(
-        `Sent grouped reminder to ${email} with ${requests.length} pending request(s).`,
-      );
-    }
+          await this.emailService.sendEmail(emailDto);
+          this.logger.log(
+            `Sent grouped reminder to ${email} with ${requests.length} pending request(s).`,
+          );
+        },
+      ),
+    );
 
     this.logger.log(
       `Reminder emails sent to ${recipientMap.size} recipient(s).`,
