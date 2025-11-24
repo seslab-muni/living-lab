@@ -17,13 +17,16 @@ import {
 } from '../../src/organization/entities/organization-invitation.entity';
 import { User } from '../../src/user/entities/user.entity';
 import { DomainService } from '../../src/domain-role/domain.service';
-import { EmailService } from '../../src/email/email.service';
-import { SendEmailDto } from '../../src/email/dto/email.dto';
+import { OrganizationMailService } from '../../src/organization/organization-mail.service';
 import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { CreateOrganizationDto } from '../../src/organization/dto/create-organization.dto';
 import { OrganizationDto } from '../../src/organization/dto/organization.dto';
+
+jest.mock('crypto', () => ({
+  randomUUID: () => 'token-123',
+}));
 
 jest.mock('cron', () => {
   return {
@@ -85,8 +88,10 @@ const mockDomainService = {
   deleteRole: jest.fn(),
 };
 
-const mockEmailService = {
-  sendEmail: jest.fn(),
+const mockMailService = {
+  sendJoinRequestEmail: jest.fn(),
+  sendInvitationEmail: jest.fn(),
+  sendJoinRequestReminderEmail: jest.fn(),
 };
 
 const mockConfigService = {
@@ -266,12 +271,15 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
             status: JoinRequestStatus.PENDING,
           }),
         );
-        expect(mockEmailService.sendEmail).toHaveBeenCalledTimes(1);
-        const [[emailPayload]] = mockEmailService.sendEmail.mock.calls as [
-          [{ recipient: string; html: string }],
-        ];
-        expect(emailPayload.recipient).toBe('owner@example.com');
-        expect(emailPayload.html).toContain('Please add me');
+        expect(mockMailService.sendJoinRequestEmail).toHaveBeenCalledTimes(1);
+        expect(mockMailService.sendJoinRequestEmail).toHaveBeenCalledWith(
+          'owner@example.com',
+          'Owner',
+          'Req User',
+          'Org',
+          'Please add me',
+          expect.stringContaining('requests/55'),
+        );
         expect(result.id).toBe(55);
       });
 
@@ -367,10 +375,14 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
 
         await service.createJoinRequest('user', org.id, { message: '   ' });
 
-        const [[emailPayload]] = mockEmailService.sendEmail.mock.calls as [
-          [{ html: string }],
-        ];
-        expect(emailPayload.html).toContain('no message provided');
+        expect(mockMailService.sendJoinRequestEmail).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+          '(no message provided)',
+          expect.any(String),
+        );
       });
     });
 
@@ -612,7 +624,7 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: DomainService, useValue: mockDomainService },
-        { provide: EmailService, useValue: mockEmailService },
+        { provide: OrganizationMailService, useValue: mockMailService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: SchedulerRegistry, useValue: mockSchedulerRegistry },
       ],
@@ -945,7 +957,11 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
 
       expect(result.sent).toEqual(['user@example.com']);
       expect(mockInvitationRepo.save).toHaveBeenCalled();
-      expect(mockEmailService.sendEmail).toHaveBeenCalled();
+      expect(mockMailService.sendInvitationEmail).toHaveBeenCalledWith(
+        'user@example.com',
+        'Test Org',
+        expect.stringContaining('invitations/token-123'),
+      );
     });
 
     it('throws when no valid emails', async () => {
@@ -1191,25 +1207,24 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
         | undefined;
       const findArgs = firstFindCall?.[0];
       expect(findArgs?.where.status).toBe(JoinRequestStatus.PENDING);
-      expect(mockEmailService.sendEmail).toHaveBeenCalledTimes(2);
-      const sendEmailCalls = mockEmailService.sendEmail.mock.calls as Array<
-        [SendEmailDto]
-      >;
-      const payloads = sendEmailCalls.map(([payload]) => payload);
-      const ownerEmail = payloads.find(
-        (payload) => payload.recipient === 'owner@example.com',
+      expect(
+        mockMailService.sendJoinRequestReminderEmail,
+      ).toHaveBeenCalledTimes(2);
+      expect(mockMailService.sendJoinRequestReminderEmail).toHaveBeenCalledWith(
+        'owner@example.com',
+        'Owner',
+        expect.arrayContaining([
+          expect.objectContaining({ orgName: 'OrgOne' }),
+          expect.objectContaining({ orgName: 'OrgTwo' }),
+        ]),
       );
-      expect(ownerEmail).toBeTruthy();
-      expect(ownerEmail?.html).toContain('OrgOne');
-      expect(ownerEmail?.html).toContain('OrgTwo');
-      const managerEmail = payloads.find(
-        (payload) => payload.recipient === 'manager@example.com',
+      expect(mockMailService.sendJoinRequestReminderEmail).toHaveBeenCalledWith(
+        'manager@example.com',
+        'Manager',
+        expect.arrayContaining([
+          expect.objectContaining({ orgName: 'OrgOne' }),
+        ]),
       );
-      expect(managerEmail?.html).toContain('OrgOne');
-      const viewerEmail = payloads.find(
-        (payload) => payload.recipient === 'viewer@example.com',
-      );
-      expect(viewerEmail).toBeUndefined();
     });
 
     it('does nothing when no pending requests meet threshold', async () => {
@@ -1217,7 +1232,9 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
 
       await service.sendPendingJoinRequestReminders();
 
-      expect(mockEmailService.sendEmail).not.toHaveBeenCalled();
+      expect(
+        mockMailService.sendJoinRequestReminderEmail,
+      ).not.toHaveBeenCalled();
     });
 
     it('logs an error when reminder execution fails', async () => {

@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
 import { OrganizationService } from './organization.service';
+import { OrganizationMailService } from './organization-mail.service';
 import { OrganizationController } from './organization.controller';
 import { JoinRequest } from './entities/join-request.entity';
 import { User } from '../user/entities/user.entity';
@@ -31,7 +32,13 @@ import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
     ConfigModule,
   ],
   controllers: [OrganizationController],
-  providers: [OrganizationService, DomainService, UserService, RolesGuard],
+  providers: [
+    OrganizationService,
+    DomainService,
+    UserService,
+    RolesGuard,
+    OrganizationMailService,
+  ],
   exports: [OrganizationService],
 })
 export class OrganizationModule {}

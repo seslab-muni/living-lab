@@ -14,8 +14,7 @@ import { JoinRequest, JoinRequestStatus } from './entities/join-request.entity';
 import { User } from 'src/user/entities/user.entity';
 import { CreateJoinRequestDto } from './dto/create-join-request.dto';
 import { JoinRequestDto } from './dto/join-request.dto';
-import { EmailService } from 'src/email/email.service';
-import { SendEmailDto } from 'src/email/dto/email.dto';
+import { OrganizationMailService } from './organization-mail.service';
 import { ConfigService } from '@nestjs/config';
 import { CronExpression } from '@nestjs/schedule';
 import { LessThan } from 'typeorm';
@@ -57,7 +56,7 @@ export class OrganizationService implements OnModuleInit {
     private readonly userRepo: Repository<User>,
     @InjectRepository(OrganizationInvitation)
     private readonly inviteRepo: Repository<OrganizationInvitation>,
-    private readonly emailService: EmailService,
+    private readonly mailService: OrganizationMailService,
     private readonly configService: ConfigService,
     private readonly domainService: DomainService,
     private readonly schedulerRegistry: SchedulerRegistry,
@@ -785,21 +784,15 @@ export class OrganizationService implements OnModuleInit {
       });
       if (!dbUser?.email) return;
 
-      const email: SendEmailDto = {
-        recipient: dbUser.email,
-        subject: `BVV LL Platform: New join request for ${org.name}`,
-        html: `<p>Hello ${dbUser.firstName},</p>
-           <p><strong>${requesterName}</strong> has requested to join <strong>${org.name}</strong>.</p>
-           <p>Message:</p>
-           <blockquote>${requesterMessage}</blockquote>
-           <p><a href="${link}">Click here</a> to review and approve or reject the request.</p>
-           <p>— BVV Living Lab System</p>`,
-        text: `Hello ${dbUser.firstName}, ${requesterName} has requested to join ${org.name}.
-Message: ${requesterMessage}
-        Review it here: ${link}`,
-      };
+      await this.mailService.sendJoinRequestEmail(
+        dbUser.email,
+        dbUser.firstName,
+        requesterName,
+        org.name,
+        requesterMessage,
+        link,
+      );
 
-      await this.emailService.sendEmail(email);
       this.logger.log(
         `Sent join request notification to ${dbUser.email} for organization ${org.name} from ${requesterName}`,
       );
@@ -987,17 +980,7 @@ Message: ${requesterMessage}
         'http://localhost:3000';
       const link = `${frontendUrl}/auth/invitations/${token}`;
 
-      const emailDto: SendEmailDto = {
-        recipient: email,
-        subject: `BVV LL Platform: Invitation to join ${org.name}`,
-        html: `<p>Hello,</p>
-             <p>You have been invited to join <strong>${org.name}</strong>.</p>
-             <p><a href="${link}">Click here</a> to accept the invitation. This link is valid for 7 days.</p>
-             <p>— BVV Living Lab System</p>`,
-        text: `You have been invited to join ${org.name}. Accept here: ${link}`,
-      };
-
-      await this.emailService.sendEmail(emailDto);
+      await this.mailService.sendInvitationEmail(email, org.name, link);
       sent.push(email);
     }
 
@@ -1315,42 +1298,11 @@ Message: ${requesterMessage}
     await Promise.all(
       Array.from(recipientMap.entries()).map(
         async ([email, { user, requests }]) => {
-          const requestListHtml = requests
-            .map(
-              (r) => `
-          <li>
-            <strong>${r.requester}</strong> requested to join
-            <strong>${r.orgName}</strong><br/>
-            <em>${r.message}</em><br/>
-            <a href="${r.link}">Review request</a>
-          </li>`,
-            )
-            .join('');
-
-          const emailHtml = `
-      <p>Hello ${user.firstName},</p>
-      <p>You have ${requests.length} pending join request(s) awaiting review:</p>
-      <ul>${requestListHtml}</ul>
-      <p>— BVV Living Lab System</p>
-    `;
-
-          const emailText =
-            `Hello ${user.firstName}, you have ${requests.length} pending join request(s):\n\n` +
-            requests
-              .map(
-                (r) =>
-                  `- ${r.requester} → ${r.orgName}\n  Message: ${r.message}\n  Review: ${r.link}`,
-              )
-              .join('\n\n');
-
-          const emailDto: SendEmailDto = {
-            recipient: email,
-            subject: `BVV LL Platform: You have ${requests.length} pending join request(s)`,
-            html: emailHtml,
-            text: emailText,
-          };
-
-          await this.emailService.sendEmail(emailDto);
+          await this.mailService.sendJoinRequestReminderEmail(
+            email,
+            user.firstName,
+            requests,
+          );
           this.logger.log(
             `Sent grouped reminder to ${email} with ${requests.length} pending request(s).`,
           );
