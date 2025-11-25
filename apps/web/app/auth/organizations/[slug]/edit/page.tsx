@@ -903,8 +903,8 @@ export default function EditOrganizationPage() {
         title="Remove this member?"
         confirmLabel="Yes, remove"
         loading={removing}
-        onConfirm={handleRemoveMember}
-        onClose={() => {
+        onConfirmAction={handleRemoveMember}
+        onCloseAction={() => {
           if (!removing) {
             setRemoveTarget(null);
           }
@@ -916,8 +916,8 @@ export default function EditOrganizationPage() {
         title={`Are you sure you want to delete “${org.name}”?`}
         description="This organization will be archived and can be restored later by an administrator."
         confirmLabel="Yes, delete"
-        onConfirm={handleDelete}
-        onClose={() => setConfirmOpen(false)}
+        onConfirmAction={handleDelete}
+        onCloseAction={() => setConfirmOpen(false)}
       />
       <SnackbarFeedback
         open={snackbarOpen}

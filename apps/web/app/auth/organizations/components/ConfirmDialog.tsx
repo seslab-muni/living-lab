@@ -25,8 +25,8 @@ type Props = {
     | 'info'
     | 'warning';
   loading?: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
+  onConfirmAction: () => void;
+  onCloseAction: () => void;
 };
 
 export default function ConfirmDialog({
@@ -37,11 +37,11 @@ export default function ConfirmDialog({
   cancelLabel = 'Cancel',
   confirmColor = 'error',
   loading = false,
-  onConfirm,
-  onClose,
+  onConfirmAction,
+  onCloseAction,
 }: Props) {
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={onCloseAction}>
       <DialogTitle>{title}</DialogTitle>
       {description && (
         <DialogContent>
@@ -49,11 +49,11 @@ export default function ConfirmDialog({
         </DialogContent>
       )}
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button onClick={onCloseAction} disabled={loading}>
           {cancelLabel}
         </Button>
         <Button
-          onClick={onConfirm}
+          onClick={onConfirmAction}
           color={confirmColor}
           variant="contained"
           disabled={loading}
