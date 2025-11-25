@@ -317,7 +317,13 @@ export class OrganizationService {
     sort: 'newest' | 'asc' | 'desc' = 'newest',
     userId?: string,
     includeInactive = false,
-  ): Promise<OrganizationDto[]> {
+    page = 1,
+    limit = 10,
+    filterMine = false,
+  ): Promise<{
+    data: OrganizationDto[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  }> {
     const qb = this.orgRepo
       .createQueryBuilder('organization')
       .leftJoinAndSelect('organization.members', 'member')
@@ -341,26 +347,58 @@ export class OrganizationService {
       qb.andWhere('organization.isActive = true');
     }
 
+    if (filterMine && userId) {
+      qb.andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select('1')
+          .from('user_organizations', 'omu')
+          .where('omu.organizationId = organization.id')
+          .andWhere('omu.userId = :userId')
+          .getQuery();
+        return `EXISTS ${subQuery}`;
+      }).setParameter('userId', userId);
+    }
+
+    if (sort === 'asc' || sort === 'desc' || sort === 'newest') {
+      qb.addSelect('LOWER(organization.name)', 'lower_name');
+    }
+
     switch (sort) {
       case 'asc':
-        qb.orderBy('LOWER(organization.name)', 'ASC');
+        qb.orderBy('lower_name', 'ASC');
         break;
       case 'desc':
-        qb.orderBy('LOWER(organization.name)', 'DESC');
+        qb.orderBy('lower_name', 'DESC');
         break;
       default:
         qb.orderBy('organization.createdAt', 'DESC', 'NULLS LAST').addOrderBy(
-          'LOWER(organization.name)',
+          'lower_name',
           'ASC',
         );
         break;
     }
 
+    const total = await qb.getCount();
+    const totalPages = Math.ceil(total / limit);
+
+    qb.skip((page - 1) * limit).take(limit);
+
     const organizations = await qb.getMany();
 
-    return Promise.all(
+    const data = await Promise.all(
       organizations.map((org) => this.mapToDto(org, org.members, userId)),
     );
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   }
 
   async join(userId: string, orgId: number): Promise<void> {

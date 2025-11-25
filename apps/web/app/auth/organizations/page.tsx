@@ -9,6 +9,7 @@ import { authFetch } from '../../lib/auth';
 import { BACKEND_URL } from '../../lib/constants';
 import type { OrganizationDto } from './types';
 import OrganizationFiltersPanel from './components/OrganizationFiltersPanel';
+import PaginationControl from './components/PaginationControl';
 
 export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<OrganizationDto[] | null>(null);
@@ -19,11 +20,17 @@ export default function OrganizationsPage() {
   const [sort, setSort] = useState<'newest' | 'asc' | 'desc'>('newest');
   const [loading, setLoading] = useState(false);
   const [debouncedSearch] = useDebounce(search, 400);
-
-  const displayOrgs = orgs?.filter((o) => !showMine || o.isMember) ?? null;
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 10;
 
   const fetchOrganizations = useCallback(
-    async (searchTerm: string, sortOrder: 'newest' | 'asc' | 'desc') => {
+    async (
+      searchTerm: string,
+      sortOrder: 'newest' | 'asc' | 'desc',
+      pageNumber: number,
+      filterMine: boolean,
+    ) => {
       try {
         setLoading(true);
         setError(null);
@@ -31,6 +38,9 @@ export default function OrganizationsPage() {
         const params = new URLSearchParams();
         if (searchTerm) params.set('q', searchTerm);
         params.set('sort', sortOrder);
+        params.set('page', pageNumber.toString());
+        params.set('limit', LIMIT.toString());
+        if (filterMine) params.set('filterMine', 'true');
 
         const endpoint = `${BACKEND_URL}/organizations/search?${params.toString()}`;
         const res = await authFetch(endpoint);
@@ -39,8 +49,14 @@ export default function OrganizationsPage() {
           throw new Error(`Failed to fetch organizations (HTTP ${res.status})`);
         }
 
-        const data: OrganizationDto[] = await res.json();
-        setOrgs(data);
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          setOrgs(json);
+          setTotalPages(1);
+        } else {
+          setOrgs(json.data);
+          setTotalPages(json.meta.totalPages);
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -51,13 +67,45 @@ export default function OrganizationsPage() {
     [],
   );
 
+  const prevFilters = React.useRef({
+    search: debouncedSearch,
+    sort,
+    showMine,
+  });
+
   useEffect(() => {
-    void fetchOrganizations(debouncedSearch, sort);
-  }, [debouncedSearch, sort, fetchOrganizations]);
+    const filtersChanged =
+      debouncedSearch !== prevFilters.current.search ||
+      sort !== prevFilters.current.sort ||
+      showMine !== prevFilters.current.showMine;
+
+    if (filtersChanged) {
+      prevFilters.current = {
+        search: debouncedSearch,
+        sort,
+        showMine,
+      };
+      setPage(1);
+      if (page !== 1) {
+        return;
+      }
+    }
+
+    void fetchOrganizations(debouncedSearch, sort, page, showMine);
+  }, [debouncedSearch, sort, page, showMine, fetchOrganizations]);
 
   const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetchOrganizations(search, sort);
+    setPage(1);
+    await fetchOrganizations(search, sort, 1, showMine);
+  };
+
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number,
+  ) => {
+    setPage(value);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -100,40 +148,47 @@ export default function OrganizationsPage() {
           </Typography>
           <Typography variant="body1">{error}</Typography>
         </Box>
-      ) : loading || displayOrgs === null ? (
+      ) : loading || orgs === null ? (
         <Box display="flex" justifyContent="center" p={4}>
           <CircularProgress />
         </Box>
-      ) : displayOrgs.length === 0 ? (
+      ) : !orgs || orgs.length === 0 ? (
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="body1">No organizations found.</Typography>
         </Box>
       ) : (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: '1fr',
-            mx: { xs: 0, md: '25%' },
-            width: { xs: '100%', md: '50%' },
-          }}
-        >
-          {displayOrgs.map((org) => (
-            <OrganizationCard
-              key={org.id}
-              org={org}
-              onMembershipChange={(id, isMember, memberCount) => {
-                setOrgs((current) =>
-                  current
-                    ? current.map((o) =>
-                        o.id === id ? { ...o, isMember, memberCount } : o,
-                      )
-                    : null,
-                );
-              }}
-            />
-          ))}
-        </Box>
+        <>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 2,
+              gridTemplateColumns: '1fr',
+              mx: { xs: 0, md: '25%' },
+              width: { xs: '100%', md: '50%' },
+            }}
+          >
+            {orgs.map((org) => (
+              <OrganizationCard
+                key={org.id}
+                org={org}
+                onMembershipChange={(id, isMember, memberCount) => {
+                  setOrgs((current) =>
+                    current
+                      ? current.map((o) =>
+                          o.id === id ? { ...o, isMember, memberCount } : o,
+                        )
+                      : null,
+                  );
+                }}
+              />
+            ))}
+          </Box>
+          <PaginationControl
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+          />
+        </>
       )}
     </Box>
   );

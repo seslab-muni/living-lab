@@ -96,6 +96,12 @@ const mockQueryBuilder = {
   remove: jest.fn().mockResolvedValue(undefined),
   getCount: jest.fn(),
   getMany: jest.fn(),
+  skip: jest.fn().mockReturnThis(),
+  take: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  addOrderBy: jest.fn().mockReturnThis(),
+  setParameter: jest.fn().mockReturnThis(),
 };
 
 mockOrgRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -1512,6 +1518,88 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
 
       expect(dto.isAdmin).toBe(true);
       expect(dto.currentUserRole).toBe('Viewer');
+    });
+  });
+  describe('searchAndSortOrganizations', () => {
+    it('returns paginated results with metadata', async () => {
+      const orgs = [orgFixture({ id: 1 }), orgFixture({ id: 2 })];
+      mockQueryBuilder.getMany.mockResolvedValue(orgs);
+      mockQueryBuilder.getCount.mockResolvedValue(20);
+      mockUserRepo.findOne.mockResolvedValue({ id: 'user-1', isAdmin: false });
+
+      const result = await service.searchAndSortOrganizations(
+        undefined,
+        'newest',
+        'user-1',
+        false,
+        1,
+        10,
+      );
+
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
+      expect(result.data).toHaveLength(2);
+      expect(result.meta).toEqual({
+        total: 20,
+        page: 1,
+        limit: 10,
+        totalPages: 2,
+      });
+    });
+
+    it('filters by name', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.searchAndSortOrganizations(
+        'Test',
+        'newest',
+        'user-1',
+        false,
+      );
+
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'LOWER(organization.name) LIKE :q',
+        { q: '%test%' },
+      );
+    });
+
+    it('filters by my organizations', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.searchAndSortOrganizations(
+        undefined,
+        'newest',
+        'user-1',
+        false,
+        1,
+        10,
+        true,
+      );
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+    });
+
+    it('sorts alphabetically case-insensitive', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.searchAndSortOrganizations(
+        undefined,
+        'asc',
+        'user-1',
+        false,
+      );
+
+      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith(
+        'LOWER(organization.name)',
+        'lower_name',
+      );
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'lower_name',
+        'ASC',
+      );
     });
   });
 });

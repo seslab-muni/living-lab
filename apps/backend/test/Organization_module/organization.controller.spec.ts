@@ -476,13 +476,34 @@ describe('OrganizationController - creation & update', () => {
       expect(result).toBe(orgDto);
     });
 
-    it('searches organizations with filters', async () => {
+    it('searches organizations with filters and pagination', async () => {
       const searchMock = getServiceMock('searchAndSortOrganizations');
-      searchMock.mockResolvedValue([]);
+      const expectedResult = {
+        data: [],
+        meta: { total: 0, page: 1, limit: 10, totalPages: 0 },
+      };
+      searchMock.mockResolvedValue(expectedResult);
 
-      await controller.searchOrganizations(user, 'test', 'asc', 'true');
+      const result = await controller.searchOrganizations(
+        user,
+        'test',
+        'asc',
+        'true',
+        2,
+        20,
+        'true',
+      );
 
-      expect(searchMock).toHaveBeenCalledWith('test', 'asc', 'user-1', true);
+      expect(searchMock).toHaveBeenCalledWith(
+        'test',
+        'asc',
+        'user-1',
+        true,
+        2,
+        20,
+        true,
+      );
+      expect(result).toBe(expectedResult);
     });
 
     it('fetches slug preview requiring alias', async () => {

@@ -66,12 +66,18 @@ export class OrganizationController {
     @Query('q') q?: string,
     @Query('sort') sort: 'newest' | 'asc' | 'desc' = 'newest',
     @Query('includeInactive') includeInactive?: string,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('filterMine') filterMine?: string,
   ) {
     return this.orgService.searchAndSortOrganizations(
       q,
       sort,
       user.id,
       includeInactive === 'true',
+      Number(page),
+      Number(limit),
+      filterMine === 'true',
     );
   }
 
