@@ -687,6 +687,7 @@ export class OrganizationService {
     memberId: string,
   ): Promise<void> {
     const ctx = await this.getCallerContext(callerId, orgId);
+    this.ensureAdminHasDomainRights(ctx, 'remove members');
     this.ensureAllowed('OwnerOrManager', ctx);
 
     const targetRole = (await this.domainService.getRole(

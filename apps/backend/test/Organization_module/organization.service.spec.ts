@@ -895,6 +895,18 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
       deleteRoleSpy.mockRestore();
     });
 
+    it('blocks platform admin without org role from removing members', async () => {
+      mockUserRepo.findOne.mockResolvedValue({
+        id: 'admin',
+        isAdmin: true,
+      } as User);
+      mockDomainService.getRole.mockResolvedValueOnce(null); // caller role
+
+      await expect(service.removeMember('admin', 1, 'member')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
     it('throws when removing higher-role member', async () => {
       setupRoleContext('Manager', { userId: 'manager' });
       roleAssignments.set('owner', { role: 'Owner', isAdmin: false });
