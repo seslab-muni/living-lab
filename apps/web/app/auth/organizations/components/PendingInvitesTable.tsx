@@ -40,7 +40,7 @@ export default function PendingInvitesTable({ invites, onRevoke }: Props) {
             >
               <ListItemText
                 primary={inv.email}
-                secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()} • ${inv.status}`}
+                secondary={`Sent on ${new Date(inv.createdAt).toLocaleDateString()} • Expires on ${new Date(inv.expiresAt).toLocaleDateString()} • ${inv.status}`}
               />
             </ListItem>
           ))}

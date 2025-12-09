@@ -60,7 +60,7 @@ export default function InvitationHistoryDialog({
                 <ListItem key={invite.id} divider>
                   <ListItemText
                     primary={invite.email}
-                    secondary={`Sent on ${new Date(invite.createdAt).toLocaleString()} • ${invite.status}`}
+                    secondary={`Sent on ${new Date(invite.createdAt).toLocaleString()} • Expires on ${new Date(invite.expiresAt).toLocaleString()} • ${invite.status}`}
                   />
                 </ListItem>
               ))}

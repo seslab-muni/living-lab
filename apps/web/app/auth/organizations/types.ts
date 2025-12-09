@@ -44,5 +44,6 @@ export interface OrganizationInvitationDto {
   id: number;
   email: string;
   createdAt: string;
+  expiresAt: string;
   status: 'Pending' | 'Accepted' | 'Rejected' | 'Revoked';
 }
