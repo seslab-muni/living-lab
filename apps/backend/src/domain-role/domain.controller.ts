@@ -92,7 +92,7 @@ export class DomainController {
       );
     }
 
-    if (rank(targetRole) >= rank(callerRole)) {
+    if (param.userId !== callerId && rank(targetRole) >= rank(callerRole)) {
       throw new ForbiddenException(
         'You cannot modify the role of someone with an equal or higher rank.',
       );
