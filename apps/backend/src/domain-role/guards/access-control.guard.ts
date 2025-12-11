@@ -1,7 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from 'src/common/decorators/roles.decorator';
-import type { Request } from 'express';
 import { Roles } from 'src/common/types/roles';
 import { DomainService } from '../domain.service';
 import { UserService } from 'src/user/user.service';
@@ -27,20 +26,16 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!roles) return true;
-
+    if (!roles) {
+      return true;
+    }
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const user = request.user;
-    if (!user || !user.id) return false;
 
-    const domainIdParam =
-      request.domainId ?? request.params?.domainId ?? request.params?.idOrSlug;
-
-    if (!domainIdParam) return false;
-
-    if (Number.isNaN(Number(domainIdParam))) return true;
-
-    return this.validateAccess(user.id, String(domainIdParam), roles);
+    const { user, domainId } = request;
+    if (!user || !user.id || !domainId) {
+      return false;
+    }
+    return this.validateAccess(user.id, domainId, roles);
   }
 
   private async validateAccess(
