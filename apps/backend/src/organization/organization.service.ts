@@ -482,6 +482,14 @@ export class OrganizationService {
     return dto;
   }
 
+  async findIdBySlug(slug: string): Promise<number | null> {
+    const org = await this.orgRepo.findOne({
+      where: { slug },
+      select: ['id'],
+    });
+    return org ? org.id : null;
+  }
+
   async findOneForUser(
     userId: string,
     orgId: number,
