@@ -120,15 +120,14 @@ export class OrganizationService {
       callerRole: 'Viewer' | 'Manager' | 'Owner' | null;
     },
   ) {
-    if (ctx.isAdmin) return;
     if (required === 'OwnerOnly') {
       if (ctx.callerRole !== 'Owner')
-        throw new ForbiddenException('Only Owner or Admin.');
+        throw new ForbiddenException('Only Owner.');
       return;
     }
     if (required === 'OwnerOrManager') {
       if (ctx.callerRole === 'Owner' || ctx.callerRole === 'Manager') return;
-      throw new ForbiddenException('Only Owner/Manager or Admin.');
+      throw new ForbiddenException('Only Owner or Manager.');
     }
     if (!ctx.callerRole || !required.includes(ctx.callerRole)) {
       throw new ForbiddenException('Insufficient role.');
@@ -591,7 +590,9 @@ export class OrganizationService {
         });
 
         const ctx = await this.getCallerContext(userId, orgId);
-        this.ensureAllowed('OwnerOrManager', ctx);
+        if (!ctx.isAdmin) {
+          this.ensureAllowed('OwnerOrManager', ctx);
+        }
 
         let slugChanged = false;
         if (
@@ -830,7 +831,9 @@ export class OrganizationService {
     });
     if (!org) throw new NotFoundException(`Org ${orgId} not found`);
     const ctx = await this.getCallerContext(creatorId, org.id);
-    this.ensureAllowed('OwnerOrManager', ctx);
+    if (!ctx.isAdmin) {
+      this.ensureAllowed('OwnerOrManager', ctx);
+    }
     const reqs = await this.jrRepo.find({
       where: {
         organization: { id: orgId },
@@ -1095,7 +1098,9 @@ export class OrganizationService {
     });
     if (!org) throw new NotFoundException('Organization not found');
     const ctx = await this.getCallerContext(creatorId, org.id);
-    this.ensureAllowed('OwnerOrManager', ctx);
+    if (!ctx.isAdmin) {
+      this.ensureAllowed('OwnerOrManager', ctx);
+    }
 
     return this.inviteRepo.find({
       where: {
@@ -1209,7 +1214,9 @@ export class OrganizationService {
     });
     if (!org) throw new NotFoundException('Organization not found');
     const ctx = await this.getCallerContext(creatorId, org.id);
-    this.ensureAllowed('OwnerOrManager', ctx);
+    if (!ctx.isAdmin) {
+      this.ensureAllowed('OwnerOrManager', ctx);
+    }
 
     return this.inviteRepo.find({
       where: { organization: { id: orgId } },

@@ -85,7 +85,8 @@ export default function EditOrganizationPage() {
   const canEditInfo = userRole === 'Owner' || isPlatformAdmin;
   const canManageRoles = userRole === 'Owner' || userRole === 'Manager';
   const canManageInvites =
-    userRole === 'Owner' || userRole === 'Manager' || isPlatformAdmin;
+    userRole === 'Owner' || userRole === 'Manager';
+  const canViewInvites = canManageInvites || isPlatformAdmin;
   const canDeleteOrganization = userRole === 'Owner' || isPlatformAdmin;
   const [slugPreview, setSlugPreview] = useState('');
   const [slugLoading, setSlugLoading] = useState(false);
@@ -881,7 +882,7 @@ export default function EditOrganizationPage() {
                 <Button
                   variant="text"
                   onClick={handleOpenHistory}
-                  disabled={!canManageInvites}
+                  disabled={!canViewInvites}
                 >
                   View invitation history
                 </Button>
