@@ -930,11 +930,16 @@ describe('OrganizationService - Join & Reminders & Creation & Edit & Invitations
         relation: () => ({ of: () => ({ remove: jest.fn() }) }),
       } as any);
       const ensureSpy = jest.spyOn(service as any, 'ensureAtLeastOneOwnerLeft');
+      // Bypass permission check for this logic test
+      const permSpy = jest
+        .spyOn(service as any, 'canActOn')
+        .mockReturnValue(true);
 
       await service.removeMember('owner', 1, 'owner-2');
 
       expect(ensureSpy).toHaveBeenCalledWith(1, 'owner-2');
       ensureSpy.mockRestore();
+      permSpy.mockRestore();
     });
   });
 

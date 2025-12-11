@@ -21,7 +21,7 @@ export class DomainController {
   constructor(
     private domainService: DomainService,
     private userService: UserService,
-  ) { }
+  ) {}
 
   @Get('/:domainId/users')
   @DefineRoles('Admin', 'Owner', 'Manager', 'Moderator', 'Viewer')

@@ -31,7 +31,7 @@ import { ParseOrgIdPipe } from './pipes/parse-org-id.pipe';
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
 export class OrganizationController {
-  constructor(private readonly orgService: OrganizationService) { }
+  constructor(private readonly orgService: OrganizationService) {}
 
   @Post()
   create(@GetUser() user: JwtPayload, @Body() dto: CreateOrganizationDto) {

@@ -105,7 +105,6 @@ export class OrganizationService {
   private canActOn(
     caller: 'Viewer' | 'Manager' | 'Owner' | null,
     target: 'Viewer' | 'Manager' | 'Owner' | null,
-    isAdmin: boolean,
   ) {
     return this.roleOrder(caller) > this.roleOrder(target);
   }
@@ -703,7 +702,7 @@ export class OrganizationService {
       String(orgId),
     )) as 'Viewer' | 'Manager' | 'Owner' | null;
 
-    if (!this.canActOn(ctx.callerRole, targetRole, ctx.isAdmin)) {
+    if (!this.canActOn(ctx.callerRole, targetRole)) {
       throw new ForbiddenException('You cannot remove a higher-role member.');
     }
 
@@ -1351,11 +1350,11 @@ export class OrganizationService {
     const isAdmin = !!currentUser?.isAdmin;
     const orgRole = currentUserId
       ? ((await this.domainService.getRole(currentUserId, String(org.id))) as
-        | 'Viewer'
-        | 'Manager'
-        | 'Owner'
-        | 'Moderator'
-        | null)
+          | 'Viewer'
+          | 'Manager'
+          | 'Owner'
+          | 'Moderator'
+          | null)
       : null;
     const currentUserRole = orgRole ?? (isAdmin ? 'Admin' : null);
 

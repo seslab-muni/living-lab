@@ -84,8 +84,7 @@ export default function EditOrganizationPage() {
   const isPlatformAdmin = org?.isAdmin ?? false;
   const canEditInfo = userRole === 'Owner' || isPlatformAdmin;
   const canManageRoles = userRole === 'Owner' || userRole === 'Manager';
-  const canManageInvites =
-    userRole === 'Owner' || userRole === 'Manager';
+  const canManageInvites = userRole === 'Owner' || userRole === 'Manager';
   const canViewInvites = canManageInvites || isPlatformAdmin;
   const canDeleteOrganization = userRole === 'Owner' || isPlatformAdmin;
   const [slugPreview, setSlugPreview] = useState('');
@@ -358,13 +357,18 @@ export default function EditOrganizationPage() {
           ) {
             msg = 'You must be part of this organization to assign roles.';
           } else if (
-            err.message.includes('You cannot assign a higher role than your own')
+            err.message.includes(
+              'You cannot assign a higher role than your own',
+            )
           ) {
             msg = 'You cannot assign a higher role than your own.';
           } else if (
-            err.message.includes('You cannot modify the role of someone with an equal or higher rank')
+            err.message.includes(
+              'You cannot modify the role of someone with an equal or higher rank',
+            )
           ) {
-            msg = 'You cannot modify the role of someone with an equal or higher rank.';
+            msg =
+              'You cannot modify the role of someone with an equal or higher rank.';
           } else if (!err.message.startsWith('Fetch error')) {
             msg = err.message;
           }
