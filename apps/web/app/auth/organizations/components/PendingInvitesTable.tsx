@@ -13,9 +13,14 @@ import type { OrganizationInvitationDto } from '../types';
 type Props = {
   invites: OrganizationInvitationDto[];
   onRevoke: (id: number) => void;
+  canRevoke?: boolean;
 };
 
-export default function PendingInvitesTable({ invites, onRevoke }: Props) {
+export default function PendingInvitesTable({
+  invites,
+  onRevoke,
+  canRevoke = false,
+}: Props) {
   return (
     <div>
       <Typography variant="h6">Pending Invitations</Typography>
@@ -29,13 +34,15 @@ export default function PendingInvitesTable({ invites, onRevoke }: Props) {
             <ListItem
               key={inv.id}
               secondaryAction={
-                <IconButton
-                  edge="end"
-                  color="error"
-                  onClick={() => onRevoke(inv.id)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                canRevoke ? (
+                  <IconButton
+                    edge="end"
+                    color="error"
+                    onClick={() => onRevoke(inv.id)}
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                ) : null
               }
             >
               <ListItemText

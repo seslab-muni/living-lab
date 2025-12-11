@@ -881,6 +881,7 @@ export default function EditOrganizationPage() {
               <PendingInvitesTable
                 invites={pendingInvites}
                 onRevoke={handleRevokeInvite}
+                canRevoke={canManageInvites}
               />
               <Box mt={2} textAlign="right">
                 <Button
