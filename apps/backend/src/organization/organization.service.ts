@@ -107,8 +107,7 @@ export class OrganizationService {
     target: 'Viewer' | 'Manager' | 'Owner' | null,
     isAdmin: boolean,
   ) {
-    if (isAdmin) return true;
-    return this.roleOrder(caller) >= this.roleOrder(target);
+    return this.roleOrder(caller) > this.roleOrder(target);
   }
 
   private ensureAllowed(
@@ -1345,11 +1344,11 @@ export class OrganizationService {
     const isAdmin = !!currentUser?.isAdmin;
     const orgRole = currentUserId
       ? ((await this.domainService.getRole(currentUserId, String(org.id))) as
-          | 'Viewer'
-          | 'Manager'
-          | 'Owner'
-          | 'Moderator'
-          | null)
+        | 'Viewer'
+        | 'Manager'
+        | 'Owner'
+        | 'Moderator'
+        | null)
       : null;
     const currentUserRole = orgRole ?? (isAdmin ? 'Admin' : null);
 

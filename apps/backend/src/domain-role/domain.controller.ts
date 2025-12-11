@@ -21,7 +21,7 @@ export class DomainController {
   constructor(
     private domainService: DomainService,
     private userService: UserService,
-  ) {}
+  ) { }
 
   @Get('/:domainId/users')
   @DefineRoles('Admin', 'Owner', 'Manager', 'Moderator', 'Viewer')
@@ -89,6 +89,12 @@ export class DomainController {
     if (rank(body.role) > rank(callerRole)) {
       throw new ForbiddenException(
         'You cannot assign a higher role than your own.',
+      );
+    }
+
+    if (rank(targetRole) >= rank(callerRole)) {
+      throw new ForbiddenException(
+        'You cannot modify the role of someone with an equal or higher rank.',
       );
     }
 

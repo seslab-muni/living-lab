@@ -329,27 +329,48 @@ export default function EditOrganizationPage() {
       let msg = 'Unexpected error';
 
       if (err instanceof Error) {
-        if (err.message.includes('Managers cannot assign')) {
-          msg = 'You cannot assign a higher role than your own.';
-        } else if (err.message.includes('At least one Owner must remain')) {
-          msg = 'At least one Owner must remain in the organization.';
-        } else if (
-          err.message.includes('cannot demote the last remaining Owner')
-        ) {
-          msg = 'You cannot change the role of the last remaining Owner.';
-        } else if (
-          err.message.includes('must be a member of this organization')
-        ) {
-          msg = 'You must be part of this organization to assign roles.';
-        } else if (
-          err.message.includes('You cannot assign a higher role than your own')
-        ) {
-          msg = 'You cannot assign a higher role than your own.';
-        } else {
-          msg = err.message;
+        // Try to parse JSON from "Fetch error STATUS: {...}"
+        try {
+          const match = err.message.match(/\{.*}$/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed?.message) {
+              msg = parsed.message;
+            }
+          }
+        } catch {
+          // ignore parsing error
+        }
+
+        // If JSON parsing failed or didn't apply, check specific strings
+        if (msg === 'Unexpected error') {
+          if (err.message.includes('Managers cannot assign')) {
+            msg = 'You cannot assign a higher role than your own.';
+          } else if (err.message.includes('At least one Owner must remain')) {
+            msg = 'At least one Owner must remain in the organization.';
+          } else if (
+            err.message.includes('cannot demote the last remaining Owner')
+          ) {
+            msg = 'You cannot change the role of the last remaining Owner.';
+          } else if (
+            err.message.includes('must be a member of this organization')
+          ) {
+            msg = 'You must be part of this organization to assign roles.';
+          } else if (
+            err.message.includes('You cannot assign a higher role than your own')
+          ) {
+            msg = 'You cannot assign a higher role than your own.';
+          } else if (
+            err.message.includes('You cannot modify the role of someone with an equal or higher rank')
+          ) {
+            msg = 'You cannot modify the role of someone with an equal or higher rank.';
+          } else if (!err.message.startsWith('Fetch error')) {
+            msg = err.message;
+          }
         }
       }
       setErrors({ form: msg });
+      setEditedRoles({});
     } finally {
       setSaving(false);
     }
@@ -821,6 +842,7 @@ export default function EditOrganizationPage() {
                         (() => {
                           const hierarchy = [
                             'Viewer',
+                            'Moderator',
                             'Manager',
                             'Owner',
                             'Admin',
@@ -833,7 +855,7 @@ export default function EditOrganizationPage() {
 
                           const isSelf = m.id === org.currentUserId;
                           const canDeleteThisMember =
-                            !isSelf && currentRank >= memberRank;
+                            !isSelf && currentRank > memberRank;
 
                           return canDeleteThisMember ? (
                             <IconButton
