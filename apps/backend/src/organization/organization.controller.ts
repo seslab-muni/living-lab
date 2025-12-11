@@ -31,7 +31,7 @@ import { ParseOrgIdPipe } from './pipes/parse-org-id.pipe';
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
 export class OrganizationController {
-  constructor(private readonly orgService: OrganizationService) {}
+  constructor(private readonly orgService: OrganizationService) { }
 
   @Post()
   create(@GetUser() user: JwtPayload, @Body() dto: CreateOrganizationDto) {
@@ -182,7 +182,7 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug/join-requests/:reqId')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async getRequest(
     @GetUser() user: JwtPayload,
@@ -250,7 +250,7 @@ export class OrganizationController {
   }
 
   @Post(':idOrSlug/invitations')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async sendInvitations(
     @GetUser() user: JwtPayload,
@@ -265,7 +265,7 @@ export class OrganizationController {
   }
 
   @Delete(':idOrSlug/invitations/:inviteId')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async revokeInvitation(
     @GetUser() user: JwtPayload,
@@ -300,7 +300,7 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/approve')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async approve(
     @GetUser() user: JwtPayload,
@@ -312,7 +312,7 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/reject')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async reject(
     @GetUser() user: JwtPayload,
@@ -324,7 +324,8 @@ export class OrganizationController {
   }
 
   @Patch(':idOrSlug/restore')
-  @UseGuards(JwtAuthGuard)
+  @DefineRoles('Admin')
+  @UseGuards(RolesGuard)
   async restore(
     @GetUser() user: JwtPayload,
     @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
@@ -351,7 +352,7 @@ export class OrganizationController {
   }
 
   @Delete(':idOrSlug/members/:memberId')
-  @DefineRoles('Owner', 'Manager', 'Admin')
+  @DefineRoles('Owner', 'Manager')
   @UseGuards(RolesGuard)
   async removeMember(
     @GetUser() user: JwtPayload,
