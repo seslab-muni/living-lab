@@ -22,6 +22,8 @@ export class OrganizationContextGuard implements CanActivate {
 
     if (!Number.isNaN(Number(idOrSlug))) {
       req.domainId = String(idOrSlug);
+      req.params.idOrSlug = String(idOrSlug);
+      req.params.domainId = String(idOrSlug);
       return true;
     }
 
@@ -32,13 +34,8 @@ export class OrganizationContextGuard implements CanActivate {
     }
 
     req.domainId = String(id);
-
-    if (req.params.idOrSlug) {
-      req.params.idOrSlug = String(id);
-    }
-    if (req.params.domainId) {
-      req.params.domainId = String(id);
-    }
+    req.params.idOrSlug = String(id);
+    req.params.domainId = String(id);
 
     return true;
   }

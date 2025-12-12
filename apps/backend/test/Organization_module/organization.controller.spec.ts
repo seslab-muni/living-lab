@@ -122,31 +122,14 @@ describe('OrganizationController - creation & update', () => {
       companyId: '11112222',
     };
 
-    it('updates organization when numeric id provided', async () => {
+    it('updates organization', async () => {
       const updated = organizationResponse({ name: 'Updated Name' });
       const updateMock = getServiceMock('update');
       updateMock.mockResolvedValue(updated);
 
       const result = await controller.update(user, 25, updateDto);
 
-      const slugLookupMock = getServiceMock('findOneBySlugForUser');
-      expect(slugLookupMock).not.toHaveBeenCalled();
       expect(updateMock).toHaveBeenCalledWith('user-1', 25, updateDto);
-      expect(result).toBe(updated);
-    });
-
-    it('resolves slug before updating organization', async () => {
-      const slugDto = organizationResponse({ id: 77, slug: 'org-slug' });
-      const slugLookupMock = getServiceMock('findOneBySlugForUser');
-      slugLookupMock.mockResolvedValue(slugDto);
-      const updated = organizationResponse({ id: 77, name: 'Slug Updated' });
-      const updateMock = getServiceMock('update');
-      updateMock.mockResolvedValue(updated);
-
-      const result = await controller.update(user, 'org-slug', updateDto);
-
-      expect(slugLookupMock).toHaveBeenCalledWith('user-1', 'org-slug');
-      expect(updateMock).toHaveBeenCalledWith('user-1', 77, updateDto);
       expect(result).toBe(updated);
     });
   });
@@ -154,29 +137,15 @@ describe('OrganizationController - creation & update', () => {
   describe('invitations', () => {
     const invitationDto = { emails: 'user@example.com' };
 
-    it('sends invitations using numeric id', async () => {
+    it('sends invitations', async () => {
       const resultPayload = { sent: ['user@example.com'], skipped: [] };
       const sendMock = getServiceMock('sendInvitations');
       sendMock.mockResolvedValue(resultPayload);
 
       const result = await controller.sendInvitations(user, 42, invitationDto);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(sendMock).toHaveBeenCalledWith('user-1', 42, invitationDto);
       expect(result).toBe(resultPayload);
-    });
-
-    it('resolves slug before sending invitations', async () => {
-      const slugOrg = organizationResponse({ id: 55, slug: 'slug-org' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const sendMock = getServiceMock('sendInvitations');
-      sendMock.mockResolvedValue({ sent: [], skipped: [] });
-
-      await controller.sendInvitations(user, 'slug-org', invitationDto);
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-org');
-      expect(sendMock).toHaveBeenCalledWith('user-1', 55, invitationDto);
     });
 
     it('throws when authenticated user lacks email for token endpoints', async () => {
@@ -207,49 +176,21 @@ describe('OrganizationController - creation & update', () => {
       expect(result).toEqual({ message: 'ok' });
     });
 
-    it('lists invitation history for slug', async () => {
-      const slugOrg = organizationResponse({ id: 88, slug: 'org-slug' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const historyMock = getServiceMock('findAllInvitations');
-      historyMock.mockResolvedValue([]);
-
-      await controller.listInvitationHistory(user, 'org-slug');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
-      expect(historyMock).toHaveBeenCalledWith('user-1', 88);
-    });
-
-    it('lists invitation history for numeric id', async () => {
+    it('lists invitation history', async () => {
       const historyMock = getServiceMock('findAllInvitations');
       historyMock.mockResolvedValue([]);
 
       await controller.listInvitationHistory(user, 99);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(historyMock).toHaveBeenCalledWith('user-1', 99);
     });
 
-    it('lists pending invitations for slug', async () => {
-      const slugOrg = organizationResponse({ id: 91, slug: 'pending-slug' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const pendingMock = getServiceMock('findPendingInvitations');
-      pendingMock.mockResolvedValue([]);
-
-      await controller.listInvitations(user, 'pending-slug');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'pending-slug');
-      expect(pendingMock).toHaveBeenCalledWith('user-1', 91);
-    });
-
-    it('lists pending invitations for numeric id', async () => {
+    it('lists pending invitations', async () => {
       const pendingMock = getServiceMock('findPendingInvitations');
       pendingMock.mockResolvedValue([]);
 
       await controller.listInvitations(user, 93);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(pendingMock).toHaveBeenCalledWith('user-1', 93);
     });
 
@@ -264,17 +205,16 @@ describe('OrganizationController - creation & update', () => {
 
     it('throws when my-invitation uses numeric id without email', async () => {
       await expect(
-        controller.getMyInvitation({ id: 'user-2' } as JwtPayload, '15'),
+        controller.getMyInvitation({ id: 'user-2' } as JwtPayload, 15),
       ).rejects.toThrow('Authenticated user has no email in token');
     });
 
-    it('fetches my invitation for numeric id', async () => {
+    it('fetches my invitation', async () => {
       const findInviteMock = getServiceMock('findInvitationForUser');
       findInviteMock.mockResolvedValue({ token: '123' });
 
       const result = await controller.getMyInvitation(user, 15);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(findInviteMock).toHaveBeenCalledWith(
         'user-1',
         'user@example.com',
@@ -287,49 +227,21 @@ describe('OrganizationController - creation & update', () => {
   describe('join requests', () => {
     const joinDto = { message: 'please join' };
 
-    it('creates join request by numeric id', async () => {
+    it('creates join request', async () => {
       const createJoinMock = getServiceMock('createJoinRequest');
       createJoinMock.mockResolvedValue({ id: 1 });
 
       await controller.joinRequest(user, 12, joinDto);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(createJoinMock).toHaveBeenCalledWith('user-1', 12, joinDto);
     });
 
-    it('creates join request by slug', async () => {
-      const slugOrg = organizationResponse({ id: 99, slug: 'org-slug' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const createJoinMock = getServiceMock('createJoinRequest');
-      createJoinMock.mockResolvedValue({ id: 1 });
-
-      await controller.joinRequest(user, 'org-slug', joinDto);
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
-      expect(createJoinMock).toHaveBeenCalledWith('user-1', 99, joinDto);
-    });
-
-    it('lists pending join requests using slug', async () => {
-      const slugOrg = organizationResponse({ id: 33, slug: 'org-slug' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const listMock = getServiceMock('findPendingRequestsForOrg');
-      listMock.mockResolvedValue([]);
-
-      await controller.listRequests(user, 'org-slug');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
-      expect(listMock).toHaveBeenCalledWith('user-1', 33);
-    });
-
-    it('lists pending join requests using numeric id', async () => {
+    it('lists pending join requests', async () => {
       const listMock = getServiceMock('findPendingRequestsForOrg');
       listMock.mockResolvedValue([]);
 
       await controller.listRequests(user, 44);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(listMock).toHaveBeenCalledWith('user-1', 44);
     });
 
@@ -343,7 +255,7 @@ describe('OrganizationController - creation & update', () => {
         user: { id: 'user-2', firstName: 'A', lastName: 'B' },
       });
 
-      await controller.getRequest(user, 'org-slug', '5');
+      await controller.getRequest(user, '5');
 
       expect(detailMock).toHaveBeenCalledWith('user-1', 5);
     });
@@ -352,7 +264,7 @@ describe('OrganizationController - creation & update', () => {
       const handleMock = getServiceMock('handleJoinRequest');
       handleMock.mockResolvedValue(undefined);
 
-      await controller.approve(user, 'org-slug', '7');
+      await controller.approve(user, '7');
 
       expect(handleMock).toHaveBeenCalledWith('user-1', 7, true);
     });
@@ -361,63 +273,41 @@ describe('OrganizationController - creation & update', () => {
       const handleMock = getServiceMock('handleJoinRequest');
       handleMock.mockResolvedValue(undefined);
 
-      await controller.reject(user, 'org-slug', '8');
+      await controller.reject(user, '8');
 
       expect(handleMock).toHaveBeenCalledWith('user-1', 8, false);
     });
   });
 
   describe('membership & lifecycle', () => {
-    it('joins organization by slug', async () => {
-      const slugOrg = organizationResponse({ id: 21, slug: 'org-slug' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const joinMock = getServiceMock('join');
-      joinMock.mockResolvedValue(undefined);
-
-      await controller.join(user, 'org-slug');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'org-slug');
-      expect(joinMock).toHaveBeenCalledWith('user-1', 21);
-    });
-
-    it('joins organization by numeric id', async () => {
+    it('joins organization', async () => {
       const joinMock = getServiceMock('join');
       joinMock.mockResolvedValue(undefined);
 
       await controller.join(user, 22);
 
-      expect(getServiceMock('findOneBySlugForUser')).not.toHaveBeenCalled();
       expect(joinMock).toHaveBeenCalledWith('user-1', 22);
     });
 
-    it('leaves organization resolving slug', async () => {
-      const slugOrg = organizationResponse({ id: 30, slug: 'slug-org' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
+    it('leaves organization', async () => {
       const leaveMock = getServiceMock('leave');
       leaveMock.mockResolvedValue(undefined);
 
-      await controller.leave(user, 'slug-org');
+      await controller.leave(user, 30);
 
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-org');
       expect(leaveMock).toHaveBeenCalledWith('user-1', 30);
     });
 
-    it('restores organization by slug', async () => {
-      const slugOrg = organizationResponse({ id: 41, slug: 'slug-restore' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
+    it('restores organization', async () => {
       const restoreMock = getServiceMock('restore');
       restoreMock.mockResolvedValue(undefined);
 
-      await controller.restore(user, 'slug-restore');
+      await controller.restore(user, 41);
 
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-restore');
       expect(restoreMock).toHaveBeenCalledWith('user-1', 41);
     });
 
-    it('removes organization by numeric id', async () => {
+    it('removes organization', async () => {
       const removeMock = getServiceMock('remove');
       removeMock.mockResolvedValue(undefined);
 
@@ -426,53 +316,25 @@ describe('OrganizationController - creation & update', () => {
       expect(removeMock).toHaveBeenCalledWith('user-1', 55);
     });
 
-    it('removes organization by slug', async () => {
-      const slugOrg = organizationResponse({ id: 72, slug: 'slug-remove' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const removeMock = getServiceMock('remove');
-      removeMock.mockResolvedValue(undefined);
-
-      await controller.remove(user, 'slug-remove');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-remove');
-      expect(removeMock).toHaveBeenCalledWith('user-1', 72);
-    });
-
-    it('removes member using slug resolution', async () => {
-      const slugOrg = organizationResponse({ id: 81, slug: 'slug-member' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
+    it('removes member', async () => {
       const removeMemberMock = getServiceMock('removeMember');
       removeMemberMock.mockResolvedValue(undefined);
 
-      await controller.removeMember(user, 'slug-member', 'member-1');
+      await controller.removeMember(user, 81, 'member-1');
 
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-member');
       expect(removeMemberMock).toHaveBeenCalledWith('user-1', 81, 'member-1');
     });
   });
 
   describe('lookup endpoints', () => {
-    it('finds organization by numeric id', async () => {
+    it('finds organization', async () => {
       const orgDto = organizationResponse({ id: 5 });
       const findMock = getServiceMock('findOneForUser');
       findMock.mockResolvedValue(orgDto);
 
-      const result = await controller.findOne(user, '5');
+      const result = await controller.findOne(user, 5);
 
       expect(findMock).toHaveBeenCalledWith('user-1', 5);
-      expect(result).toBe(orgDto);
-    });
-
-    it('finds organization by slug', async () => {
-      const orgDto = organizationResponse({ id: 6, slug: 'slug-org' });
-      const findSlugMock = getServiceMock('findOneBySlugForUser');
-      findSlugMock.mockResolvedValue(orgDto);
-
-      const result = await controller.findOne(user, 'slug-org');
-
-      expect(findSlugMock).toHaveBeenCalledWith('user-1', 'slug-org');
       expect(result).toBe(orgDto);
     });
 
@@ -530,24 +392,6 @@ describe('OrganizationController - creation & update', () => {
 
       expect(summaryMock).toHaveBeenCalledWith('token123', 'user@example.com');
       expect(result).toEqual({ organization: { slug: 'org' } });
-    });
-
-    it('fetches pending invitation for current user by slug', async () => {
-      const slugOrg = organizationResponse({ id: 77, slug: 'slug-org' });
-      const slugLookup = getServiceMock('findOneBySlugForUser');
-      slugLookup.mockResolvedValue(slugOrg);
-      const findInviteMock = getServiceMock('findInvitationForUser');
-      findInviteMock.mockResolvedValue({ token: 'abc' });
-
-      const result = await controller.getMyInvitation(user, 'slug-org');
-
-      expect(slugLookup).toHaveBeenCalledWith('user-1', 'slug-org');
-      expect(findInviteMock).toHaveBeenCalledWith(
-        'user-1',
-        'user@example.com',
-        77,
-      );
-      expect(result).toEqual({ token: 'abc' });
     });
 
     it('finds duplicates with query params', async () => {
