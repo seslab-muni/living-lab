@@ -344,34 +344,7 @@ export default function EditOrganizationPage() {
 
         // If JSON parsing failed or didn't apply, check specific strings
         if (msg === 'Unexpected error') {
-          if (err.message.includes('Managers cannot assign')) {
-            msg = 'You cannot assign a higher role than your own.';
-          } else if (err.message.includes('At least one Owner must remain')) {
-            msg = 'At least one Owner must remain in the organization.';
-          } else if (
-            err.message.includes('cannot demote the last remaining Owner')
-          ) {
-            msg = 'You cannot change the role of the last remaining Owner.';
-          } else if (
-            err.message.includes('must be a member of this organization')
-          ) {
-            msg = 'You must be part of this organization to assign roles.';
-          } else if (
-            err.message.includes(
-              'You cannot assign a higher role than your own',
-            )
-          ) {
-            msg = 'You cannot assign a higher role than your own.';
-          } else if (
-            err.message.includes(
-              'You cannot modify the role of someone with an equal or higher rank',
-            )
-          ) {
-            msg =
-              'You cannot modify the role of someone with an equal or higher rank.';
-          } else if (!err.message.startsWith('Fetch error')) {
-            msg = err.message;
-          }
+          msg = getRoleUpdateErrorMessage(err.message, msg);
         }
       }
       setErrors({ form: msg });
@@ -965,4 +938,29 @@ export default function EditOrganizationPage() {
       />
     </Box>
   );
+}
+
+function getRoleUpdateErrorMessage(
+  errorMessage: string,
+  defaultMsg: string,
+): string {
+  switch (true) {
+    case errorMessage.includes('Managers cannot assign'):
+    case errorMessage.includes('You cannot assign a higher role than your own'):
+      return 'You cannot assign a higher role than your own.';
+    case errorMessage.includes('At least one Owner must remain'):
+      return 'At least one Owner must remain in the organization.';
+    case errorMessage.includes('cannot demote the last remaining Owner'):
+      return 'You cannot change the role of the last remaining Owner.';
+    case errorMessage.includes('must be a member of this organization'):
+      return 'You must be part of this organization to assign roles.';
+    case errorMessage.includes(
+      'You cannot modify the role of someone with an equal or higher rank',
+    ):
+      return 'You cannot modify the role of someone with an equal or higher rank.';
+    case !errorMessage.startsWith('Fetch error'):
+      return errorMessage;
+    default:
+      return defaultMsg;
+  }
 }
