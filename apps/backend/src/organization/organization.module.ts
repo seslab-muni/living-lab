@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Organization } from './entities/organization.entity';
 import { OrganizationService } from './organization.service';
@@ -23,7 +17,7 @@ import { Role } from 'src/domain-role/entities/role.entity';
 import { Domain } from 'src/domain-role/entities/domain.entity';
 import { UserService } from 'src/user/user.service';
 import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
-import { OrganizationMiddleware } from './organization.middleware';
+import { OrganizationContextGuard } from './guards/organization-context.guard';
 
 @Module({
   imports: [
@@ -45,27 +39,10 @@ import { OrganizationMiddleware } from './organization.middleware';
     DomainService,
     UserService,
     RolesGuard,
+    OrganizationContextGuard,
     OrganizationMailService,
     OrganizationSchedulerService,
   ],
   exports: [OrganizationService],
 })
-export class OrganizationModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(OrganizationMiddleware)
-      .exclude(
-        { path: 'organizations', method: RequestMethod.ALL },
-        { path: 'organizations/search', method: RequestMethod.ALL },
-        { path: 'organizations/duplicates', method: RequestMethod.ALL },
-        { path: 'organizations/slug-preview', method: RequestMethod.ALL },
-        { path: 'organizations/invitations/accept', method: RequestMethod.ALL },
-        { path: 'organizations/invitations/reject', method: RequestMethod.ALL },
-        { path: 'organizations/invitations/:token', method: RequestMethod.ALL },
-      )
-      .forRoutes(
-        { path: 'organizations/:idOrSlug', method: RequestMethod.ALL },
-        { path: 'organizations/:idOrSlug/*path', method: RequestMethod.ALL },
-      );
-  }
-}
+export class OrganizationModule {}

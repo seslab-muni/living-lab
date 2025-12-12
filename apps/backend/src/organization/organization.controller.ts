@@ -26,7 +26,8 @@ import { InvitationTokenDto } from './dto/invitation-token.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from 'src/domain-role/guards/access-control.guard';
-import { ParseOrgIdPipe } from './pipes/parse-org-id.pipe';
+import { OrganizationContextGuard } from './guards/organization-context.guard';
+import { GetOrgId } from './decorators/get-org-id.decorator';
 
 @Controller('organizations')
 @UseGuards(JwtAuthGuard)
@@ -48,15 +49,8 @@ export class OrganizationController {
 
   @Get(':idOrSlug/join-requests')
   @DefineRoles('Owner', 'Manager', 'Admin')
-  @UseGuards(RolesGuard)
-  async listRequests(
-    @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
-  ) {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
+  @UseGuards(OrganizationContextGuard, RolesGuard)
+  async listRequests(@GetUser() user: JwtPayload, @GetOrgId() orgId: number) {
     return this.orgService.findPendingRequestsForOrg(user.id, orgId);
   }
 
@@ -82,26 +76,20 @@ export class OrganizationController {
   }
 
   @Post(':idOrSlug/join')
+  @UseGuards(OrganizationContextGuard)
   async join(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ): Promise<void> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.join(user.id, orgId);
   }
 
   @Post(':idOrSlug/leave')
+  @UseGuards(OrganizationContextGuard)
   async leave(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ): Promise<void> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.leave(user.id, orgId);
   }
 
@@ -141,52 +129,40 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug')
+  @UseGuards(OrganizationContextGuard)
   async findOne(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug') idOrSlug: string,
+    @GetOrgId() orgId: number,
   ): Promise<OrganizationDto> {
-    // if it’s not a pure number, treat it as a slug
-    if (isNaN(Number(idOrSlug))) {
-      return this.orgService.findOneBySlugForUser(user.id, idOrSlug);
-    }
-    // otherwise parse as numeric ID
-    return this.orgService.findOneForUser(user.id, +idOrSlug);
+    return this.orgService.findOneForUser(user.id, orgId);
   }
 
   @Post(':idOrSlug/join-requests')
+  @UseGuards(OrganizationContextGuard)
   async joinRequest(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
     @Body() dto: CreateJoinRequestDto,
   ) {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.createJoinRequest(user.id, orgId, dto);
   }
 
   @Patch(':idOrSlug')
   @DefineRoles('Owner', 'Admin', 'Manager')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async update(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
     @Body() dto: UpdateOrganizationDto,
   ): Promise<OrganizationDto> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.update(user.id, orgId, dto);
   }
 
   @Get(':idOrSlug/join-requests/:reqId')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async getRequest(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
     @Param('reqId') reqId: string,
   ): Promise<JoinRequestDto> {
     const requestId = Number(reqId);
@@ -195,15 +171,11 @@ export class OrganizationController {
 
   @Get(':idOrSlug/invitations')
   @DefineRoles('Owner', 'Manager', 'Admin')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async listInvitations(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ) {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.findPendingInvitations(user.id, orgId);
   }
 
@@ -220,53 +192,41 @@ export class OrganizationController {
   }
 
   @Get(':idOrSlug/my-invitation')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OrganizationContextGuard, JwtAuthGuard)
   async getMyInvitation(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ) {
     if (!user.email) {
       throw new ForbiddenException('Authenticated user has no email in token');
     }
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.findInvitationForUser(user.id, user.email, orgId);
   }
 
   @Get(':idOrSlug/invitations/history')
   @DefineRoles('Owner', 'Manager', 'Admin')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async listInvitationHistory(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ) {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.findAllInvitations(user.id, orgId);
   }
 
   @Post(':idOrSlug/invitations')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async sendInvitations(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
     @Body() dto: CreateInvitationDto,
   ) {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.sendInvitations(user.id, orgId, dto);
   }
 
   @Delete(':idOrSlug/invitations/:inviteId')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async revokeInvitation(
     @GetUser() user: JwtPayload,
     @Param('inviteId') inviteId: string,
@@ -301,68 +261,48 @@ export class OrganizationController {
 
   @Patch(':idOrSlug/join-requests/:reqId/approve')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
-  async approve(
-    @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
-    @Param('reqId') reqId: string,
-  ) {
+  @UseGuards(OrganizationContextGuard, RolesGuard)
+  async approve(@GetUser() user: JwtPayload, @Param('reqId') reqId: string) {
     const requestId = Number(reqId);
     return this.orgService.handleJoinRequest(user.id, requestId, true);
   }
 
   @Patch(':idOrSlug/join-requests/:reqId/reject')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
-  async reject(
-    @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) _orgId: number | string,
-    @Param('reqId') reqId: string,
-  ) {
+  @UseGuards(OrganizationContextGuard, RolesGuard)
+  async reject(@GetUser() user: JwtPayload, @Param('reqId') reqId: string) {
     const requestId = Number(reqId);
     return this.orgService.handleJoinRequest(user.id, requestId, false);
   }
 
   @Patch(':idOrSlug/restore')
   @DefineRoles('Admin')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async restore(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ): Promise<void> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.restore(user.id, orgId);
   }
 
   @Delete(':idOrSlug')
   @DefineRoles('Owner', 'Admin')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async remove(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
   ): Promise<void> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.remove(user.id, orgId);
   }
 
   @Delete(':idOrSlug/members/:memberId')
   @DefineRoles('Owner', 'Manager')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrganizationContextGuard, RolesGuard)
   async removeMember(
     @GetUser() user: JwtPayload,
-    @Param('idOrSlug', ParseOrgIdPipe) idOrSlug: number | string,
+    @GetOrgId() orgId: number,
     @Param('memberId') memberId: string,
   ): Promise<void> {
-    const orgId =
-      typeof idOrSlug === 'number'
-        ? idOrSlug
-        : (await this.orgService.findOneBySlugForUser(user.id, idOrSlug)).id;
     return this.orgService.removeMember(user.id, orgId, memberId);
   }
 }

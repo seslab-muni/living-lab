@@ -15,8 +15,11 @@ import { RolesGuard } from './guards/access-control.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UserService } from 'src/user/user.service';
 
+import { OrganizationContextGuard } from 'src/organization/guards/organization-context.guard';
+
 @ApiTags('Domain')
 @Controller('domain')
+@UseGuards(OrganizationContextGuard)
 export class DomainController {
   constructor(
     private domainService: DomainService,
