@@ -1,3 +1,5 @@
+import { UserSummaryDto } from '../../user/dto/user-summary.dto';
+
 export class OrganizationDto {
   id: number;
   name: string;
@@ -16,11 +18,7 @@ export class OrganizationDto {
   isMember: boolean;
   hasPendingRequest: boolean;
   isOwner: boolean;
-  members: Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-  }>;
+  members: Array<UserSummaryDto>;
   currentUserRole?:
     | 'Viewer'
     | 'Moderator'
