@@ -20,7 +20,7 @@ export class OrganizationContextGuard implements CanActivate {
       return true;
     }
 
-    if (!Number.isNaN(Number(idOrSlug))) {
+    if (/^\d+$/.test(idOrSlug)) {
       req.domainId = String(idOrSlug);
       req.params.idOrSlug = String(idOrSlug);
       req.params.domainId = String(idOrSlug);
