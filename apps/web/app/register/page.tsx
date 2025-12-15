@@ -4,7 +4,7 @@ import * as React from 'react';
 import { RegisterForm } from '../components';
 import CenterCardLayout from '../components/CenterCardLayout';
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   return (
     <CenterCardLayout>
       <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
@@ -12,5 +12,13 @@ export default function RegisterPage() {
       </Typography>
       <RegisterForm />
     </CenterCardLayout>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <RegisterPageContent />
+    </React.Suspense>
   );
 }

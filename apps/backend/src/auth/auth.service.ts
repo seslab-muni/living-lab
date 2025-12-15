@@ -71,7 +71,13 @@ export class AuthService {
       throw new UnauthorizedException('Email or password are incorrect!');
     }
     const roles = await this.userService.getUserRoles(user.id);
-    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles };
+    return {
+      id: user.id,
+      name: user.firstName,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      roles,
+    };
   }
 
   async login(user: RequestUser) {
@@ -107,7 +113,13 @@ export class AuthService {
       throw new UnauthorizedException('No user found!');
     }
     const roles = await this.userService.getUserRoles(user.id);
-    return { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles };
+    return {
+      id: user.id,
+      name: user.firstName,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      roles,
+    };
   }
 
   async invalidateRefreshToken(id: string) {
@@ -157,12 +169,19 @@ export class AuthService {
     const { accessToken, refreshToken } = await this.generateTokens({
       id: user.id,
       name: user.firstName,
+      email: user.email,
       isAdmin: user.isAdmin,
       roles,
     });
     await this.userService.updateRefreshToken(user.id, refreshToken);
     return {
-      user: { id: user.id, name: user.firstName, isAdmin: user.isAdmin, roles },
+      user: {
+        id: user.id,
+        name: user.firstName,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        roles,
+      },
       accessToken,
       refreshToken,
     };

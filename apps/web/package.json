@@ -19,12 +19,14 @@
     "@emotion/styled": "latest",
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
+    "@mui/system": "latest",
     "@mui/material-nextjs": "^7.0.2",
     "@repo/types": "workspace:*",
     "next": "15.3.0",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "use-debounce": "^10.0.6"
   },
   "devDependencies": {
     "@nestjs/jwt": "^11.0.0",

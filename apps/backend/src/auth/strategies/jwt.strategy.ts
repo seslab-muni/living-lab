@@ -13,11 +13,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly cfg: config.ConfigType<typeof jwtConfig>,
     private readonly authService: AuthService,
   ) {
+    const cfgAny = cfg as Record<string, unknown>;
+    const secret =
+      typeof cfgAny.secret === 'string' ? cfgAny.secret : undefined;
+    const publicKey =
+      typeof cfgAny.publicKey === 'string' ? cfgAny.publicKey : undefined;
+
+    const isMockMode = Boolean(secret);
+    const secretOrKey = isMockMode
+      ? (secret ?? 'mock-key')
+      : (publicKey ?? 'mock-key');
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: cfg.publicKey!,
-      algorithms: ['RS256'],
+      secretOrKey,
+      algorithms: [isMockMode ? 'HS256' : 'RS256'],
     });
   }
 

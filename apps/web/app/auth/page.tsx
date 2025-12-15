@@ -1,7 +1,9 @@
+'use client';
+
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
-export default async function AuthHomePage() {
+export default function AuthHomePage() {
   return (
     <Container maxWidth="lg">
       <Box

@@ -1,3 +1,5 @@
+'use client';
+
 import { Button, Link, Stack } from '@mui/material';
 import Typography from '@mui/material/Typography';
 import CenterCardLayout from './components/CenterCardLayout';

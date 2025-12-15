@@ -11,6 +11,8 @@ export function getTypeOrmConfig(): TypeOrmModuleOptions {
     database: process.env.DATABASE_NAME || 'bvv-dev',
     autoLoadEntities: true,
     synchronize: process.env.NODE_ENV !== 'production',
+    //only when changing database schema
+    //dropSchema: process.env.NODE_ENV !== 'production',
   };
 }
 

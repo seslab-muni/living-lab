@@ -17,11 +17,22 @@ export class RefreshJwtStrategy extends PassportStrategy(
     private readonly cfg: config.ConfigType<typeof refreshConfig>,
     private readonly authService: AuthService,
   ) {
+    const cfgAny = cfg as Record<string, unknown>;
+    const secret =
+      typeof cfgAny.secret === 'string' ? cfgAny.secret : undefined;
+    const publicKey =
+      typeof cfgAny.publicKey === 'string' ? cfgAny.publicKey : undefined;
+
+    const isMockMode = Boolean(secret);
+    const secretOrKey = isMockMode
+      ? (secret ?? 'mock-key')
+      : (publicKey ?? 'mock-key');
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: cfg.secret!,
-      passReqToCallback: true,
+      secretOrKey,
+      algorithms: [isMockMode ? 'HS256' : 'RS256'],
     });
   }
 

@@ -1,0 +1,390 @@
+'use client';
+
+import React, { useCallback, useEffect, useState } from 'react';
+import { useDebounce } from 'use-debounce';
+import { authFetch } from '../../../lib/auth';
+import { BACKEND_URL } from '../../../lib/constants';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  Divider,
+  InputAdornment,
+  TextField,
+  Typography,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Chip,
+} from '@mui/material';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import NextLink from 'next/link';
+import ConfirmDialog from '../../organizations/components/ConfirmDialog';
+import PaginationControl from '../../organizations/components/PaginationControl';
+
+type Organization = {
+  id: number;
+  name: string;
+  slug: string;
+  creatorName: string;
+  createdAt: string;
+  isActive: boolean;
+};
+
+export default function AdminOrganizationsPage() {
+  const [organizations, setOrganizations] = useState<Organization[] | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebounce(search, 400);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const LIMIT = 10;
+
+  const [processing, setProcessing] = useState<{
+    id: number;
+    action: 'archive' | 'restore';
+  } | null>(null);
+  const [archiveDialogOrg, setArchiveDialogOrg] = useState<Organization | null>(
+    null,
+  );
+  const [restoreDialogOrg, setRestoreDialogOrg] = useState<Organization | null>(
+    null,
+  );
+  const archiveLoading = processing?.action === 'archive';
+  const restoreLoading = processing?.action === 'restore';
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const fetchOrganizations = useCallback(
+    async (searchTerm: string, pageNumber: number) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('q', searchTerm);
+        params.set('page', pageNumber.toString());
+        params.set('limit', LIMIT.toString());
+        params.set('includeInactive', 'true');
+        params.set('sort', 'newest');
+
+        const res = await authFetch(
+          `${BACKEND_URL}/organizations/search?${params.toString()}`,
+        );
+
+        if (!res.ok) {
+          setError(`Failed to load organizations (HTTP ${res.status})`);
+          return;
+        }
+
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          setOrganizations(json);
+          setTotalPages(1);
+        } else {
+          setOrganizations(json.data);
+          setTotalPages(json.meta.totalPages);
+        }
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const prevFilters = React.useRef({
+    search: debouncedSearch,
+  });
+
+  useEffect(() => {
+    const filtersChanged = debouncedSearch !== prevFilters.current.search;
+
+    if (filtersChanged) {
+      prevFilters.current = { search: debouncedSearch };
+      setPage(1);
+      if (page !== 1) return;
+    }
+
+    void fetchOrganizations(debouncedSearch, page);
+  }, [debouncedSearch, page, fetchOrganizations]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number,
+  ) => {
+    setPage(value);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleArchiveOrRestore = async (
+    org: Organization,
+    action: 'archive' | 'restore',
+  ) => {
+    if (processing !== null) return;
+    setProcessing({ id: org.id, action });
+    try {
+      let res;
+      if (action === 'archive') {
+        res = await authFetch(`${BACKEND_URL}/organizations/${org.id}`, {
+          method: 'DELETE',
+        });
+      } else {
+        res = await authFetch(
+          `${BACKEND_URL}/organizations/${org.id}/restore`,
+          {
+            method: 'PATCH',
+          },
+        );
+      }
+
+      if (!res.ok) {
+        setSnackbar({
+          open: true,
+          message: `Failed to ${action === 'archive' ? 'archive' : 'restore'} organization (HTTP ${res.status}).`,
+          severity: 'error',
+        });
+        return;
+      }
+
+      setSnackbar({
+        open: true,
+        message:
+          action === 'archive'
+            ? `Organization "${org.name}" archived successfully.`
+            : `Organization "${org.name}" restored successfully.`,
+        severity: 'success',
+      });
+      await fetchOrganizations(debouncedSearch, page);
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: `Failed to ${action === 'archive' ? 'archive' : 'restore'} organization.`,
+        severity: 'error',
+      });
+    } finally {
+      setArchiveDialogOrg(null);
+      setRestoreDialogOrg(null);
+      setTimeout(() => setProcessing(null), 300);
+    }
+  };
+
+  const openArchiveConfirm = (org: Organization) => setArchiveDialogOrg(org);
+  const openRestoreConfirm = (org: Organization) => setRestoreDialogOrg(org);
+
+  return (
+    <Box display="flex" flexDirection="column">
+      <Typography variant="h2">Organizations</Typography>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+      <Divider />
+
+      <Box display="flex" alignItems="center">
+        <TextField
+          name="filter"
+          value={search}
+          onChange={handleSearch}
+          label="Search organization"
+          placeholder="Search by name..."
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchRoundedIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mr: 2, my: 2 }}
+        />
+        <Button
+          component={NextLink}
+          href="/auth/organizations/new"
+          variant="contained"
+          color="primary"
+        >
+          Create Organization
+        </Button>
+      </Box>
+
+      <Divider />
+
+      {loading || !organizations ? (
+        <Box display="flex" justifyContent="center" mt={4}>
+          <CircularProgress />
+        </Box>
+      ) : organizations.length === 0 ? (
+        <Typography sx={{ mt: 2 }}>No organizations found.</Typography>
+      ) : (
+        <>
+          {organizations.map((org) => (
+            <Accordion key={org.id}>
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                aria-controls={`panel-${org.id}-content`}
+                id={`panel-${org.id}-header`}
+              >
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Typography
+                    sx={{
+                      color: org.isActive ? 'inherit' : 'text.secondary',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {org.name}
+                  </Typography>
+
+                  {!org.isActive && (
+                    <Chip
+                      label="Archived"
+                      size="small"
+                      color="default"
+                      sx={{
+                        backgroundColor: '#e0e0e0',
+                        color: 'text.secondary',
+                        height: 22,
+                      }}
+                    />
+                  )}
+                </Box>
+              </AccordionSummary>
+
+              <AccordionDetails>
+                <Box
+                  display="flex"
+                  flexDirection="column"
+                  gap={1}
+                  alignItems="flex-start"
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Creator: {org.creatorName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Created: {new Date(org.createdAt).toLocaleDateString()}
+                  </Typography>
+
+                  <Box display="flex" alignItems="center" gap={2} mt={1}>
+                    {org.isActive ? (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => openArchiveConfirm(org)}
+                        disabled={processing?.id === org.id}
+                      >
+                        {processing?.id === org.id &&
+                        processing.action === 'archive'
+                          ? 'Archiving…'
+                          : 'Archive'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        size="small"
+                        onClick={() => openRestoreConfirm(org)}
+                        disabled={processing?.id === org.id}
+                      >
+                        {processing?.id === org.id &&
+                        processing.action === 'restore'
+                          ? 'Restoring…'
+                          : 'Restore'}
+                      </Button>
+                    )}
+
+                    {org.isActive && (
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        component={NextLink}
+                        href={`/auth/organizations/${org.slug}`}
+                      >
+                        View Details
+                      </Button>
+                    )}
+                  </Box>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
+          ))}
+          <PaginationControl
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+          />
+        </>
+      )}
+
+      <ConfirmDialog
+        open={!!archiveDialogOrg}
+        title="Archive organization?"
+        description="Archiving hides this organization from regular users. You can restore it later."
+        confirmLabel="Archive"
+        confirmColor="error"
+        loading={archiveLoading}
+        onCloseAction={() => {
+          if (processing) return;
+          setArchiveDialogOrg(null);
+        }}
+        onConfirmAction={() => {
+          if (archiveDialogOrg) {
+            void handleArchiveOrRestore(archiveDialogOrg, 'archive');
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!restoreDialogOrg}
+        title="Restore organization?"
+        description="Restoring will make this organization visible to users again."
+        confirmLabel="Restore"
+        confirmColor="success"
+        loading={restoreLoading}
+        onCloseAction={() => {
+          if (processing) return;
+          setRestoreDialogOrg(null);
+        }}
+        onConfirmAction={() => {
+          if (restoreDialogOrg) {
+            void handleArchiveOrRestore(restoreDialogOrg, 'restore');
+          }
+        }}
+      />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}

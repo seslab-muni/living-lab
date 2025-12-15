@@ -1,14 +1,30 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DefineRoles } from 'src/common/decorators/roles.decorator';
 import { DomainService } from './domain.service';
 import { RolesDto } from './dto/roles.dto';
 import { RolesGuard } from './guards/access-control.guard';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import { UserService } from 'src/user/user.service';
+
+import { OrganizationContextGuard } from 'src/organization/guards/organization-context.guard';
 
 @ApiTags('Domain')
 @Controller('domain')
+@UseGuards(OrganizationContextGuard)
 export class DomainController {
-  constructor(private domainService: DomainService) {}
+  constructor(
+    private domainService: DomainService,
+    private userService: UserService,
+  ) {}
 
   @Get('/:domainId/users')
   @DefineRoles('Admin', 'Owner', 'Manager', 'Moderator', 'Viewer')
@@ -32,12 +48,60 @@ export class DomainController {
   @DefineRoles('Admin', 'Owner', 'Manager')
   @UseGuards(RolesGuard)
   @ApiOperation({ summary: 'Update user role in a domain.' })
-  @ApiResponse({ status: 200, description: 'Role updated succesfully.' })
+  @ApiResponse({ status: 200, description: 'Role updated successfully.' })
   async changeUserRole(
     @Param() param: { domainId: string; userId: string },
     @Body() body: RolesDto,
+    @GetUser() user: { id: string },
   ) {
-    return await this.domainService.changeUserRole(
+    const callerId = user.id;
+    await this.userService.findById(callerId, true);
+    const callerRole = await this.domainService.getRole(
+      callerId,
+      param.domainId,
+    );
+    const targetRole = await this.domainService.getRole(
+      param.userId,
+      param.domainId,
+    );
+    const hierarchy = ['Viewer', 'Moderator', 'Manager', 'Owner'];
+    const rank = (r: string | null) => (r ? hierarchy.indexOf(r) : -1);
+
+    if (!callerRole) {
+      throw new ForbiddenException(
+        'You must be a member of this organization to assign roles.',
+      );
+    }
+
+    if (callerRole === 'Manager' && rank(body.role) > rank('Manager')) {
+      throw new ForbiddenException(
+        'Managers cannot assign higher than Manager.',
+      );
+    }
+
+    if (targetRole === 'Owner' && body.role !== 'Owner') {
+      const users = await this.domainService.getAllUsers(param.domainId);
+      const ownersLeft = users.filter(
+        (u) => u.role === 'Owner' && u.id !== param.userId,
+      ).length;
+      if (ownersLeft < 1) {
+        throw new ForbiddenException('At least one Owner must remain.');
+      }
+    }
+
+    if (rank(body.role) > rank(callerRole)) {
+      throw new ForbiddenException(
+        'You cannot assign a higher role than your own.',
+      );
+    }
+
+    if (param.userId !== callerId && rank(targetRole) >= rank(callerRole)) {
+      throw new ForbiddenException(
+        'You cannot modify the role of someone with an equal or higher rank.',
+      );
+    }
+
+    return this.domainService.changeUserRole(
       param.domainId,
       param.userId,
       body.role,

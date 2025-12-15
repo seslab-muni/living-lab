@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { UserService } from 'src/user/user.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +14,7 @@ import { VerificationToken } from 'src/verification/entity/verification.entity';
 import { EmailService } from 'src/email/email.service';
 import refreshConfig from 'src/configuration/refresh.config';
 import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
+import { OrganizationModule } from '../organization/organization.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
     ConfigModule.forFeature(refreshConfig),
     TypeOrmModule.forFeature([User]),
     TypeOrmModule.forFeature([VerificationToken]),
+    forwardRef(() => OrganizationModule),
   ],
   controllers: [AuthController],
   providers: [
