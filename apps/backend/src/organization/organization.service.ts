@@ -98,25 +98,27 @@ export class OrganizationService {
     const callerRole = await this.domainService.getRole(userId, String(orgId));
     return {
       isAdmin,
-      callerRole: (callerRole as 'Viewer' | 'Manager' | 'Owner' | null) ?? null,
+      callerRole:
+        (callerRole as 'Viewer' | 'Moderator' | 'Manager' | 'Owner' | null) ??
+        null,
     };
   }
 
   private canActOn(
-    caller: 'Viewer' | 'Manager' | 'Owner' | null,
-    target: 'Viewer' | 'Manager' | 'Owner' | null,
+    caller: 'Viewer' | 'Moderator' | 'Manager' | 'Owner' | null,
+    target: 'Viewer' | 'Moderator' | 'Manager' | 'Owner' | null,
   ) {
     return this.roleOrder(caller) > this.roleOrder(target);
   }
 
   private ensureAllowed(
     required:
-      | ('Viewer' | 'Manager' | 'Owner')[]
+      | ('Viewer' | 'Moderator' | 'Manager' | 'Owner')[]
       | 'OwnerOnly'
       | 'OwnerOrManager',
     ctx: {
       isAdmin: boolean;
-      callerRole: 'Viewer' | 'Manager' | 'Owner' | null;
+      callerRole: 'Viewer' | 'Moderator' | 'Manager' | 'Owner' | null;
     },
   ) {
     if (required === 'OwnerOnly') {
@@ -700,7 +702,7 @@ export class OrganizationService {
     const targetRole = (await this.domainService.getRole(
       memberId,
       String(orgId),
-    )) as 'Viewer' | 'Manager' | 'Owner' | null;
+    )) as 'Viewer' | 'Moderator' | 'Manager' | 'Owner' | null;
 
     if (!this.canActOn(ctx.callerRole, targetRole)) {
       throw new ForbiddenException('You cannot remove a higher-role member.');
